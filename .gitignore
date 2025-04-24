@@ -1,0 +1,27 @@
+# Node.js dependencies
+node_modules/
+.next/
+npm-debug.log*
+yarn-error.log*
+
+# Go build outputs
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/backend/bin/ # Assuming build output goes here
+
+# IDE/Editor folders
+.vscode/
+.idea/
+
+# Environment files
+.env*
+!.env.example
+
+# OS generated files
+.DS_Store
+Thumbs.db 
