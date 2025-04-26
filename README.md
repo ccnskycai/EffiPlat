@@ -1,13 +1,13 @@
-# Project Title
+# 局域网一体化协作平台
 
 <!-- Add badges here: build status, coverage, license, etc. -->
 <!-- Example: [![Build Status](...)](...) -->
 
-[Project description] - Provide a more detailed description of what the project does, its purpose, and key features.
+本项目旨在开发一个部署在公司内部局域网的一体化协作平台，解决当前跨部门协作中的信息孤岛、流程脱节、环境配置管理复杂、问题追溯困难等问题，打通从需求到运维的完整工作流，提升整体工作效率和质量。
 
 ## Table of Contents
 
-- [Project Title](#project-title)
+- [局域网一体化协作平台](#局域网一体化协作平台)
   - [Table of Contents](#table-of-contents)
   - [Tech Stack](#tech-stack)
   - [Directory Structure](#directory-structure)
@@ -23,33 +23,38 @@
 
 ## Tech Stack
 
-- **Frontend:** [Next.js](https://nextjs.org/), [React](https://reactjs.org/), [Tailwind CSS](https://tailwindcss.com/)
-- **Backend:** [Go](https://golang.org/) (using [standard library `net/http`](https://pkg.go.dev/net/http), potentially add frameworks like [Gin](https://gin-gonic.com/) or [Echo](https://echo.labstack.com/) later)
-- **Database:** (Specify database, e.g., PostgreSQL, MongoDB)
-- **Other:** (e.g., Docker, Redis, etc.)
+根据初步技术选型 ([design/technology_stack.md](design/technology_stack.md)):
+
+*   **Frontend:** [Next.js](https://nextjs.org/) (using [TypeScript](https://www.typescriptlang.org/)), [React](https://reactjs.org/), [Ant Design](https://ant.design/) / [MUI](https://mui.com/) (待定)
+*   **Backend:** [Go](https://golang.org/) (using [Gin](https://gin-gonic.com/) or [Echo](https://echo.labstack.com/) - 待定), [GORM](https://gorm.io/) (初步选定)
+*   **Database:** [PostgreSQL](https://www.postgresql.org/) (初步倾向) / MySQL
+*   **Other:** Docker
 
 ## Directory Structure
 
 ```
 /
-├── .github/          # CI/CD workflows
+├── .github/          # CI/CD workflows (可选)
 ├── .cursor/          # Cursor AI configuration and rules
 │   └── rules/        # Project-specific AI rules (.mdc files)
-├── backend/          # Go backend application
-│   ├── cmd/api/main.go # Entry point
-│   ├── internal/     # Private application code
-│   ├── go.mod        # Dependencies
+├── backend/          # Go 后端应用
+│   ├── cmd/api/main.go # 入口点
+│   ├── internal/     # 内部应用代码
+│   ├── go.mod        # 依赖
 │   └── ...
-├── docs/             # Project documentation (requirements, design, etc.)
-│   ├── README.md
-│   ├── requirements/
-│   └── design/
-├── frontend/         # Next.js frontend application
-│   ├── app/          # App Router
-│   ├── components/   # Shared components
-│   ├── public/       # Static assets
-│   ├── styles/       # Global styles & Tailwind
-│   ├── package.json  # Dependencies
+├── docs/             # 项目文档 (需求、设计等)
+│   ├── requirements/ # 需求相关文档
+│   │   ├── requirements.md
+│   │   └── execution_plan.md
+│   └── design/       # 设计相关文档
+│       ├── README.md
+│       └── ...
+├── frontend/         # Next.js 前端应用
+│   ├── app/          # App Router (Next.js 13+)
+│   ├── components/   # 共享组件
+│   ├── public/       # 静态资源
+│   ├── styles/       # 全局样式 & Tailwind (如果使用)
+│   ├── package.json  # 依赖
 │   └── ...
 ├── .gitignore
 └── README.md
@@ -57,93 +62,37 @@
 
 ## Getting Started
 
-Instructions on how to set up and run the project locally.
+(待补充: 如何设置和运行本地开发环境)
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) (specify version, e.g., >= 18.x)
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/)
-- [Go](https://golang.org/dl/) (specify version, e.g., >= 1.21)
-- (Add any other dependencies like Docker, specific database client, etc.)
+(待补充: 列出所需软件和版本，如 Node.js, Go, Docker, 数据库等)
 
 ### Environment Variables
 
-Both frontend and backend might require environment variables. Create `.env` files in the respective directories based on provided examples (e.g., `.env.example`).
-
-**Frontend (`frontend/.env.local`):**
-
-```bash
-# Example: API endpoint the frontend should connect to
-NEXT_PUBLIC_API_URL=http://localhost:8080/api
-```
-
-**Backend (`backend/.env`):**
-
-```bash
-# Example: Port and database connection string
-APP_PORT=8080
-DATABASE_URL="user:password@tcp(localhost:5432)/database_name?sslmode=disable"
-# Add other variables like JWT secrets, external API keys, etc.
-```
-*Note: Remember to add `.env*` files to your `.gitignore` (except `.env.example`).*
+(待补充: 说明前后端所需环境变量及 `.env.example` 文件)
 
 ### Installation & Running
 
-1.  **Clone the repository:**
-    ```bash
-    git clone <your-repository-url>
-    cd your-project-name
-    ```
-
-2.  **Backend Setup:**
-    ```bash
-    cd backend
-    # Create and configure your .env file based on backend/.env.example (if provided)
-    go mod tidy # Download dependencies
-    # Optional: Run database migrations if applicable
-    # go run ./cmd/migrate up
-    go run ./cmd/api/main.go # Start the backend server
-    ```
-    The backend should now be running (default: http://localhost:8080).
-
-3.  **Frontend Setup:**
-    ```bash
-    cd ../frontend # Go back to root, then into frontend
-    # Create and configure your .env.local file based on frontend/.env.local.example (if provided)
-    npm install # or yarn install
-    npm run dev # or yarn dev
-    ```
-    The frontend development server should now be running (default: http://localhost:3000).
+(待补充: 提供详细的克隆、安装依赖、启动前后端服务的步骤)
 
 ## Running Tests
 
-Instructions on how to run automated tests.
-
-**Frontend:**
-
-```bash
-cd frontend
-npm run test # (Adjust command based on your testing setup, e.g., Jest, Cypress)
-```
-
-**Backend:**
-
-```bash
-cd backend
-go test ./... # Run all tests in the backend directory
-```
+(待补充: 提供运行前后端测试的命令)
 
 ## Deployment
 
-Instructions or links related to deploying the application (e.g., to Vercel, Docker Swarm, Kubernetes).
-
-(Add details here)
+(待补充: 描述部署流程或链接到相关文档，参考 [design/deployment_strategy.md](design/deployment_strategy.md))
 
 ## Documentation
 
-Detailed project documentation (Requirements, Design Documents, API Documentation, etc.) can be found in the [`/docs`](./docs/) directory.
+详细的项目文档位于 [`/docs`](./docs/) 目录，主要包括：
 
-Project-specific coding standards and AI collaboration guidelines are defined as rules within the `.cursor/rules/` directory and are applied automatically by the Cursor AI assistant.
+*   **需求文档**: [docs/requirements/requirements.md](docs/requirements/requirements.md)
+*   **执行计划**: [docs/requirements/execution_plan.md](docs/requirements/execution_plan.md)
+*   **系统设计**: [design/README.md](design/README.md) (包含详细设计文档入口)
+
+项目特定的编码规范和 AI 协作指南定义在 `.cursor/rules/` 目录下的规则文件中，并由 Cursor AI 助手自动应用。
 
 ## Contributing
 
