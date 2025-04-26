@@ -7,6 +7,7 @@
 *   **`architecture.md`**: 系统高层架构设计，包括组件划分、交互方式和技术选型概览。
 *   **`database_design.md`**: 数据库模型设计，包括选型、核心实体关系和表结构初步定义。
 *   **`api_design.md`**: 后端 API 设计规范和核心接口定义。
+*   **`error_codes.md`**: 后端服务错误代码规范定义。
 *   **`components/`**: 包含各主要组件的详细设计文档：
     *   `backend_server.md`: 后端服务设计。
     *   `frontend_client.md`: 前端客户端设计。
