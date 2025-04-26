@@ -21,6 +21,7 @@ yarn-error.log*
 # Environment files
 .env*
 !.env.example
+.trae
 
 # OS generated files
 .DS_Store
