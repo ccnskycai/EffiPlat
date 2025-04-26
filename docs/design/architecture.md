@@ -44,7 +44,7 @@ graph TD
 ## 5. 技术选型概览
 
 [细节见 `technology_stack.md`]
-*   后端: [待定，如 Go (Gin/Echo)]
+*   后端: Go (Gin)
 *   前端: [待定，如 Next.js (TypeScript) + UI库 (如 Ant Design / Material UI)]
 *   数据库: [待定，倾向于关系型数据库，如 PostgreSQL / MySQL]
 *   数据采集器: [待定，如 Go / Python]

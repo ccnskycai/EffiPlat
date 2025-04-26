@@ -82,7 +82,7 @@
 
 ## Deployment
 
-(待补充: 描述部署流程或链接到相关文档，参考 [design/deployment_strategy.md](design/deployment_strategy.md))
+(待补充: 描述部署流程或链接到相关文档，参考 [docs/design/deployment_strategy.md](docs/design/deployment_strategy.md))
 
 ## Documentation
 
@@ -90,7 +90,7 @@
 
 *   **需求文档**: [docs/requirements/requirements.md](docs/requirements/requirements.md)
 *   **执行计划**: [docs/requirements/execution_plan.md](docs/requirements/execution_plan.md)
-*   **系统设计**: [design/README.md](design/README.md) (包含详细设计文档入口)
+*   **系统设计**: [docs/design/README.md](docs/design/README.md) (包含详细设计文档入口)
 
 项目特定的编码规范和 AI 协作指南定义在 `.cursor/rules/` 目录下的规则文件中，并由 Cursor AI 助手自动应用。
 
