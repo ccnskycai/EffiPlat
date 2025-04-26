@@ -1,0 +1,21 @@
+# 示例完整配置
+# 构建输出
+/target/
+/build/
+
+# IDE 配置
+.idea/
+.vscode/
+
+# 但保留重要文档
+!target/docs/
+
+# 临时文件
+*.tmp
+*.log
+.DS_Store
+
+# 敏感信息
+.env
+.env.*
+!.env.example

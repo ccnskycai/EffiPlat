@@ -1,0 +1,13 @@
+// .cursor/settings.json
+{
+    "workspace": {
+      "maxSearchDepth": 5,          // 限制搜索深度
+      "maxFileSize": 1048576,       // 限制单文件大小(1MB)
+      "excludePatterns": [          // 排除模式
+        "**/node_modules/**",
+        "**/build/**",
+        "**/.git/**"
+      ]
+    }
+  }
+  
