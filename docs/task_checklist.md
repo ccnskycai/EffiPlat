@@ -2,12 +2,11 @@
 
 ## 阶段一：项目初始化与核心架构
 
--   [ ] 初始化后端 Go 项目 (`/backend`)
--   [ ] 初始化前端 Next.js 项目 (`/frontend`)
--   [ ] 确定并配置数据库 (PostgreSQL/MySQL)
--   [ ] 完成数据库核心表结构设计 (`docs/design/database_design.md`)
--   [ ] 设计 V1.0 API 接口 (`docs/design/api_design.md`)
--   [ ] 搭建基础 CI/CD 流程 (可选, `.github/`)
+-   [x] 初始化后端 Go 项目 (`/backend`)
+-   [x] 初始化前端 Next.js 项目 (`/frontend`)
+-   [ ] 确定并配置数据库 (sqlite3)
+-   [x] 完成数据库核心表结构设计 (`docs/design/components/database_design.md`)
+-   [ ] 设计 V1.0 API 接口 (`docs/api/api_design.md`)
 
 ## 阶段二：核心功能开发 (V1.0 - MVP)
 
