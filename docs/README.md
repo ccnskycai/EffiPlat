@@ -1,8 +1,8 @@
-# Project Documentation
+# 项目文档
 
-This directory contains all project-related documentation, including:
+此目录包含所有与项目相关的文档，包括：
 
 - [Requirements](./requirements/)
 - [Design](./design/)
 - [Standards](./standards/)
-- [API Documentation](./api/) 
+- [API Documentation](./api/)

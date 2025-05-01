@@ -14,4 +14,3 @@
     *   `data_collector.md`: 数据采集器设计。
 *   **`security_design.md`**: 安全性相关的设计考虑和措施。
 *   **`deployment_strategy.md`**: 系统部署架构和策略。
-*   **`technology_stack.md`**: 汇总项目中使用的主要技术栈。
