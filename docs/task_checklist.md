@@ -6,7 +6,11 @@
 -   [x] 初始化前端 Next.js 项目 (`/frontend`)
 -   [ ] 确定并配置数据库 (sqlite3)
 -   [x] 完成数据库核心表结构设计 (`docs/design/components/database_design.md`)
--   [ ] 设计 V1.0 API 接口 (`docs/api/api_design.md`)
+-   [x] 设计 V1.0 API 接口 (`docs/api/api_design.md`) - 完成
+    - [x] 定义基础原则、认证、响应结构
+    - [x] 定义用户认证、用户管理、环境管理、资产管理(服务器)、服务管理、服务实例、Bug 管理、审计日志核心端点及结构
+    - [x] 细化角色/权限、职责/职责组、业务管理 API 结构
+    - [x] 添加更多字段和关联关系到响应体
 
 ## 阶段二：核心功能开发 (V1.0 - MVP)
 

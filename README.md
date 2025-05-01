@@ -26,8 +26,8 @@
 根据初步技术选型 ([docs/design/technology_stack.md](docs/design/technology_stack.md)):
 
 *   **Frontend:** [Next.js](https://nextjs.org/) (using [TypeScript](https://www.typescriptlang.org/)), [React](https://reactjs.org/), [Tailwind CSS](https://tailwindcss.com/) (已配置), [Ant Design](https://ant.design/) / [MUI](https://mui.com/) (待定 UI 库)
-*   **Backend:** [Go](https://golang.org/) (using [Gin](https://gin-gonic.com/) or [Echo](https://echo.labstack.com/) - 待定), [GORM](https://gorm.io/) 
-*   **Database:** [PostgreSQL](https://www.postgresql.org/) (初步倾向) / MySQL / SQLite (根据 [docs/design/database_design.md](docs/design/database_design.md) 初步选择 SQLite)
+*   **Backend:** [Go](https://golang.org/) (using [Gin](https://gin-gonic.com/) or [Echo](https://echo.labstack.com/) - 待定), [GORM](https://gorm.io/)
+*   **Database:** [SQLite](https://www.sqlite.org/index.html) (根据 [docs/design/components/database_design.md](docs/design/components/database_design.md) 和任务清单初步选择) 
 *   **Other:** Docker
 
 ## 目录结构
@@ -58,18 +58,18 @@
 ├── docs/               # 项目文档
 │   ├── README.md       # 文档入口
 │   ├── api/            # API 文档
-│   │   └── .gitkeep
+│   │   └── api_design.md
 │   ├── design/         # 系统设计文档
-│   │   ├── .gitkeep
 │   │   ├── README.md
-│   │   ├── api_design.md
 │   │   ├── architecture.md
 │   │   ├── components/ # 组件设计
+│   │   │   ├── backend_server.md
+│   │   │   ├── database_design.md
+│   │   │   └── frontend_client.md
 │   │   ├── deployment_strategy.md
 │   │   ├── error_codes.md
 │   │   └── security_design.md
 │   ├── requirements/   # 需求文档
-│   │   ├── .gitkeep
 │   │   ├── execution_plan.md
 │   │   └── requirements.md
 │   └── task_checklist.md # 任务检查清单
@@ -77,12 +77,10 @@
     ├── app/            # App Router (Next.js 13+)
     │   └── layout.js   # 根布局
     ├── components/     # 共享 React 组件
-    │   └── .gitkeep
     ├── next.config.js  # Next.js 配置文件
     ├── package.json    # Node.js 依赖
     ├── postcss.config.js # PostCSS 配置文件
     ├── public/         # 静态资源 (图片, 字体等)
-    │   └── .gitkeep
     ├── styles/         # 样式文件
     │   └── globals.css # 全局 CSS
     └── tailwind.config.js # Tailwind CSS 配置文件
