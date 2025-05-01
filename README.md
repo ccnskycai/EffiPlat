@@ -1,13 +1,13 @@
-# 局域网一体化协作平台
+# EffiPlat: 局域网一体化协作平台
 
 <!-- Add badges here: build status, coverage, license, etc. -->
 <!-- Example: [![Build Status](...)](...) -->
 
-本项目旨在开发一个部署在公司内部局域网的一体化协作平台，解决当前跨部门协作中的信息孤岛、流程脱节、环境配置管理复杂、问题追溯困难等问题，打通从需求到运维的完整工作流，提升整体工作效率和质量。
+本项目（EffiPlat）旨在开发一个部署在公司内部局域网的一体化协作平台，解决当前跨部门协作中的信息孤岛、流程脱节、环境配置管理复杂、问题追溯困难等问题，打通从需求到运维的完整工作流，提升整体工作效率和质量。
 
 ## Table of Contents
 
-- [局域网一体化协作平台](#局域网一体化协作平台)
+- [EffiPlat: 局域网一体化协作平台](#effiplat-局域网一体化协作平台)
   - [Table of Contents](#table-of-contents)
   - [Tech Stack](#tech-stack)
   - [目录结构](#目录结构)

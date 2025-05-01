@@ -1,0 +1,34 @@
+# Production environment configuration
+server:
+  port: 8080 # Example, adjust as needed
+  # ... other server settings ...
+
+database:
+  type: "sqlite3"
+  dsn: "data/prod.db" # Example DSN for sqlite
+  # ... other database settings ...
+
+logger:
+  level: "info"         # Log info level and above in production
+  encoding: "json"      # Use JSON format for machine readability
+  outputPaths: ["stdout"] # Output to standard output (for container log collection)
+  errorOutputPaths: ["stderr"]
+  development: false    # Disable development mode
+  # Options for JSON encoder (using production defaults is usually fine)
+  encoderConfig:
+    messageKey: "msg"         # Standard keys
+    levelKey: "level"
+    timeKey: "ts"
+    callerKey: "caller"
+    stacktraceKey: "stacktrace"
+    levelEncoder: "lowercase"   # Lowercase level names (info, error)
+    timeEncoder: "epochMillis" # Unix timestamp in milliseconds (efficient)
+    callerEncoder: "short"     # Short caller path
+  # Sampling can be enabled for high-traffic logs
+  # sampling:
+  #   initial: 100 # Log the first 100 messages per second
+  #   thereafter: 100 # Log every 100th message after the initial burst
+  initialFields:
+    service: "EffiPlat" # Updated service name
+    environment: "production"
+  # Log rotation will be handled by lumberjack, integrated in code 

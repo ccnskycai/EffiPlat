@@ -1,0 +1,30 @@
+# Development environment configuration
+server:
+  port: 8080 # Example, adjust as needed
+  # ... other server settings ...
+
+database:
+  type: "sqlite3"
+  dsn: "data/dev.db" # Example DSN for sqlite
+  # ... other database settings ...
+
+logger:
+  level: "debug"        # Log debug level and above in development
+  encoding: "console"   # Use human-readable console format
+  outputPaths: ["stdout"] # Output to standard output
+  errorOutputPaths: ["stderr"]
+  development: true     # Enable development mode (adds caller, stacktrace on Warn+)
+  # Options for console encoder
+  encoderConfig:
+    messageKey: "msg"
+    levelKey: "level"
+    timeKey: "ts"
+    callerKey: "caller"
+    stacktraceKey: "stacktrace"
+    levelEncoder: "capitalColor" # Capitalized levels with colors
+    timeEncoder: "ISO8601"    # Human-readable time format
+    callerEncoder: "short"
+  initialFields:
+    service: "EffiPlat" # Updated service name
+    environment: "development"
+  # Log rotation less critical in dev, handled by lumberjack if file output is used 
