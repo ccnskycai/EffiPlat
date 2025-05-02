@@ -1,34 +1,53 @@
-# Production environment configuration
+# Production environment configuration (Optimized - Application File Rotation)
 server:
-  port: 8080 # Example, adjust as needed
-  # ... other server settings ...
+  port: 8080
 
+# --- Database ---
 database:
-  type: "sqlite3"
-  dsn: "data/prod.db" # Example DSN for sqlite
-  # ... other database settings ...
+  type: "postgres"
+  dsn: "host=db.internal user=effiplat password=YOUR_SECURE_PASSWORD dbname=effiplat_prod sslmode=require" # Example DSN - Use env vars for secrets!
+  # pool:
+  #   maxOpenConns: 20
+  #   maxIdleConns: 10
+  #   connMaxLifetime: 30m
 
+# --- Logger ---
 logger:
-  level: "info"         # Log info level and above in production
-  encoding: "json"      # Use JSON format for machine readability
-  outputPaths: ["stdout"] # Output to standard output (for container log collection)
-  errorOutputPaths: ["stderr"]
-  development: false    # Disable development mode
-  # Options for JSON encoder (using production defaults is usually fine)
+  level: "info"
+  encoding: "json"
+  # Output to both stdout (for potential monitoring) AND a rotating file
+  outputPaths: ["stdout", "logs/effiplat.log"] 
+  # Errors also go to stderr and a separate rotating file (optional, could use the main log file too)
+  errorOutputPaths: ["stderr", "logs/effiplat.error.log"] 
+  development: false
   encoderConfig:
-    messageKey: "msg"         # Standard keys
+    messageKey: "msg"
     levelKey: "level"
     timeKey: "ts"
-    callerKey: "caller"
-    stacktraceKey: "stacktrace"
-    levelEncoder: "lowercase"   # Lowercase level names (info, error)
-    timeEncoder: "epochMillis" # Unix timestamp in milliseconds (efficient)
-    callerEncoder: "short"     # Short caller path
-  # Sampling can be enabled for high-traffic logs
-  # sampling:
-  #   initial: 100 # Log the first 100 messages per second
-  #   thereafter: 100 # Log every 100th message after the initial burst
+    stacktraceKey: "stack"
+    levelEncoder: "lowercase"
+    timeEncoder: "iso8601"
   initialFields:
-    service: "EffiPlat" # Updated service name
+    service: "EffiPlat"
     environment: "production"
-  # Log rotation will be handled by lumberjack, integrated in code 
+  # Configuration for file rotation via lumberjack (applied via code)
+  lumberjack:
+    # filename: "logs/effiplat.log" # Filename MUST match one in outputPaths/errorOutputPaths to enable rotation for it
+                                   # If multiple files need rotation, this config might need adjustment or multiple logger instances.
+                                   # Our current logger.go assumes one lumberjack config applies if filename matches.
+                                   # Let's configure for the main log file:
+    filename: "logs/effiplat.log" 
+    maxsize: 100          # Rotate when file reaches 100 MB
+    maxage: 28           # Keep rotated files for 28 days
+    maxbackups: 5          # Keep max 5 old log files
+    compress: true         # Compress rotated files (gzip)
+    
+    # Note: A separate lumberjack config might be needed for the error log if different rotation is desired.
+    # The current code in logger.go would apply these settings to effiplat.error.log too if its path matched filename.
+
+# --- Security ---
+jwt:
+  secret: "YOUR_VERY_SECRET_JWT_KEY_FROM_ENV"
+  expiresInHours: 72
+
+# ... other sections ... 

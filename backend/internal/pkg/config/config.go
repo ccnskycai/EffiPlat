@@ -44,15 +44,15 @@ func LoadConfig(configPath string) (*AppConfig, error) {
 	}
 	v.SetConfigName(configName) // e.g., config.dev, config.prod
 	v.SetConfigType("yaml")
-	v.AddConfigPath(configPath)      // Path to look for the config file in
-	v.AddConfigPath("./configs")     // Look in ./configs/
-	v.AddConfigPath("../configs")    // Look in ../configs/ (relative to backend/)
-	v.AddConfigPath("/etc/appname/") // Look in /etc/appname/
-	v.AddConfigPath(".")             // Look in the current directory
+	v.AddConfigPath(configPath)       // Path to look for the config file in
+	v.AddConfigPath("./configs")      // Look in ./configs/
+	v.AddConfigPath("../configs")     // Look in ../configs/ (relative to backend/)
+	v.AddConfigPath("/etc/effiplat/") // Look in /etc/effiplat/
+	v.AddConfigPath(".")              // Look in the current directory
 
 	// --- Environment Variable Settings ---
-	v.SetEnvPrefix("APP") // Environment variables must be prefixed with APP_
-	v.AutomaticEnv()      // Read in environment variables that match
+	v.SetEnvPrefix("Effi") // Environment variables must be prefixed with Effi_
+	v.AutomaticEnv()       // Read in environment variables that match
 	// Example: APP_LOGGER_LEVEL=debug will override logger.level from file
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_")) // Replace dots with underscores for env var names
 
