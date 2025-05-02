@@ -1,6 +1,6 @@
 # 系统设计文档说明
 
-本文档目录包含了"局域网一体化协作平台"的系统设计方案。设计依据来源于项目`docs/requirements`目录下的 `requirements.md` 和 `execution_plan.md`。
+本文档目录包含了"EffiPlat "的系统设计方案。设计依据来源于项目`docs/requirements`目录下的 `requirements.md` 和 `execution_plan.md`。
 
 ## 文档结构
 
