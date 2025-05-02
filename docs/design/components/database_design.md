@@ -439,4 +439,29 @@ CREATE INDEX idx_bugs_biz_id ON bugs(business_id);
 
 ## 5. 数据迁移
 
-*   如果现有系统存在相关数据，需制定数据迁移计划（见 `requirements.md` 6.8）。可能需要编写迁移脚本。 
+为了确保数据库结构的一致性、可版本化和自动化部署，项目将采用数据库迁移工具。
+
+*   **工具选型**: 推荐使用 `golang-migrate/migrate`。这是一个独立于 ORM 的流行 Go 库，支持多种数据库（包括本项目选用的 SQLite），并允许使用 SQL 文件进行迁移。
+*   **迁移管理**:
+    *   迁移文件存储在 `/backend/internal/migrations` 目录（或其他指定位置）。
+    *   文件名包含版本号和描述性名称（例如 `000001_create_initial_tables.up.sql` 和 `000001_create_initial_tables.down.sql`）。`.up.sql` 用于应用变更，`.down.sql` 用于回滚变更。
+    *   使用迁移工具的命令行或集成到应用启动（仅限开发环境）或部署脚本中来应用迁移。
+*   **数据填充 (Seeding)**:
+    *   核心基础数据（如默认权限、配置项）可以通过迁移脚本中的 `INSERT` 语句填充。
+    *   大量的测试数据或非必要初始数据，应通过单独的、幂等的填充脚本或命令完成，不建议放在迁移脚本中。
+
+### 5.1 迁移测试
+
+为了确保迁移脚本的正确性和可靠性，应进行测试：
+
+*   **手动测试 (基础):**
+    *   在干净的数据库上运行 `migrate ... up` 命令，验证 Schema 是否正确创建，`schema_migrations` 表是否正确记录。
+    *   运行 `migrate ... down <n>` 命令，验证 Schema 是否能正确回滚到之前的状态。
+    *   再次运行 `migrate ... up`，验证是否能重新应用迁移。
+    *   建议使用 SQLite 客户端工具 (如 DB Browser for SQLite) 辅助验证。
+
+*   **自动化测试 (推荐，未来实现):**
+    *   编写 Go 集成测试。
+    *   在测试中使用 `golang-migrate/migrate` 库的 API，针对临时数据库 (内存或文件) 执行 `Up()` 和 `Down()` 操作。
+    *   通过查询数据库或使用 Schema diff 工具验证结构是否符合预期。
+    *   将自动化测试集成到 CI/CD 流程中。 

@@ -4,7 +4,7 @@
 
 -   [x] 初始化后端 Go 项目 (`/backend`)
 -   [x] 初始化前端 Next.js 项目 (`/frontend`)
--   [ ] 确定并配置数据库 (sqlite3)
+-   [x] 确定并配置数据库 (sqlite3)
 -   [x] 完成数据库核心表结构设计 (`docs/design/components/database_design.md`)
 -   [x] 设计 V1.0 API 接口 (`docs/api/api_design.md`) - 完成
     - [x] 定义基础原则、认证、响应结构
@@ -17,7 +17,10 @@
 ### 后端 API
 
 -   [x] 配置日志库 (`zap`) 并提供基础配置 (dev/prod)
--   [x] 设置日志实例的依赖注入机制
+-   [ ] 设置日志实例的依赖注入机制
+-   [x] **集成数据库迁移工具 (`golang-migrate/migrate`)**
+-   [x] **编写初始数据库迁移脚本 (创建核心表)**
+-   [ ] **(可选) 实现基础数据填充逻辑**
 -   [ ] 实现用户认证 API (`/auth`)
 -   [ ] 实现用户管理 API (`/users`)
 -   [ ] 实现角色与权限管理基础 API (`/roles`)
@@ -44,6 +47,7 @@
 ## 阶段三：测试与部署
 
 -   [ ] 编写后端单元测试
+-   [ ] **(推荐) 编写自动化数据库迁移测试**
 -   [ ] 编写前端单元/集成测试
 -   [ ] 完成 V1.0 功能测试
 -   [ ] 准备 V1.0 部署文档 (`docs/design/deployment_strategy.md`)

@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"EffiPlat/backend/internal/pkg/config"
+	"EffiPlat/backend/internal/pkg/database"
 	"EffiPlat/backend/internal/pkg/logger"
 
 	"go.uber.org/zap"
@@ -33,12 +34,13 @@ func main() {
 		zap.Int("server_port", cfg.Server.Port),
 	)
 
-	// 3. Initialize Database Connection (Placeholder)
-	// dbConn, err := database.NewConnection(cfg.Database)
-	// if err != nil {
-	// 	 appLogger.Fatal("Failed to connect to database", zap.Error(err))
-	// }
-	// appLogger.Info("Database connection established")
+	// 3. Initialize Database Connection
+	dbConn, err := database.NewConnection(cfg.Database, appLogger)
+	_ = dbConn // Temporarily mark dbConn as used to satisfy the compiler
+	if err != nil {
+		appLogger.Fatal("Failed to connect to database", zap.Error(err))
+	}
+	appLogger.Info("Database connection established successfully")
 
 	// 4. Setup Dependency Injection (Placeholder)
 	// repositories := repository.NewRepositories(dbConn, appLogger)

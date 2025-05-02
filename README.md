@@ -38,7 +38,9 @@
 .
 ├── backend/            # Go Backend Service
 │   ├── cmd/
-│   └── internal/
+│   ├── data/           # Database files (e.g., SQLite)
+│   ├── internal/
+│   └── logs/           # Log files
 ├── configs/            # Configuration Files
 ├── docs/               # Project Documentation
 │   ├── api/
@@ -55,19 +57,60 @@
 
 ## Getting Started
 
-(待补充: 如何设置和运行本地开发环境)
+本节介绍如何在本地设置和运行 EffiPlat 开发环境。
 
 ### Prerequisites
 
-(待补充: 列出所需软件和版本，如 Node.js, Go, Docker, 数据库等)
+确保你已安装以下软件：
+
+*   **Go:** 版本 >= 1.21 (根据 `backend/go.mod` 推断，请安装最新稳定版)。 [Go 下载地址](https://golang.org/dl/)
+*   **Migrate CLI:** 用于数据库迁移。
+    ```bash
+    # 确保包含 SQLite 驱动
+    go install -tags 'sqlite' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+    ```
+    *验证安装:* `migrate -version`
+*   **C Compiler (GCC):** 后端使用的 SQLite 驱动需要 CGO，因此需要安装 C 编译器。
+    *   **Windows:** 安装 [MinGW-w64](https://www.mingw-w64.org/downloads/) (推荐通过 [MSYS2](https://www.msys2.org/) 安装 `mingw-w64-x86_64-toolchain`) 并将其 `bin` 目录添加到系统 PATH。
+    *   **macOS:** 安装 Xcode Command Line Tools (`xcode-select --install`).
+    *   **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install build-essential`
+    *   **Linux (Fedora):** `sudo dnf groupinstall "Development Tools"`
+    *验证安装:* `gcc --version`
 
 ### Environment Variables
 
-(待补充: 说明前后端所需环境变量及 `.env.example` 文件)
+后端配置通过 `configs/` 目录下的 `yaml` 文件管理 (使用 Viper)。通常会有一个 `config.yaml` 或类似文件用于本地开发，并可能引用环境变量。请参考 `internal/pkg/config` 包了解具体配置加载逻辑。
+
+
 
 ### Installation & Running
 
-(待补充: 提供详细的克隆、安装依赖、启动前后端服务的步骤)
+1.  **克隆仓库:**
+    ```bash
+    git clone <repository-url>
+    cd EffiPlat
+    ```
+
+2.  **后端设置:**
+    ```bash
+    # 进入后端目录
+    cd backend
+
+    # 安装 Go 依赖
+    go mod tidy
+
+    # 运行数据库迁移 (确保数据库文件目录存在: data/)
+    # 这会创建或更新 backend/data/effiplat.db 文件
+    migrate -database "sqlite3://data/effiplat.db" -path internal/migrations up
+
+    # 启动后端服务器
+    go run cmd/api/main.go
+    ```
+    如果启动时遇到 CGO 相关错误，请确保 C 编译器已正确安装并配置在 PATH 中。
+    服务器默认运行在 `http://localhost:<port>` (端口在配置文件中定义)。
+
+3.  **前端设置:**
+    
 
 ## Running Tests
 

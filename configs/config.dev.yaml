@@ -3,11 +3,16 @@ server:
   port: 8080 # Example, adjust as needed
   # ... other server settings ...
 
+# --- Database ---
 database:
-  type: "sqlite3"
-  dsn: "data/dev.db" # Example DSN for sqlite
-  # ... other database settings ...
+  type: "sqlite" # Explicitly set to sqlite (or sqlite3)
+  dsn: "data/effiplat_dev.db" # Path to the dev database file (relative to backend run dir)
+  # SQLite specific settings (if needed, often defaults are fine)
+  # Example: enable foreign key constraints (recommended)
+  # params: "_foreign_keys=on"
+  # pool settings less relevant for SQLite
 
+# --- Logger ---
 logger:
   level: "debug"        # Log debug level and above in development
   encoding: "console"   # Use human-readable console format
