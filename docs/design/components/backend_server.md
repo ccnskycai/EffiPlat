@@ -20,6 +20,43 @@
 *   **Repository/DAL 层**: 负责与数据库交互，封装数据访问逻辑。
 *   **Model 层**: 定义数据结构 (对应数据库表)。
 
+## 2.1 依赖注入与服务初始化方案（wire）
+
+为提升后端服务的可维护性、类型安全和依赖管理效率，项目采用 [Google wire](https://github.com/google/wire) 作为依赖注入（DI）工具。  
+wire 方案适用于所有 HTTP 接口、业务服务、数据库访问、第三方集成、定时任务等后端模块。
+
+### 方案说明
+
+- **依赖注入方式**：使用 wire 进行编译期依赖注入，自动生成依赖关系初始化代码，避免手写样板代码。
+- **注入范围**：logger、db、各 repository、service、handler 及其他全局依赖均通过 wire 统一管理。
+- **优势**：
+  - 类型安全，依赖关系变更可编译期发现问题
+  - 依赖链清晰，main.go 结构简洁
+  - 无运行时性能损耗
+  - 便于后续扩展和维护
+- **后续扩展**：如项目规模进一步扩大，可平滑迁移到 fx 等更复杂的依赖注入框架。
+
+### wire 配置示例
+
+```go
+// wire.go
+func InitializeApp() (*App, error) {
+    wire.Build(
+        NewLogger,
+        NewDB,
+        NewUserRepo, NewUserService, NewUserHandler,
+        // ...其他表/模块的 provider
+        NewApp,
+    )
+    return &App{}, nil
+}
+```
+
+### 适用范围
+
+- 所有 HTTP handler、service、repository、定时任务、第三方服务集成等后端模块，均通过 wire 统一注入依赖。
+- 未来如需更复杂的生命周期管理，可考虑平滑迁移到 fx。
+
 ## 3. 核心模块设计 (V1.0)
 
 *   **用户认证与授权 (AuthN & AuthZ)**:
@@ -69,18 +106,4 @@
 
 *   **基本原则**: 错误处理应保持一致性、可预测性，并向 API 消费者提供清晰有效的信息，同时保护内部实现细节。
 *   **错误包装 (Error Wrapping)**: 遵循 Go 1.13+ 规范，使用 `fmt.Errorf` 的 `%w` 动词在错误向上传递时添加上下文，保留原始错误信息。例如: `fmt.Errorf("service: failed to process order %d: %w", orderID, err)`。
-*   **自定义错误类型 (Custom Error Types)**: 定义特定的错误类型（实现 `error` 接口的 struct）来表示业务或应用层错误，如 `ErrNotFound`, `ErrValidation`, `ErrPermissionDenied`。这有助于在 Handler 层进行类型断言 (`errors.As`) 并进行针对性处理。
-*   **错误代码 (Error Codes)**: 定义一套内部错误代码（见 `docs/design/error_codes.md`），用于日志记录、监控和可能的 API 响应。可以在自定义错误类型中包含错误代码字段。
-*   **分层处理 (Layered Handling)**:
-    *   *Repository 层*: 处理数据库/存储错误，可能将其转换为通用的自定义错误（如 `ErrNotFound`）。
-    *   *Service 层*: 处理业务逻辑错误，捕获或包装来自 Repository 层的错误。
-    *   *Handler 层*: 作为错误处理边界。捕获来自 Service 层的**所有**错误，**绝不**直接暴露内部错误细节给客户端。根据错误类型或代码，将其**映射**为标准的 **HTTP 状态码** (4xx/5xx) 和**统一的 API 错误响应体**。
-*   **日志记录**: 在 Handler 层返回响应前，记录**完整**的错误信息（包括错误链 `%+v`，如果使用支持堆栈的包装库）和请求上下文 (Request ID)，通常使用 `ERROR` 级别。
-*   **标准化 API 错误响应**: 设计统一的 JSON 错误响应结构（参考 `docs/design/api_design.md` 中的示例），包含错误代码（可选）、用户友好的消息和可能的详细信息（如字段校验错误）。
-*   **Gin 中间件**: 推荐使用 Gin 中间件实现集中的错误处理逻辑（捕获 error -> 映射 -> 记录日志 -> 返回标准响应）和 Panic 恢复 (`Recovery` 中间件)。
-
-## 7. 与数据采集器通信 (V1.1+)
-
-*   设计与采集器的通信协议（如 HTTP REST 或 gRPC）。
-*   考虑安全性（如 mTLS 双向认证）。
-*   处理异步任务（如下发日志获取指令并等待结果）。
+*   **自定义错误类型 (Custom Error Types)**: 定义特定的错误类型（实现 `
