@@ -16,6 +16,11 @@
     - [Environment Variables](#environment-variables)
     - [Installation \& Running](#installation--running)
   - [Running Tests](#running-tests)
+    - [1. 运行所有后端测试](#1-运行所有后端测试)
+    - [2. 仅运行数据库迁移相关测试](#2-仅运行数据库迁移相关测试)
+    - [3. 编写和运行单元测试](#3-编写和运行单元测试)
+    - [4. 测试覆盖率](#4-测试覆盖率)
+    - [5. 注意事项](#5-注意事项)
   - [Deployment](#deployment)
   - [Documentation](#documentation)
   - [Contributing](#contributing)
@@ -145,7 +150,49 @@
 
 ## Running Tests
 
-(待补充: 提供运行前后端测试的命令)
+
+本项目后端采用 Go 的标准测试框架，所有测试文件以 `_test.go` 结尾。
+
+### 1. 运行所有后端测试
+
+在 `backend` 目录下执行：
+
+```bash
+go test ./...
+```
+
+这会递归运行所有包下的测试，包括单元测试、集成测试和迁移测试。
+
+### 2. 仅运行数据库迁移相关测试
+
+迁移测试文件位于 `backend/internal/migration_test.go`，可单独运行：
+
+```bash
+go test ./internal/migration_test.go
+```
+或
+```bash
+go test ./internal/
+```
+
+### 3. 编写和运行单元测试
+
+- 推荐在每个包（如 `internal/api/`, `internal/service/` 等）下为每个功能模块编写对应的 `_test.go` 文件。
+- 运行方式同上，或指定具体包/文件。
+
+### 4. 测试覆盖率
+
+可选：查看测试覆盖率报告
+
+```bash
+go test ./... -cover
+```
+
+### 5. 注意事项
+
+- 迁移测试会在内存数据库中运行，不影响实际开发/生产数据库。
+- 集成测试建议使用测试专用数据库或内存数据库，避免污染业务数据。
+- 前端测试相关内容将在前端开发启动后补充。
 
 ## Deployment
 
