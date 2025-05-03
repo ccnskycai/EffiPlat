@@ -63,6 +63,7 @@ func InitializeApp() (*App, error) {
     *   实现登录接口，校验用户名密码，生成 JWT。
     *   设计中间件，拦截请求，校验 JWT，并将用户信息注入上下文。
     *   实现 RBAC 检查逻辑，根据用户角色和请求资源/操作进行权限判断。
+    *   详细 API 设计见 [api_design.md](./api_design.md)
 *   **环境管理 (Environment)**:
     *   实现 CRUD 操作对应的 Service 和 Repository 逻辑。
     *   处理环境与服务实例、资产、职责组的关联关系。

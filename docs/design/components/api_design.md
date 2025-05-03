@@ -68,6 +68,7 @@
         *   **Response (Error - 401 Unauthorized)**: `{ "code": 40101, "message": "Invalid credentials", "data": null }`
     *   `POST /logout` (需要认证)
         *   **Response (Success - 200 OK)**: `{ "code": 0, "message": "Logout successful", "data": null }`
+    *   详细设计见 [auth_api.md](./auth_api.md)
 
 *   **用户管理** (`/api/v1/users`):
     *   `GET /` (需要认证, 可能需要特定权限)
