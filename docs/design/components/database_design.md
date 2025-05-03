@@ -117,6 +117,8 @@ erDiagram
 
 **详细表结构定义:**
 
+*注意: 以下 SQL 定义主要用于展示结构和约束。对于 `created_at` 和 `updated_at` 字段，我们依赖 GORM 的约定自动处理时间戳（当模型中包含名为 `CreatedAt` 和 `UpdatedAt` 的 `time.Time` 类型字段时），因此在 SQL 中不设置 `DEFAULT CURRENT_TIMESTAMP`，以避免潜在的驱动类型转换问题 (例如 SQLite 的 `CURRENT_TIMESTAMP` 返回字符串)。*
+
 **`users`**
 ```sql
 CREATE TABLE users (
@@ -126,8 +128,8 @@ CREATE TABLE users (
     department TEXT,
     password_hash TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active', -- e.g., 'active', 'inactive', 'pending'
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT  -- GORM handles timestamp
 );
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_status ON users(status);
@@ -215,8 +217,8 @@ CREATE TABLE environments (
     description TEXT,
     type TEXT, -- e.g., 'physical', 'cloud', 'hybrid'
     status TEXT NOT NULL DEFAULT 'active', -- e.g., 'active', 'maintenance', 'decommissioned'
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT  -- GORM handles timestamp
 );
 CREATE INDEX idx_environments_code ON environments(code);
 CREATE INDEX idx_environments_status ON environments(status);
@@ -229,8 +231,8 @@ CREATE TABLE assets (
     name TEXT NOT NULL,
     type TEXT NOT NULL, -- 'server', 'network_device', etc.
     status TEXT NOT NULL DEFAULT 'in_use', -- e.g., 'in_use', 'in_stock', 'retired'
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT  -- GORM handles timestamp
     -- Other common fields can be added here if applicable across types
 );
 CREATE INDEX idx_assets_type ON assets(type);
@@ -285,8 +287,8 @@ CREATE TABLE services (
     name TEXT NOT NULL,
     description TEXT,
     service_type_id INTEGER NOT NULL,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT, -- GORM handles timestamp
     FOREIGN KEY (service_type_id) REFERENCES service_types(id) ON DELETE RESTRICT -- Prevent deleting type if services use it
 );
 CREATE INDEX idx_services_name ON services(name);
@@ -319,8 +321,8 @@ CREATE TABLE businesses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT  -- GORM handles timestamp
 );
 CREATE INDEX idx_businesses_name ON businesses(name);
 ```
@@ -343,8 +345,8 @@ CREATE TABLE client_versions (
     version TEXT NOT NULL, -- e.g., '1.2.3', '20240717.1'
     description TEXT, -- Release notes or summary
     release_date TEXT, -- ISO8601 Format e.g., 'YYYY-MM-DD'
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT, -- GORM handles timestamp
     FOREIGN KEY (client_type_id) REFERENCES client_types(id) ON DELETE RESTRICT,
     UNIQUE (client_type_id, version) -- A version number should be unique per client type
 );
@@ -361,8 +363,8 @@ CREATE TABLE clients ( -- Renamed from Cliens
     ip TEXT, -- Represents instance IP?
     description TEXT,
     -- release_date TEXT, -- Redundant? Usually associated with version, not instance. Removed for clarity.
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Represents installation time?
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP, -- Represents last update/check-in?
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT, -- GORM handles timestamp
     FOREIGN KEY (client_version_id) REFERENCES client_versions(id) ON DELETE CASCADE,
     FOREIGN KEY (client_type_id) REFERENCES client_types(id) ON DELETE SET NULL -- Allow type FK to be nullable if redundant
 );
@@ -413,8 +415,8 @@ CREATE TABLE bugs (
     service_instance_id INTEGER, -- Optional: Specific instance affected
     business_id INTEGER, -- Optional: Related business area
     -- client_version_id INTEGER, -- Optional: If related to a specific client version
-    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    created_at TEXT, -- GORM handles timestamp
+    updated_at TEXT, -- GORM handles timestamp
     FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE RESTRICT,
     FOREIGN KEY (assignee_group_id) REFERENCES responsibility_groups(id) ON DELETE SET NULL,
     FOREIGN KEY (environment_id) REFERENCES environments(id) ON DELETE SET NULL,
@@ -465,3 +467,21 @@ CREATE INDEX idx_bugs_biz_id ON bugs(business_id);
     *   在测试中使用 `golang-migrate/migrate` 库的 API，针对临时数据库 (内存或文件) 执行 `Up()` 和 `Down()` 操作。
     *   通过查询数据库或使用 Schema diff 工具验证结构是否符合预期。
     *   将自动化测试集成到 CI/CD 流程中。 
+
+### 5.2 测试数据填充策略 (Seeding Strategy)
+
+为了方便生成和管理用于开发和测试环境的数据，项目将采用基于 **Go 代码** 的填充方式，并结合 **Factory 模式**：
+
+*   **Seeder 包:** 在 `backend/internal/seed` (或类似路径) 创建专门的包来管理数据填充逻辑。
+*   **Factory 模式:**
+    *   为核心数据模型 (如 `User`, `Environment`, `Service` 等) 在 `backend/internal/factories` (或类似路径) 实现 Factory 函数或结构体。
+    *   每个 Factory 提供创建具有合理默认值的模型实例的方法，并允许通过链式调用 (e.g., `WithName("...").WithStatus("...")`) 覆盖特定字段。
+    *   Factory 的 `Create` 或 `Build` 方法负责与数据库交互 (使用 GORM) 来持久化生成的对象，或仅构建对象本身以供测试使用。
+*   **Seeding 函数:** 在 Seeder 包中编写函数，利用 Factory 来编排创建各种测试场景所需的数据集 (例如，`SeedUsers`, `SeedBugs`, `SeedAll`)。
+*   **执行入口:** 提供一个明确的执行入口来运行 Seeder 函数，例如：
+    *   一个简单的 Go 命令行程序 (`cmd/seeder/main.go`)。
+    *   集成到 `Makefile` 中的目标 (`make seed`)。
+    *   在自动化测试的设置阶段 (`TestMain`) 调用。
+*   **静态数据:** 对于非常稳定、几乎不变的基础数据 (如预定义的 `service_types` 或 `permissions`)，可以考虑在 Seeder 程序中首先执行一个包含这些 `INSERT` 语句的 `.sql` 文件，然后再运行 Go 代码填充逻辑。
+
+这种方式利用了 Go 的类型安全和 GORM 的便利性，易于维护，并且可以灵活地生成动态数据。

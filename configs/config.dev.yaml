@@ -6,7 +6,7 @@ server:
 # --- Database ---
 database:
   type: "sqlite" # Explicitly set to sqlite (or sqlite3)
-  dsn: "data/effiplat_dev.db" # Path to the dev database file (relative to backend run dir)
+  dsn: "data/effiplat.db" # Path to the dev database file (relative to backend run dir)
   # SQLite specific settings (if needed, often defaults are fine)
   # Example: enable foreign key constraints (recommended)
   # params: "_foreign_keys=on"

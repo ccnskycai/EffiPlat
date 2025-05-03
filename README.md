@@ -81,8 +81,6 @@
 
 后端配置通过 `configs/` 目录下的 `yaml` 文件管理 (使用 Viper)。通常会有一个 `config.yaml` 或类似文件用于本地开发，并可能引用环境变量。请参考 `internal/pkg/config` 包了解具体配置加载逻辑。
 
-
-
 ### Installation & Running
 
 1.  **克隆仓库:**
@@ -99,8 +97,7 @@
     # 安装 Go 依赖
     go mod tidy
 
-    # 运行数据库迁移 (确保数据库文件目录存在: data/)
-    # 这会创建或更新 backend/data/effiplat.db 文件
+    # 运行迁移 (应用最新结构):
     migrate -database "sqlite3://data/effiplat.db" -path internal/migrations up
 
     # 启动后端服务器
@@ -109,8 +106,42 @@
     如果启动时遇到 CGO 相关错误，请确保 C 编译器已正确安装并配置在 PATH 中。
     服务器默认运行在 `http://localhost:<port>` (端口在配置文件中定义)。
 
-3.  **前端设置:**
-    
+3.  **回滚迁移 (撤销更改):**
+    在 `backend` 目录下执行：
+    *   回滚最后一次应用的迁移：
+        ```bash
+        migrate -database "sqlite3://data/effiplat.db" -path internal/migrations down 1
+        ```
+    *   回滚所有迁移 (回到空数据库状态)：
+        ```bash
+        migrate -database "sqlite3://data/effiplat.db" -path internal/migrations down -all
+        ```
+    *   迁移到指定的版本号 (例如，版本 2)：
+        ```bash
+        migrate -database "sqlite3://data/effiplat.db" -path internal/migrations goto 2
+        ```
+
+4.  **强制设置特定迁移版本 (修复错误状态):**
+    如果迁移状态出错 (例如 `dirty` 状态)，可以强制设置当前数据库的迁移版本号。
+    *注意：这不会执行 SQL，仅修改 `schema_migrations` 表。谨慎使用！*
+    ```bash
+    # 强制认为数据库当前是版本 3 且状态干净
+    migrate -database "sqlite3://data/effiplat.db" -path internal/migrations force 3
+    ```
+
+5. **运行数据填充 (Seeding):**
+    在数据库结构迁移完成后，可以使用 Seeder 命令填充初始数据或测试数据：
+    ```bash
+    # 在 backend 目录下运行
+    go run cmd/seeder/main.go
+    ```
+    *注意：Seeder 使用的数据库连接信息来自配置文件 (例如 `configs/config.dev.yaml`)，确保它指向你想要填充的数据库文件。Seeder 应该在迁移 (`up`) 完成后运行。*
+
+6. **创建新迁移 (开发过程中):**
+    可以使用 `migrate` CLI 工具创建新的迁移文件框架：
+    ```bash
+    migrate create -ext sql -dir internal/migrations -seq init
+    ```
 
 ## Running Tests
 

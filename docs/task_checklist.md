@@ -17,10 +17,13 @@
 ### 后端 API
 
 -   [x] 配置日志库 (`zap`) 并提供基础配置 (dev/prod)
--   [ ] 设置日志实例的依赖注入机制
 -   [x] **集成数据库迁移工具 (`golang-migrate/migrate`)**
 -   [x] **编写初始数据库迁移脚本 (创建核心表)**
--   [ ] **(可选) 实现基础数据填充逻辑**
+-   [x] **(数据填充) 创建 Seeder 包和 Factory 包结构** (`internal/seed`, `internal/factories`)
+-   [x] **(数据填充) 为核心模型实现 Factory 模式** (e.g., User)
+-   [x] **(数据填充) 编写基础 Seeding 函数** (e.g., SeedUsers, SeedAll)
+-   [x] **(数据填充) 提供 Seeding 执行入口** (e.g., cmd/seeder)
+-   [ ] 设置日志实例的依赖注入机制
 -   [ ] 实现用户认证 API (`/auth`)
 -   [ ] 实现用户管理 API (`/users`)
 -   [ ] 实现角色与权限管理基础 API (`/roles`)
