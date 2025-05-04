@@ -8,8 +8,8 @@ CREATE TABLE users (
     department TEXT,
     password_hash TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active', -- e.g., 'active', 'inactive', 'pending'
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT  -- Let GORM handle timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- REMOVED ON UPDATE for SQLite compatibility
 );
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_status ON users(status);
@@ -83,8 +83,8 @@ CREATE TABLE environments (
     description TEXT,
     type TEXT, -- e.g., 'physical', 'cloud', 'hybrid'
     status TEXT NOT NULL DEFAULT 'active', -- e.g., 'active', 'maintenance', 'decommissioned'
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT  -- Let GORM handle timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- REMOVED ON UPDATE for SQLite compatibility
 );
 CREATE INDEX idx_environments_code ON environments(code);
 CREATE INDEX idx_environments_status ON environments(status);
@@ -95,8 +95,8 @@ CREATE TABLE assets (
     name TEXT NOT NULL,
     type TEXT NOT NULL, -- 'server', 'network_device', etc.
     status TEXT NOT NULL DEFAULT 'in_use', -- e.g., 'in_use', 'in_stock', 'retired'
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT  -- Let GORM handle timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- REMOVED ON UPDATE for SQLite compatibility
 );
 CREATE INDEX idx_assets_type ON assets(type);
 CREATE INDEX idx_assets_status ON assets(status);
@@ -143,8 +143,8 @@ CREATE TABLE services (
     name TEXT NOT NULL,
     description TEXT,
     service_type_id INTEGER NOT NULL,
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT, -- Let GORM handle timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- REMOVED ON UPDATE for SQLite compatibility
     FOREIGN KEY (service_type_id) REFERENCES service_types(id) ON DELETE RESTRICT
 );
 CREATE INDEX idx_services_name ON services(name);
@@ -160,6 +160,8 @@ CREATE TABLE service_instances (
     status TEXT NOT NULL DEFAULT 'running', -- e.g., 'running', 'stopped', 'deploying', 'error'
     version TEXT,
     -- created_at/updated_at might not be needed here or handled differently
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- REMOVED ON UPDATE for SQLite compatibility
     FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
     FOREIGN KEY (environment_id) REFERENCES environments(id) ON DELETE CASCADE,
     FOREIGN KEY (server_asset_id) REFERENCES assets(id) ON DELETE CASCADE
@@ -174,8 +176,8 @@ CREATE TABLE businesses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT  -- Let GORM handle timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- REMOVED ON UPDATE for SQLite compatibility
 );
 CREATE INDEX idx_businesses_name ON businesses(name);
 
@@ -194,8 +196,8 @@ CREATE TABLE client_versions (
     version TEXT NOT NULL,
     description TEXT,
     release_date TEXT,
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT, -- Let GORM handle timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- REMOVED ON UPDATE for SQLite compatibility
     FOREIGN KEY (client_type_id) REFERENCES client_types(id) ON DELETE RESTRICT,
     UNIQUE (client_type_id, version)
 );
@@ -209,8 +211,8 @@ CREATE TABLE clients (
     client_type_id INTEGER,
     ip TEXT,
     description TEXT,
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT, -- Let GORM handle timestamp
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- REMOVED ON UPDATE for SQLite compatibility
     FOREIGN KEY (client_version_id) REFERENCES client_versions(id) ON DELETE CASCADE,
     FOREIGN KEY (client_type_id) REFERENCES client_types(id) ON DELETE SET NULL
 );
@@ -252,13 +254,15 @@ CREATE TABLE bugs (
     environment_id INTEGER,
     service_instance_id INTEGER,
     business_id INTEGER,
-    created_at TEXT, -- Let GORM handle timestamp
-    updated_at TEXT, -- Let GORM handle timestamp
+    -- client_version_id INTEGER, -- Optional: If related to a specific client version
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- REMOVED ON UPDATE for SQLite compatibility
     FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE RESTRICT,
     FOREIGN KEY (assignee_group_id) REFERENCES responsibility_groups(id) ON DELETE SET NULL,
     FOREIGN KEY (environment_id) REFERENCES environments(id) ON DELETE SET NULL,
     FOREIGN KEY (service_instance_id) REFERENCES service_instances(id) ON DELETE SET NULL,
     FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE SET NULL
+    -- FOREIGN KEY (client_version_id) REFERENCES client_versions(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_bugs_status ON bugs(status);
 CREATE INDEX idx_bugs_priority ON bugs(priority);

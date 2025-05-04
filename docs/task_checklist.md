@@ -25,7 +25,7 @@
 -   [x] **(数据填充) 提供 Seeding 执行入口** (e.g., cmd/seeder)
 -   [x] **(推荐) 编写自动化数据库迁移测试** (基础结构完成)
 -   [ ] 设置日志实例的依赖注入机制
--   [ ] 实现用户认证 API (`/auth`)
+-   [x] 实现用户认证 API (`/auth`) - 登录、获取用户、登出 完成
 -   [ ] 实现用户管理 API (`/users`)
 -   [ ] 实现角色与权限管理基础 API (`/roles`)
 -   [ ] 实现职责与职责组管理 API (`/responsibilities`, `/responsibility-groups`)

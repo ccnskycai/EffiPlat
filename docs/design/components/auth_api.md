@@ -18,7 +18,7 @@
     "password": "yourpassword"
   }
   ```
-- **响应体：**
+- **响应体 (成功):**
   ```json
   {
     "token": "jwt_token_string",
@@ -26,8 +26,24 @@
       "id": 1,
       "name": "张三",
       "email": "user@example.com"
+      // 注意：实际响应中可能不包含所有用户字段，特别是 PasswordHash
     }
   }
+  ```
+- **响应体 (失败):**
+  ```json
+  {
+    "error": "invalid credentials" // 或 "invalid request"
+  }
+  ```
+- **Curl 示例:**
+  ```bash
+  curl -X POST http://localhost:8080/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test@example.com", 
+    "password": "password"
+  }'
   ```
 
 ### 2.2 获取当前用户
@@ -45,6 +61,14 @@
     "email": "user@example.com"
   }
   ```
+- **实现状态**: 已完成。
+- **实现说明**: 通过 JWT 中间件获取 Claims，直接返回其中的用户信息。
+- **Curl 示例:**
+  ```bash
+  # 将 <your_jwt_token> 替换为登录后获取的实际 token
+  curl -X GET http://localhost:8080/api/v1/auth/me \
+  -H "Authorization: Bearer <your_jwt_token>"
+  ```
 
 ### 2.3 登出
 
@@ -56,8 +80,16 @@
 - **响应体：**
   ```json
   {
-    "message": "logout success"
+    "message": "logout successful"
   }
+  ```
+- **实现状态**: 已完成 (基础实现)。
+- **实现说明**: 当前实现仅返回成功消息，客户端负责丢弃 Token。未实现服务端 Token 黑名单机制。
+- **Curl 示例:**
+  ```bash
+  # 将 <your_jwt_token> 替换为登录后获取的实际 token
+  curl -X POST http://localhost:8080/api/v1/auth/logout \
+  -H "Authorization: Bearer <your_jwt_token>"
   ```
 
 ## 3. 数据结构与安全方案
