@@ -3,7 +3,7 @@
 ## 阶段一：项目初始化与核心架构
 
 - [x] 初始化后端 Go 项目 (`/backend`)
-- [ ] 初始化前端 Vite + React 项目 (`/frontend`)
+- [x] 初始化前端 Vite + React 项目 (`/frontend`)
 - [x] 确定并配置数据库 (sqlite3)
 - [x] 完成数据库核心表结构设计 (`docs/design/components/database_design.md`)
 - [x] 设计 V1.0 API 接口 (`docs/api/api_design.md`) - 完成
@@ -42,9 +42,9 @@
 - [x] **项目初始化与基础框架 (部分完成)**
   - [x] 选择前端技术栈: Vite + React + TypeScript
   - [x] 集成 UI 组件库: Ant Design
-  - [x] 配置 ESLint 和 Prettier (验证)
+  - [x] 配置 ESLint 和 Prettier (验证) - ✅ Linter 警告已处理, Prettier 格式已修复 (MainLayout.tsx)
 - [ ] **UI 组件实现 (基于 Ant Design)**
-  - [ ] 搭建前端整体布局和导航 (此项可与路由部分合并)
+  - [x] 搭建前端整体布局和导航 (此项可与路由部分合并)
   - [ ] 实现登录/登出页面
   - [ ] **仪表盘 (Dashboard) 页面核心组件**
     - [ ] 概览统计卡片

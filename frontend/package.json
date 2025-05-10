@@ -11,9 +11,11 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,css,md}\" \"*.{ts,cjs,json,md}\""
   },
   "dependencies": {
+    "@ant-design/icons": "^6.0.0",
     "antd": "^5.25.1",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "react-router-dom": "^7.6.0"
   },
   "devDependencies": {
     "@types/node": "latest",
