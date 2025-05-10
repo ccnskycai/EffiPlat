@@ -28,14 +28,14 @@
 
 ## Tech Stack
 
-主要技术选型（详情请参考各组件设计文档，如 [`docs/design/components/backend_server.md`](docs/design/components/backend_server.md), [`docs/design/components/frontend_client.md`](docs/design/components/frontend_client.md) 等）：
+主要技术选型（详情请参考各组件设计文档，如 [`docs/design/components/backend_server.md`](docs/design/components/backend_server.md), [`docs/design/components/frontend_design.md`](docs/design/components/frontend_design.md) 等）：
 
-*   **Frontend:** [Next.js](https://nextjs.org/) (using [TypeScript](https://www.typescriptlang.org/)), [React](https://reactjs.org/), [Tailwind CSS](https://tailwindcss.com/) (已配置), [Ant Design](https://ant.design/) / [MUI](https://mui.com/) (待定 UI 库)
-*   **Backend:** [Go](https://golang.org/) (using [Gin](https://gin-gonic.com/) - 已选定), [GORM](https://gorm.io/)
-*   **Database:** [SQLite](https://www.sqlite.org/index.html) (根据 [`docs/design/components/database_design.md`](docs/design/components/database_design.md) 和任务清单初步选择)
-*   **Logging**: [Zap](https://github.com/uber-go/zap)
-*   **Configuration**: [Viper](https://github.com/spf13/viper)
-*   **Other:** Docker
+- **Frontend:** [Vite](https://vitejs.dev/) + [React](https://reactjs.org/) (using [TypeScript](https://www.typescriptlang.org/)), [Ant Design](https://ant.design/)
+- **Backend:** [Go](https://golang.org/) (using [Gin](https://gin-gonic.com/) - 已选定), [GORM](https://gorm.io/)
+- **Database:** [SQLite](https://www.sqlite.org/index.html) (根据 [`docs/design/components/database_design.md`](docs/design/components/database_design.md) 和任务清单初步选择)
+- **Logging**: [Zap](https://github.com/uber-go/zap)
+- **Configuration**: [Viper](https://github.com/spf13/viper)
+- **Other:** Docker
 
 ## Directory Structure
 
@@ -51,11 +51,9 @@
 │   ├── api/
 │   ├── design/
 │   └── requirements/
-├── frontend/           # Next.js Frontend Application
-│   ├── app/
-│   ├── components/
+├── frontend/           # Vite + React Frontend Application
 │   ├── public/
-│   └── styles/
+│   └── src/
 ├── README.md           # Project Root README
 └── ...                 # Other Config Files (e.g., .gitignore)
 ```
@@ -68,19 +66,19 @@
 
 确保你已安装以下软件：
 
-*   **Go:** 版本 >= 1.21 (根据 `backend/go.mod` 推断，请安装最新稳定版)。 [Go 下载地址](https://golang.org/dl/)
-*   **Migrate CLI:** 用于数据库迁移。
-    ```bash
-    # 确保包含 SQLite 驱动
-    go install -tags 'sqlite' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
-    ```
-    *验证安装:* `migrate -version`
-*   **C Compiler (GCC):** 后端使用的 SQLite 驱动需要 CGO，因此需要安装 C 编译器。
-    *   **Windows:** 安装 [MinGW-w64](https://www.mingw-w64.org/downloads/) (推荐通过 [MSYS2](https://www.msys2.org/) 安装 `mingw-w64-x86_64-toolchain`) 并将其 `bin` 目录添加到系统 PATH。
-    *   **macOS:** 安装 Xcode Command Line Tools (`xcode-select --install`).
-    *   **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install build-essential`
-    *   **Linux (Fedora):** `sudo dnf groupinstall "Development Tools"`
-    *验证安装:* `gcc --version`
+- **Go:** 版本 >= 1.21 (根据 `backend/go.mod` 推断，请安装最新稳定版)。 [Go 下载地址](https://golang.org/dl/)
+- **Migrate CLI:** 用于数据库迁移。
+  ```bash
+  # 确保包含 SQLite 驱动
+  go install -tags 'sqlite' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+  ```
+  _验证安装:_ `migrate -version`
+- **C Compiler (GCC):** 后端使用的 SQLite 驱动需要 CGO，因此需要安装 C 编译器。
+  - **Windows:** 安装 [MinGW-w64](https://www.mingw-w64.org/downloads/) (推荐通过 [MSYS2](https://www.msys2.org/) 安装 `mingw-w64-x86_64-toolchain`) 并将其 `bin` 目录添加到系统 PATH。
+  - **macOS:** 安装 Xcode Command Line Tools (`xcode-select --install`).
+  - **Linux (Debian/Ubuntu):** `sudo apt update && sudo apt install build-essential`
+  - **Linux (Fedora):** `sudo dnf groupinstall "Development Tools"`
+    _验证安装:_ `gcc --version`
 
 ### Environment Variables
 
@@ -89,12 +87,14 @@
 ### Installation & Running
 
 1.  **克隆仓库:**
+
     ```bash
     git clone <repository-url>
     cd EffiPlat
     ```
 
 2.  **后端设置:**
+
     ```bash
     # 进入后端目录
     cd backend
@@ -108,48 +108,52 @@
     # 启动后端服务器
     go run cmd/api/main.go
     ```
+
     如果启动时遇到 CGO 相关错误，请确保 C 编译器已正确安装并配置在 PATH 中。
     服务器默认运行在 `http://localhost:<port>` (端口在配置文件中定义)。
 
 3.  **回滚迁移 (撤销更改):**
     在 `backend` 目录下执行：
-    *   回滚最后一次应用的迁移：
-        ```bash
-        migrate -database "sqlite3://data/effiplat.db" -path internal/migrations down 1
-        ```
-    *   回滚所有迁移 (回到空数据库状态)：
-        ```bash
-        migrate -database "sqlite3://data/effiplat.db" -path internal/migrations down -all
-        ```
-    *   迁移到指定的版本号 (例如，版本 2)：
-        ```bash
-        migrate -database "sqlite3://data/effiplat.db" -path internal/migrations goto 2
-        ```
+
+    - 回滚最后一次应用的迁移：
+      ```bash
+      migrate -database "sqlite3://data/effiplat.db" -path internal/migrations down 1
+      ```
+    - 回滚所有迁移 (回到空数据库状态)：
+      ```bash
+      migrate -database "sqlite3://data/effiplat.db" -path internal/migrations down -all
+      ```
+    - 迁移到指定的版本号 (例如，版本 2)：
+      ```bash
+      migrate -database "sqlite3://data/effiplat.db" -path internal/migrations goto 2
+      ```
 
 4.  **强制设置特定迁移版本 (修复错误状态):**
     如果迁移状态出错 (例如 `dirty` 状态)，可以强制设置当前数据库的迁移版本号。
-    *注意：这不会执行 SQL，仅修改 `schema_migrations` 表。谨慎使用！*
+    _注意：这不会执行 SQL，仅修改 `schema_migrations` 表。谨慎使用！_
+
     ```bash
     # 强制认为数据库当前是版本 3 且状态干净
     migrate -database "sqlite3://data/effiplat.db" -path internal/migrations force 3
     ```
 
-5. **运行数据填充 (Seeding):**
+5.  **运行数据填充 (Seeding):**
     在数据库结构迁移完成后，可以使用 Seeder 命令填充初始数据或测试数据：
+
     ```bash
     # 在 backend 目录下运行
     go run cmd/seeder/main.go
     ```
-    *注意：Seeder 使用的数据库连接信息来自配置文件 (例如 `configs/config.dev.yaml`)，确保它指向你想要填充的数据库文件。Seeder 应该在迁移 (`up`) 完成后运行。*
 
-6. **创建新迁移 (开发过程中):**
+    _注意：Seeder 使用的数据库连接信息来自配置文件 (例如 `configs/config.dev.yaml`)，确保它指向你想要填充的数据库文件。Seeder 应该在迁移 (`up`) 完成后运行。_
+
+6.  **创建新迁移 (开发过程中):**
     可以使用 `migrate` CLI 工具创建新的迁移文件框架：
     ```bash
     migrate create -ext sql -dir internal/migrations -seq init
     ```
 
 ## Running Tests
-
 
 本项目后端采用 Go 的标准测试框架，所有测试文件以 `_test.go` 结尾。
 
@@ -170,7 +174,9 @@ go test ./...
 ```bash
 go test ./internal/migration_test.go
 ```
+
 或
+
 ```bash
 go test ./internal/
 ```
@@ -202,9 +208,9 @@ go test ./... -cover
 
 详细的项目文档位于 [`/docs`](./docs/) 目录，主要包括：
 
-*   **需求文档**: [`docs/requirements/`](./docs/requirements/)
-*   **系统设计**: [`docs/design/`](./docs/design/)
-*   **API 文档**: [`docs/api/`](./docs/api/)
+- **需求文档**: [`docs/requirements/`](./docs/requirements/)
+- **系统设计**: [`docs/design/`](./docs/design/)
+- **API 文档**: [`docs/api/`](./docs/api/)
 
 项目特定的编码规范和 AI 协作指南定义在 `.cursor/rules/` 目录下的规则文件中，并由 Cursor AI 助手自动应用。
 
