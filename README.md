@@ -31,7 +31,7 @@
 主要技术选型（详情请参考各组件设计文档，如 [`docs/design/components/backend_server.md`](docs/design/components/backend_server.md), [`docs/design/components/frontend_design.md`](docs/design/components/frontend_design.md) 等）：
 
 - **Frontend:** [Vite](https://vitejs.dev/) + [React](https://reactjs.org/) (using [TypeScript](https://www.typescriptlang.org/)), [Ant Design](https://ant.design/)
-- **Backend:** [Go](https://golang.org/) (using [Gin](https://gin-gonic.com/) - 已选定), [GORM](https://gorm.io/)
+- **Backend:** [Go](https://golang.org/) (using [Gin](https://gin-gonic.com/) and [GORM](https://gorm.io/))
 - **Database:** [SQLite](https://www.sqlite.org/index.html) (根据 [`docs/design/components/database_design.md`](docs/design/components/database_design.md) 和任务清单初步选择)
 - **Logging**: [Zap](https://github.com/uber-go/zap)
 - **Configuration**: [Viper](https://github.com/spf13/viper)

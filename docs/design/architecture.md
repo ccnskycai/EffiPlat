@@ -42,11 +42,11 @@ graph TD
 ## 5. 技术选型概览
 
 - **后端:** Go (Gin)
-  - API 设计详情: [`docs/api/api_design.md`](docs/api/api_design.md)
+  - API 设计详情: [`docs/api/api_design.md`](../api/api_design.md)
 - **前端:** Vite + React (TypeScript) + Ant Design
-  - 前端任务及组件规划详情: [`docs/task_checklist.md#前端-ui`](docs/task_checklist.md#前端-ui)
+  - 前端任务及组件规划详情: [`docs/design/components/frontend_design.md`](components/frontend_design.md)
 - **数据库:** SQLite (当前阶段)
-  - 数据库表结构设计详情: [`docs/design/components/database_design.md`](docs/design/components/database_design.md)
+  - 数据库表结构设计详情: [`docs/design/components/database_design.md`](components/database_design.md)
 - **数据采集器:** [待定，如 Go / Python]
 
 ## 6. 非功能性考虑
