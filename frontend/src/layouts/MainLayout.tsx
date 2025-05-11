@@ -1,6 +1,7 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useState } from 'react';
 import { Layout, Menu, Avatar, Input, Typography, Space } from 'antd';
-import { Link, useLocation, Location } from 'react-router-dom';
+import { Link, useLocation, Location, Outlet, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import {
   DashboardOutlined,
   TeamOutlined,
@@ -16,10 +17,6 @@ import effiplatLogo from '../assets/effiplat-logo.png';
 
 const { Header, Sider, Content, Footer } = Layout;
 const { Title, Text } = Typography;
-
-interface MainLayoutProps {
-  children: ReactNode;
-}
 
 const menuItems = [
   {
@@ -60,17 +57,28 @@ const menuItems = [
   },
 ];
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
+const MainLayout: React.FC = () => {
   const location: Location = useLocation();
+  const navigate = useNavigate();
+  const logout = useAuthStore((state) => state.logout);
   const [collapsed, setCollapsed] = useState(false);
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   const getCurrentPageTitle = () => {
-    const currentPath = location.pathname?.split('/')[1] || 'dashboard';
-    const currentItem = menuItems.find((item) => item.key === currentPath);
+    const currentTopLevelPath = location.pathname.split('/')[1] || 'dashboard';
+    const currentItem = menuItems.find((item) => item.key === currentTopLevelPath);
     return currentItem ? currentItem.label : '仪表盘';
   };
 
-  const defaultSelectedKey = location.pathname?.split('/')[1] || 'dashboard';
+  const defaultSelectedKey = location.pathname.split('/')[1] || 'dashboard';
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -150,7 +158,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               {
                 key: 'signout',
                 icon: <LogoutOutlined />,
-                label: !collapsed ? <Link to="/logout">Sign Out</Link> : '',
+                label: !collapsed ? <span onClick={handleLogout} style={{ cursor: 'pointer' }}>Sign Out</span> : '',
+                onClick: handleLogout,
               },
             ]}
           />
@@ -208,7 +217,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
             minHeight: 'calc(100vh - 64px - 48px - 69px)',
           }}
         >
-          {children}
+          <Outlet />
         </Content>
         <Footer
           style={{

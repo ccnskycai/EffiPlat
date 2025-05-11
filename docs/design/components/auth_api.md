@@ -41,7 +41,7 @@
   curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "test@example.com", 
+    "email": "testuser1@example.com",
     "password": "password"
   }'
   ```
@@ -122,4 +122,4 @@
 
 - 后续可扩展 OAuth、第三方登录
 - 支持 token 黑名单、刷新机制
-- 防止暴力破解、加强日志审计 
+- 防止暴力破解、加强日志审计

@@ -8,8 +8,8 @@
 
 本设计基于以下 API 文档：
 
-- [API 设计规范](../../design/components/api_design.md)
-- [用户认证 API 设计方案](../../design/components/auth_api.md)
+- [API 设计规范](../design/components/api_design.md)
+- [用户认证 API 设计方案](../design/components/auth_api.md)
 - [效果图](../ui_references/login)
 
 **核心原则**：所有 API 交互将严格遵循 `docs/design/components/api_design.md` 中定义的统一响应格式。

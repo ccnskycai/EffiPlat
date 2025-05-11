@@ -45,7 +45,7 @@
   - [x] 配置 ESLint 和 Prettier (验证) - ✅ Linter 警告已处理, Prettier 格式已修复 (MainLayout.tsx)
 - [ ] **UI 组件实现 (基于 Ant Design)**
   - [x] 搭建前端整体布局和导航 (此项可与路由部分合并)
-  - [ ] 实现登录/登出页面
+  - [x] 实现登录/登出页面
   - [ ] **仪表盘 (Dashboard) 页面核心组件**
     - [ ] 概览统计卡片
     - [ ] 任务统计表
