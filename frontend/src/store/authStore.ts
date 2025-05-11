@@ -15,6 +15,9 @@ interface User {
   name: string;
   email?: string;
   roles?: string[];
+  avatar?: string;
+  department?: string | null;
+  status?: string;
 }
 
 // Interface for data stored in localStorage

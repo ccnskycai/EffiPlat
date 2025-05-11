@@ -61,6 +61,7 @@ const MainLayout: React.FC = () => {
   const location: Location = useLocation();
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
   const [collapsed, setCollapsed] = useState(false);
   
   const handleLogout = async () => {
@@ -192,17 +193,19 @@ const MainLayout: React.FC = () => {
             />
             <BellOutlined style={{ fontSize: 20 }} />
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <Avatar src="https://joeschmoe.io/api/v1/random" />
+              <Avatar 
+                src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=random`} 
+              />
               <div style={{ marginLeft: 8, display: 'flex', flexDirection: 'column' }}>
-                <Text strong ellipsis={{ tooltip: 'Phillip Stanton' }}>
-                  Phillip Stanton
+                <Text strong ellipsis={{ tooltip: user?.name || 'User' }}>
+                  {user?.name || 'User'}
                 </Text>
                 <Text
                   type="secondary"
                   style={{ fontSize: 12, lineHeight: '1' }}
-                  ellipsis={{ tooltip: 'Admin' }}
+                  ellipsis={{ tooltip: user?.roles?.[0] || 'User' }}
                 >
-                  Admin
+                  {user?.roles?.[0] || 'User'}                  
                 </Text>
               </div>
             </div>
