@@ -4,10 +4,12 @@ import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/repository"
 	"context"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type AuthService struct {
@@ -22,10 +24,16 @@ func NewAuthService(userRepo *repository.UserRepository, jwtKey []byte) *AuthSer
 func (s *AuthService) Login(ctx context.Context, email, password string) (*models.LoginResponse, error) {
 	user, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("invalid email or password")
+		}
 		return nil, err
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return nil, err
+	if user == nil {
+		return nil, errors.New("invalid email or password")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return nil, errors.New("invalid email or password")
 	}
 	claims := models.Claims{
 		UserID: user.ID,

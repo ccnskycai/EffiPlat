@@ -4,24 +4,48 @@ import (
 	"time"
 )
 
-// User represents the users table in the database.
-// We use pointers for fields that can be NULL in the DB or for zero values
-// that need distinction (e.g., differentiating between 0 and not set).
-// GORM tags define column names, types, constraints etc.
+// User represents the user model in the database
 type User struct {
-	ID           uint      `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name         string    `gorm:"not null" json:"name"`
-	Email        string    `gorm:"unique;not null" json:"email"`
-	Department   *string   `json:"department,omitempty"` // Pointer because it can be NULL, omitempty if nil
-	PasswordHash string    `gorm:"not null" json:"-"`         // Do not include PasswordHash in JSON responses
-	Status       string    `gorm:"not null;default:'active'" json:"status"`
-	CreatedAt    time.Time `json:"createdAt"`              // GORM will handle this automatically
-	UpdatedAt    time.Time `json:"updatedAt"`              // GORM will handle this automatically
-	// Add associations later if needed, e.g.:
-	// Roles        []Role `gorm:"many2many:user_roles;" json:"roles,omitempty"`
+	ID         uint   `json:"id" gorm:"primaryKey"`
+	Name       string `json:"name" gorm:"size:100;not null"`
+	Email      string `json:"email" gorm:"size:100;uniqueIndex;not null"`
+	Password   string `json:"-" gorm:"size:255;not null"` // Password hash, not included in JSON responses by default
+	Department string `json:"department,omitempty" gorm:"size:100"`
+	Status     string `json:"status" gorm:"size:20;default:'active';index"` // e.g., active, inactive, pending
+	CreatedAt  time.Time `json:"createdAt" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time `json:"updatedAt" gorm:"autoUpdateTime"`
+	Roles      []Role `json:"roles,omitempty" gorm:"many2many:user_roles;"` // Many-to-many relationship with Role
+	// AssignedResponsibilities []Responsibility `json:"assignedResponsibilities,omitempty" gorm:"-"` // Placeholder, implementation depends on Responsibility model and join table
 }
 
-// TableName explicitly sets the table name for GORM.
+// Role represents a user role
+type Role struct {
+	ID        uint      `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name" gorm:"size:50;uniqueIndex;not null"`
+	Users     []User    `json:"-" gorm:"many2many:user_roles;"` // Many-to-many relationship with User
+	CreatedAt time.Time `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"-" gorm:"autoUpdateTime"`
+}
+
+// TableName specifies the table name for the User model.
 func (User) TableName() string {
 	return "users"
 }
+
+// TableName specifies the table name for the Role model.
+func (Role) TableName() string {
+	return "roles"
+}
+
+// UserRole represents the join table for users and roles.
+type UserRole struct {
+	UserID uint `gorm:"primaryKey"`
+	RoleID uint `gorm:"primaryKey"`
+}
+
+// TableName specifies the table name for the UserRole model.
+func (UserRole) TableName() string {
+	return "user_roles"
+}
+
+// Add other models like Responsibility if needed

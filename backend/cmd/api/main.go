@@ -2,11 +2,16 @@ package main
 
 import (
 	"EffiPlat/backend/internal"
+	"EffiPlat/backend/internal/handler" // Added for NewUserHandler and AuthHandler type
 	"EffiPlat/backend/internal/pkg/config"
-	"EffiPlat/backend/internal/pkg/database"
+	pkgdb "EffiPlat/backend/internal/pkg/database"
 	"EffiPlat/backend/internal/pkg/logger"
-	"EffiPlat/backend/internal/router" // <-- 添加 router 包导入
-	"fmt"                              // <-- 添加 fmt 包导入 (如果之前没有)
+	"EffiPlat/backend/internal/repository"
+	"EffiPlat/backend/internal/router"
+	"EffiPlat/backend/internal/service" // Added for NewUserService
+
+	// user "EffiPlat/backend/internal/user" // Removed, types now in handler & service
+	"fmt"
 	"log"
 	"os"
 
@@ -30,33 +35,31 @@ func main() {
 	appLogger.Info("Configuration and Logger initialized successfully")
 
 	// 3. Initialize Database Connection
-	dbConn, err := database.NewConnection(cfg.Database, appLogger)
+	dbConn, err := pkgdb.NewConnection(cfg.Database, appLogger)
 	if err != nil {
 		appLogger.Fatal("Failed to connect to database", zap.Error(err))
 	}
 	appLogger.Info("Database connection established successfully")
 
-	// 4. Get JWT Key (从配置或环境变量)
-	jwtKey := []byte(os.Getenv("JWT_SECRET")) // 或者 cfg.Server.JWTSecret
+	// 4. Get JWT Key
+	jwtKey := []byte(os.Getenv("JWT_SECRET"))
 	if len(jwtKey) == 0 {
-		appLogger.Warn("JWT_SECRET not configured. Authentication middleware might fail if enabled.")
-		// 如果 JWT 是必须的，这里应该 Fatal
-		// appLogger.Fatal("JWT_SECRET not configured")
+		appLogger.Warn("JWT_SECRET not configured. Using default, which is insecure.")
+		jwtKey = []byte("default_insecure_secret_key_for_dev_only")
 	}
 
-	// 5. Initialize Dependencies using Wire
-	// 确保 InitAuthHandler 返回的是实例而不是接口，或者调整 Wire 配置
-	authHandler := internal.InitAuthHandler(dbConn, jwtKey, appLogger) // 传递 Logger
+	// 5. Initialize Dependencies
+	// InitAuthHandler is expected to return *handler.AuthHandler
+	authHandler := internal.InitAuthHandler(dbConn, jwtKey, appLogger)
 
-	// --- 移除旧的 Gin 引擎创建和路由注册 ---
-	// r := gin.Default()
-	// r.POST("/api/v1/auth/login", authHandler.Login)
-	// ---------------------------------------
+	// Initialize User components
+	userRepoImpl := repository.NewUserRepository(dbConn)
+	userService := service.NewUserService(userRepoImpl) // Use service.NewUserService
+	userHandler := handler.NewUserHandler(userService) // Use handler.NewUserHandler
 
 	// 6. Setup Router
-	// 将需要的 Handler 传递给 SetupRouter
-	// 如果 SetupRouter 需要 jwtKey，也需要传递进去
-	r := router.SetupRouter(authHandler, jwtKey) // <-- 传递 jwtKey
+	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
+	r := router.SetupRouter(authHandler, userHandler, jwtKey)
 
 	// 7. Start Server
 	portStr := fmt.Sprintf(":%d", cfg.Server.Port)

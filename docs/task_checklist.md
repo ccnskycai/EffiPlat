@@ -26,7 +26,7 @@
 - [x] **(推荐) 编写自动化数据库迁移测试** (基础结构完成)
 - [ ] 设置日志实例的依赖注入机制
 - [x] 实现用户认证 API (`/auth`) - 登录、获取用户、登出 完成
-- [ ] 实现用户管理 API (`/users`)
+- [x] 实现用户管理 API (`/users`) - 后端已完成
 - [ ] 实现角色与权限管理基础 API (`/roles`)
 - [ ] 实现职责与职责组管理 API (`/responsibilities`, `/responsibility-groups`)
 - [ ] 实现环境管理 API (`/environments`)

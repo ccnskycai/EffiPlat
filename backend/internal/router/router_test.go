@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	// External Dependencies
@@ -79,10 +80,11 @@ func setupTestRouter() (*gin.Engine, *gorm.DB) {
 	userRepo := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepo, jwtKey)
 	authHandler := handler.NewAuthHandler(authService)
-	// Initialize other handlers if needed for tested routes
+	userService := service.NewUserService(userRepo)
+	userHandler := handler.NewUserHandler(userService)
 
 	// Setup router with test dependencies
-	r := router.SetupRouter(authHandler, jwtKey /*, other handlers... */)
+	r := router.SetupRouter(authHandler, userHandler, jwtKey)
 	return r, db // Return DB for test data setup/teardown
 }
 
@@ -93,10 +95,10 @@ func createTestUser(db *gorm.DB, email, password string) (*models.User, error) {
 		return nil, err
 	}
 	user := &models.User{
-		Name:         "Test User",
-		Email:        email,
-		PasswordHash: string(hashedPassword),
-		Status:       "active",
+		Name:     "Test User",
+		Email:    email,
+		Password: string(hashedPassword),
+		Status:   "active",
 	}
 	result := db.Create(user)
 	return user, result.Error
@@ -258,6 +260,91 @@ func TestLogoutRoute(t *testing.T) {
 	wNoToken := httptest.NewRecorder()
 	router.ServeHTTP(wNoToken, reqNoToken)
 	assert.Equal(t, http.StatusUnauthorized, wNoToken.Code)
+}
+
+func TestUserManagementRoutes(t *testing.T) {
+	router, db := setupTestRouter()
+	sqlDB, _ := db.DB()
+	defer sqlDB.Close()
+
+	// 1. 创建测试用户并获取 token
+	createdUser, err := createTestUser(db, testUserEmail, testUserPassword)
+	assert.NoError(t, err)
+
+	// 登录获取 token
+	loginPayload := models.LoginRequest{Email: testUserEmail, Password: testUserPassword}
+	payloadBytes, _ := json.Marshal(loginPayload)
+	loginReq, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(payloadBytes))
+	loginReq.Header.Set("Content-Type", "application/json")
+	loginW := httptest.NewRecorder()
+	router.ServeHTTP(loginW, loginReq)
+	assert.Equal(t, http.StatusOK, loginW.Code)
+	var loginResp models.LoginResponse
+	err = json.Unmarshal(loginW.Body.Bytes(), &loginResp)
+	assert.NoError(t, err)
+	validToken := loginResp.Token
+
+	// 2. 测试创建用户
+	createUserPayload := struct {
+		Name       string `json:"name"`
+		Email      string `json:"email"`
+		Password   string `json:"password"`
+		Department string `json:"department"`
+	}{
+		Name:       "New User",
+		Email:      "newuser@example.com",
+		Password:   "password123",
+		Department: "IT",
+	}
+	createPayloadBytes, _ := json.Marshal(createUserPayload)
+	createReq, _ := http.NewRequest("POST", "/api/v1/users", bytes.NewBuffer(createPayloadBytes))
+	createReq.Header.Set("Content-Type", "application/json")
+	createReq.Header.Set("Authorization", "Bearer "+validToken)
+	createW := httptest.NewRecorder()
+	router.ServeHTTP(createW, createReq)
+	assert.Equal(t, http.StatusCreated, createW.Code)
+
+	// 3. 测试获取用户列表
+	listReq, _ := http.NewRequest("GET", "/api/v1/users", nil)
+	listReq.Header.Set("Authorization", "Bearer "+validToken)
+	listW := httptest.NewRecorder()
+	router.ServeHTTP(listW, listReq)
+	assert.Equal(t, http.StatusOK, listW.Code)
+
+	// 4. 测试获取特定用户
+	getUserReq, _ := http.NewRequest("GET", "/api/v1/users/"+strconv.FormatUint(uint64(createdUser.ID), 10), nil)
+	getUserReq.Header.Set("Authorization", "Bearer "+validToken)
+	getUserW := httptest.NewRecorder()
+	router.ServeHTTP(getUserW, getUserReq)
+	assert.Equal(t, http.StatusOK, getUserW.Code)
+
+	// 5. 测试更新用户
+	updateUserPayload := struct {
+		Name       *string `json:"name,omitempty"`
+		Department *string `json:"department,omitempty"`
+	}{
+		Name:       stringPtr("Updated Name"),
+		Department: stringPtr("Updated Department"),
+	}
+	updatePayloadBytes, _ := json.Marshal(updateUserPayload)
+	updateReq, _ := http.NewRequest("PUT", "/api/v1/users/"+strconv.FormatUint(uint64(createdUser.ID), 10), bytes.NewBuffer(updatePayloadBytes))
+	updateReq.Header.Set("Content-Type", "application/json")
+	updateReq.Header.Set("Authorization", "Bearer "+validToken)
+	updateW := httptest.NewRecorder()
+	router.ServeHTTP(updateW, updateReq)
+	assert.Equal(t, http.StatusOK, updateW.Code)
+
+	// 6. 测试删除用户
+	deleteReq, _ := http.NewRequest("DELETE", "/api/v1/users/"+strconv.FormatUint(uint64(createdUser.ID), 10), nil)
+	deleteReq.Header.Set("Authorization", "Bearer "+validToken)
+	deleteW := httptest.NewRecorder()
+	router.ServeHTTP(deleteW, deleteReq)
+	assert.Equal(t, http.StatusNoContent, deleteW.Code)
+}
+
+// Helper function to create string pointer
+func stringPtr(s string) *string {
+	return &s
 }
 
 // TODO: Add tests for other routes as they are implemented
