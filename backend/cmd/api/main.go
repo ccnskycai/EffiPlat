@@ -59,9 +59,15 @@ func main() {
 		appLogger.Fatal("Failed to initialize user handler", zap.Error(err))
 	}
 
+	// Initialize Role components using Wire
+	roleHandler, err := internal.InitializeRoleHandler(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize role handler", zap.Error(err))
+	}
+
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
-	r := router.SetupRouter(authHandler, userHandler, jwtKey)
+	r := router.SetupRouter(authHandler, userHandler, roleHandler, jwtKey)
 
 	// 7. Start Server
 	portStr := fmt.Sprintf(":%d", cfg.Server.Port)

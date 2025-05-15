@@ -12,7 +12,7 @@ import (
 
 // SetupRouter 配置和返回 Gin 引擎
 // 添加 jwtKey 参数
-func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler, jwtKey []byte /*, etc. */) *gin.Engine {
+func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler, roleHdlr *handler.RoleHandler, jwtKey []byte /*, etc. */) *gin.Engine {
 	r := gin.Default()
 
 	// 禁用自动重定向
@@ -34,6 +34,7 @@ func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler
 	{
 		authRoutes(v1, authHandler, jwtKey) // 传递 jwtKey
 		userRoutes(v1, userHdlr, jwtKey)    // userHdlr is now *handler.UserHandler
+		roleRoutes(v1, roleHdlr, jwtKey)    // Add this line for role routes
 		// ... 其他路由组 ...
 	}
 
@@ -75,6 +76,19 @@ func userRoutes(rg *gin.RouterGroup, userHdlr *handler.UserHandler, jwtKey []byt
 		users.GET(":userId", userHdlr.GetUserByID)      // GET /api/v1/users/{userId}
 		users.PUT(":userId", userHdlr.UpdateUser)       // PUT /api/v1/users/{userId}
 		users.DELETE(":userId", userHdlr.DeleteUser)    // DELETE /api/v1/users/{userId}
+	}
+}
+
+// roleRoutes 注册角色管理相关的路由
+func roleRoutes(rg *gin.RouterGroup, roleHdlr *handler.RoleHandler, jwtKey []byte) {
+	roles := rg.Group("/roles")
+	roles.Use(middleware.JWTAuthMiddleware(jwtKey))
+	{
+		roles.GET("", roleHdlr.GetRoles)                // GET /api/v1/roles
+		roles.POST("", roleHdlr.CreateRole)             // POST /api/v1/roles
+		roles.GET(":roleId", roleHdlr.GetRoleByID)      // GET /api/v1/roles/{roleId}
+		roles.PUT(":roleId", roleHdlr.UpdateRole)       // PUT /api/v1/roles/{roleId}
+		roles.DELETE(":roleId", roleHdlr.DeleteRole)    // DELETE /api/v1/roles/{roleId}
 	}
 }
 

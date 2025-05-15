@@ -33,6 +33,25 @@ func InitializeUserHandler(db *gorm.DB) (*handler.UserHandler, error) {
 	return nil, nil // These will be replaced by Wire
 }
 
+// ProviderSet for role components
+var RoleSet = wire.NewSet(
+	repository.NewRoleRepository,
+	service.NewRoleService,
+	handler.NewRoleHandler,
+	wire.Bind(new(repository.RoleRepository), new(*repository.RoleRepositoryImpl)), // Updated to RoleRepositoryImpl
+	wire.Bind(new(service.RoleService), new(*service.RoleServiceImpl)),             // Updated to RoleServiceImpl
+)
+
+// InitializeRoleHandler is the injector for RoleHandler and its dependencies.
+func InitializeRoleHandler(db *gorm.DB, logger *zap.Logger) (*handler.RoleHandler, error) {
+	wire.Build(
+		RoleSet,
+		// We provide db and logger as parameters to this injector, so they are available
+		// to NewRoleRepository, NewRoleService, and NewRoleHandler if their constructors need them.
+	)
+	return nil, nil // Wire will replace this
+}
+
 // ProviderSet for auth components
 var AuthSet = wire.NewSet(
 	repository.NewUserRepository, // Shared, or could be in a common set

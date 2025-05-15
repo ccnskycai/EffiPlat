@@ -27,6 +27,14 @@ func InitializeUserHandler(db *gorm.DB) (*handler.UserHandler, error) {
 	return userHandler, nil
 }
 
+// InitializeRoleHandler is the injector for RoleHandler and its dependencies.
+func InitializeRoleHandler(db *gorm.DB, logger *zap.Logger) (*handler.RoleHandler, error) {
+	roleRepositoryImpl := repository.NewRoleRepository(db, logger)
+	roleServiceImpl := service.NewRoleService(roleRepositoryImpl, logger)
+	roleHandler := handler.NewRoleHandler(roleServiceImpl, logger)
+	return roleHandler, nil
+}
+
 // InitializeAuthHandler is the injector for AuthHandler.
 // Make sure it has the //go:build wireinject tags if it's in a wireinject file.
 // If wire.go is itself a wireinject file (based on build tags at the top),
@@ -42,6 +50,9 @@ func InitializeAuthHandler(db *gorm.DB, jwtKey []byte, logger *zap.Logger) (*han
 
 // ProviderSet for user components
 var UserSet = wire.NewSet(repository.NewUserRepository, service.NewUserService, handler.NewUserHandler)
+
+// ProviderSet for role components
+var RoleSet = wire.NewSet(repository.NewRoleRepository, service.NewRoleService, handler.NewRoleHandler, wire.Bind(new(repository.RoleRepository), new(*repository.RoleRepositoryImpl)), wire.Bind(new(service.RoleService), new(*service.RoleServiceImpl)))
 
 // ProviderSet for auth components
 var AuthSet = wire.NewSet(repository.NewUserRepository, service.NewAuthService, handler.NewAuthHandler)
