@@ -44,10 +44,10 @@ func SeedUsers(db *gorm.DB) error {
 	}
 
 	// Create an admin user
-	adminUser, err := factories.NewUserFactory().
+	_, err := factories.NewUserFactory().
 		WithName("Admin User").
 		WithEmail("admin@effiplat.local").
-		WithPassword("adminpassword"). // Use a strong password in real scenarios
+		WithPassword("password"). // Use a strong password in real scenarios
 		WithRoles([]models.Role{adminRole}).
 		Create(db)
 	if err != nil {

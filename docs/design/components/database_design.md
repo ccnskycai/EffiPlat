@@ -2,9 +2,9 @@
 
 ## 1. 数据库选型
 
-*   **初步选择**: sqlite3
-*   **理由**: 轻量级、易于部署、无需额外配置, 满足当前需求
-*   **ORM/数据访问层**: 后端服务应使用 ORM 框架 (GORM) 。
+- **初步选择**: sqlite3
+- **理由**: 轻量级、易于部署、无需额外配置, 满足当前需求
+- **ORM/数据访问层**: 后端服务应使用 ORM 框架 (GORM) 。
 
 ## 2. 核心实体与关系 (Conceptual Model - 初步)
 
@@ -66,60 +66,62 @@ erDiagram
     AUDIT_LOGS { int id PK int user_id FK datetime timestamp string action string target_type int target_id string details }
 ```
 
-*   **用户 (Users)**: id, name, email, department, password_hash, status, created_at, updated_at
-*   **角色 (Roles)**: id, name, description
-*   **权限 (Permissions)**: id, resource, action (e.g., 'environment', 'read')
-*   **用户角色关联 (UserRoles)**: user_id, role_id
-*   **角色权限关联 (RolePermissions)**: role_id, permission_id
-*   **职责 (Responsibilities)**: id, name, description
-*   **职责组 (ResponsibilityGroups)**: id, responsibility_id, user_id, is_primary
-*   **环境 (Environments)**: id, name, code, description, type, status, created_at, updated_at
-*   **资产 (Assets)**: id, name, type (server, network_device), status, created_at, updated_at
-*   **服务器资产 (ServerAssets)**: asset_id, ip_address, os, hostname, spec, access_info, mac_address, cpu_model, cpu_cores, memory_gb, disk_info, serial_number, physical_location, status, owner_group_id, is_virtual, virtualization_host_id
-*   **服务类型 (ServiceTypes)**: id, name (e.g., 'API', 'Frontend', 'Database', 'Worker'), description
-*   **服务 (Services)**: id, name, description, service_type_id, created_at, updated_at
-*   **服务实例 (ServiceInstances)**: id, service_id, environment_id, server_asset_id, port, status, version
-*   **业务 (Businesses)**: id, name, description, created_at, updated_at
-*   **客户端类型 (ClientTypes)**: id, name (e.g., 'mac', 'win', 'android', 'ios', 'web', 'wechat'), description
-*   **客户端版本 (ClientVersions)**: id, client_type_id, version, description, release_date, created_at, updated_at
-*   **客户端 (Cliens)**: id, client_version_id, client_type_id, ip, description, release_date, created_at, updated_at
-*   **业务服务类型关联 (BusinessServiceTypes)**: business_id, service_type_id
-*   **业务客户端类型关联 (BusinessClientTypes)**: business_id, client_version_id
-*   **配置 (Configurations)**: id, service_id/business_id, environment_id, key, value, version, description, created_at, updated_at
-*   **Bug 报告 (Bugs)**: id, title, description, status, priority, reporter_id, assignee_group_id, environment_id, service_instance_id, business_id, created_at, updated_at
-*   **审计日志 (AuditLogs)**: id, user_id, timestamp, action, target_type, target_id, details (JSON/Text)
+- **用户 (Users)**: id, name, email, department, password_hash, status, created_at, updated_at
+- **角色 (Roles)**: id, name, description
+- **权限 (Permissions)**: id, resource, action (e.g., 'environment', 'read')
+- **用户角色关联 (UserRoles)**: user_id, role_id
+- **角色权限关联 (RolePermissions)**: role_id, permission_id
+- **职责 (Responsibilities)**: id, name, description
+- **职责组 (ResponsibilityGroups)**: id, responsibility_id, user_id, is_primary
+- **环境 (Environments)**: id, name, code, description, type, status, created_at, updated_at
+- **资产 (Assets)**: id, name, type (server, network_device), status, created_at, updated_at
+- **服务器资产 (ServerAssets)**: asset_id, ip_address, os, hostname, spec, access_info, mac_address, cpu_model, cpu_cores, memory_gb, disk_info, serial_number, physical_location, status, owner_group_id, is_virtual, virtualization_host_id
+- **服务类型 (ServiceTypes)**: id, name (e.g., 'API', 'Frontend', 'Database', 'Worker'), description
+- **服务 (Services)**: id, name, description, service_type_id, created_at, updated_at
+- **服务实例 (ServiceInstances)**: id, service_id, environment_id, server_asset_id, port, status, version
+- **业务 (Businesses)**: id, name, description, created_at, updated_at
+- **客户端类型 (ClientTypes)**: id, name (e.g., 'mac', 'win', 'android', 'ios', 'web', 'wechat'), description
+- **客户端版本 (ClientVersions)**: id, client_type_id, version, description, release_date, created_at, updated_at
+- **客户端 (Cliens)**: id, client_version_id, client_type_id, ip, description, release_date, created_at, updated_at
+- **业务服务类型关联 (BusinessServiceTypes)**: business_id, service_type_id
+- **业务客户端类型关联 (BusinessClientTypes)**: business_id, client_version_id
+- **配置 (Configurations)**: id, service_id/business_id, environment_id, key, value, version, description, created_at, updated_at
+- **Bug 报告 (Bugs)**: id, title, description, status, priority, reporter_id, assignee_group_id, environment_id, service_instance_id, business_id, created_at, updated_at
+- **审计日志 (AuditLogs)**: id, user_id, timestamp, action, target_type, target_id, details (JSON/Text)
 
-*关系示例*:*   一个用户可以有多个角色 (`UserRoles`)。
-*   一个角色可以有多个权限 (`RolePermissions`)。
-*   一个职责组 `ResponsibilityGroups` 包含一个或多个用户，并关联到一个职责 `Responsibilities`。
-*   环境 `Environments` 可以关联多个服务实例 `ServiceInstances` 和资产 `Assets` (通过中间表或外键)。
-*   一个服务 `Services` 属于一种服务类型 `ServiceTypes`。
-*   服务实例 `ServiceInstances` 关联服务 `Services`、环境 `Environments` 和服务器资产 `ServerAssets`。
-*   一个业务 `Businesses` 可以依赖多种服务类型 `ServiceTypes` (`BusinessServiceTypes`)。
-*   一个业务 `Businesses` 可以支持多种客户端应用 `ClientApplications` (`BusinessClientApplications`)。
-*   一个客户端版本 `ClientVersions` 属于一个客户端应用 `ClientApplications` 且对应一个客户端类型 `ClientTypes`。
-*   Bug `Bugs` 关联用户 (reporter), 职责组 (assignee), 环境, 服务实例, 业务等。
+_关系示例_:\* 一个用户可以有多个角色 (`UserRoles`)。
+
+- 一个角色可以有多个权限 (`RolePermissions`)。
+- 一个职责组 `ResponsibilityGroups` 包含一个或多个用户，并关联到一个职责 `Responsibilities`。
+- 环境 `Environments` 可以关联多个服务实例 `ServiceInstances` 和资产 `Assets` (通过中间表或外键)。
+- 一个服务 `Services` 属于一种服务类型 `ServiceTypes`。
+- 服务实例 `ServiceInstances` 关联服务 `Services`、环境 `Environments` 和服务器资产 `ServerAssets`。
+- 一个业务 `Businesses` 可以依赖多种服务类型 `ServiceTypes` (`BusinessServiceTypes`)。
+- 一个业务 `Businesses` 可以支持多种客户端应用 `ClientApplications` (`BusinessClientApplications`)。
+- 一个客户端版本 `ClientVersions` 属于一个客户端应用 `ClientApplications` 且对应一个客户端类型 `ClientTypes`。
+- Bug `Bugs` 关联用户 (reporter), 职责组 (assignee), 环境, 服务实例, 业务等。
 
 ## 3. 核心表结构设计 (V1.0 关注点)
 
 [根据 V1.0 计划 (`docs/requirements/execution_plan.md`)，优先设计以下核心表的详细结构]
 
-*   `users`, `roles`, `user_roles` (支撑用户和基础权限)
-*   `responsibilities`, `responsibility_groups` (支撑职责分配)
-*   `environments`
-*   `assets` (至少包含服务器类型的基础字段)
-*   `server_assets`
-*   `service_types`, `services`, `service_instances`
-*   `businesses`
-*   `client_types`, `client_versions`, `clients` 
-*   `bugs` (包含核心关联字段)
-*   关联表: `role_permissions` (假设权限表也需要基础定义), `business_service_types`, `business_client_types` (根据最新编辑)
+- `users`, `roles`, `user_roles` (支撑用户和基础权限)
+- `responsibilities`, `responsibility_groups` (支撑职责分配)
+- `environments`
+- `assets` (至少包含服务器类型的基础字段)
+- `server_assets`
+- `service_types`, `services`, `service_instances`
+- `businesses`
+- `client_types`, `client_versions`, `clients`
+- `bugs` (包含核心关联字段)
+- 关联表: `role_permissions` (假设权限表也需要基础定义), `business_service_types`, `business_client_types` (根据最新编辑)
 
 **详细表结构定义:**
 
-*注意: 以下 SQL 定义主要用于展示结构和约束。对于 `created_at` 和 `updated_at` 字段，我们依赖 GORM 的约定自动处理时间戳（当模型中包含名为 `CreatedAt` 和 `UpdatedAt` 的 `time.Time` 类型字段时），因此在 SQL 中不设置 `DEFAULT CURRENT_TIMESTAMP`，以避免潜在的驱动类型转换问题 (例如 SQLite 的 `CURRENT_TIMESTAMP` 返回字符串)。*
+_注意: 以下 SQL 定义主要用于展示结构和约束。对于 `created_at` 和 `updated_at` 字段，我们依赖 GORM 的约定自动处理时间戳（当模型中包含名为 `CreatedAt` 和 `UpdatedAt` 的 `time.Time` 类型字段时），因此在 SQL 中不设置 `DEFAULT CURRENT_TIMESTAMP`，以避免潜在的驱动类型转换问题 (例如 SQLite 的 `CURRENT_TIMESTAMP` 返回字符串)。_
 
 **`users`**
+
 ```sql
 CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,6 +138,7 @@ CREATE INDEX idx_users_status ON users(status);
 ```
 
 **`roles`**
+
 ```sql
 CREATE TABLE roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -146,6 +149,7 @@ CREATE INDEX idx_roles_name ON roles(name);
 ```
 
 **`permissions`** (假设需要基础定义以便关联)
+
 ```sql
 CREATE TABLE permissions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,6 +162,7 @@ CREATE INDEX idx_permissions_resource_action ON permissions(resource, action);
 ```
 
 **`user_roles`** (关联表)
+
 ```sql
 CREATE TABLE user_roles (
     user_id INTEGER NOT NULL,
@@ -171,6 +176,7 @@ CREATE INDEX idx_user_roles_role_id ON user_roles(role_id);
 ```
 
 **`role_permissions`** (关联表)
+
 ```sql
 CREATE TABLE role_permissions (
     role_id INTEGER NOT NULL,
@@ -184,6 +190,7 @@ CREATE INDEX idx_role_permissions_permission_id ON role_permissions(permission_i
 ```
 
 **`responsibilities`**
+
 ```sql
 CREATE TABLE responsibilities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,6 +201,7 @@ CREATE INDEX idx_responsibilities_name ON responsibilities(name);
 ```
 
 **`responsibility_groups`**
+
 ```sql
 CREATE TABLE responsibility_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,6 +217,7 @@ CREATE INDEX idx_resp_groups_user_id ON responsibility_groups(user_id);
 ```
 
 **`environments`**
+
 ```sql
 CREATE TABLE environments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -225,6 +234,7 @@ CREATE INDEX idx_environments_status ON environments(status);
 ```
 
 **`assets`**
+
 ```sql
 CREATE TABLE assets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -239,6 +249,7 @@ CREATE INDEX idx_assets_status ON assets(status);
 ```
 
 **`server_assets`**
+
 ```sql
 CREATE TABLE server_assets (
     asset_id INTEGER PRIMARY KEY, -- References assets.id
@@ -270,6 +281,7 @@ CREATE INDEX idx_server_assets_virt_host ON server_assets(virtualization_host_id
 ```
 
 **`service_types`**
+
 ```sql
 CREATE TABLE service_types (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -280,6 +292,7 @@ CREATE INDEX idx_service_types_name ON service_types(name);
 ```
 
 **`services`**
+
 ```sql
 CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -295,6 +308,7 @@ CREATE INDEX idx_services_type_id ON services(service_type_id);
 ```
 
 **`service_instances`**
+
 ```sql
 CREATE TABLE service_instances (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -317,6 +331,7 @@ CREATE INDEX idx_svc_inst_status ON service_instances(status);
 ```
 
 **`businesses`**
+
 ```sql
 CREATE TABLE businesses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -329,6 +344,7 @@ CREATE INDEX idx_businesses_name ON businesses(name);
 ```
 
 **`client_types`**
+
 ```sql
 CREATE TABLE client_types (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -339,6 +355,7 @@ CREATE INDEX idx_client_types_name ON client_types(name);
 ```
 
 **`client_versions`** (Based on user's latest structure, assuming this defines a releasable version)
+
 ```sql
 CREATE TABLE client_versions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -356,6 +373,7 @@ CREATE INDEX idx_client_versions_version ON client_versions(version);
 ```
 
 **`clients`** (Based on user's `Cliens` table, representing an instance/installation?)
+
 ```sql
 CREATE TABLE clients ( -- Renamed from Cliens
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -373,9 +391,11 @@ CREATE INDEX idx_clients_version_id ON clients(client_version_id);
 CREATE INDEX idx_clients_type_id ON clients(client_type_id);
 CREATE INDEX idx_clients_ip ON clients(ip);
 ```
-*Note: The purpose and exact fields of the `clients` table might need further clarification based on usage.*
+
+_Note: The purpose and exact fields of the `clients` table might need further clarification based on usage._
 
 **`business_service_types`** (关联表)
+
 ```sql
 CREATE TABLE business_service_types (
     business_id INTEGER NOT NULL,
@@ -389,6 +409,7 @@ CREATE INDEX idx_biz_svc_types_type_id ON business_service_types(service_type_id
 ```
 
 **`business_client_types`** (关联表 - Based on user edit linking Business to Client Version)
+
 ```sql
 CREATE TABLE business_client_types ( -- Name retained from user edit, but links Business to Client Version
     business_id INTEGER NOT NULL,
@@ -400,9 +421,11 @@ CREATE TABLE business_client_types ( -- Name retained from user edit, but links 
 CREATE INDEX idx_biz_client_types_biz_id ON business_client_types(business_id);
 CREATE INDEX idx_biz_client_types_ver_id ON business_client_types(client_version_id);
 ```
+
 *Note: Linking a business directly to a client *version* is unusual. Consider if linking to `client_types` or a new `client_applications` table is more appropriate long-term.*
 
 **`bugs`**
+
 ```sql
 CREATE TABLE bugs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -436,45 +459,48 @@ CREATE INDEX idx_bugs_biz_id ON bugs(business_id);
 
 ## 4. 数据一致性与完整性
 
-*   使用外键约束强制实体间的关联关系。
-*   关键字段（如 email, 服务名+环境）考虑添加唯一约束。
-*   使用数据库事务保证操作的原子性，特别是在涉及多个表更新的操作（如创建 Bug 时关联多个实体）。
+- 使用外键约束强制实体间的关联关系。
+- 关键字段（如 email, 服务名+环境）考虑添加唯一约束。
+- 使用数据库事务保证操作的原子性，特别是在涉及多个表更新的操作（如创建 Bug 时关联多个实体）。
 
 ## 5. 数据迁移
 
 为了确保数据库结构的一致性、可版本化和自动化部署，项目将采用数据库迁移工具。
 
-*   **工具选型**: 推荐使用 `golang-migrate/migrate`。这是一个独立于 ORM 的流行 Go 库，支持多种数据库（包括本项目选用的 SQLite），并允许使用 SQL 文件进行迁移。
-*   **迁移管理**:
-    *   迁移文件存储在 `/backend/internal/migrations` 目录（或其他指定位置）。
-    *   文件名包含版本号和描述性名称（例如 `000001_create_initial_tables.up.sql` 和 `000001_create_initial_tables.down.sql`）。`.up.sql` 用于应用变更，`.down.sql` 用于回滚变更。
-    *   使用迁移工具的命令行或集成到应用启动（仅限开发环境）或部署脚本中来应用迁移。
-*   **数据填充 (Seeding)**:
-    *   核心基础数据（如默认权限、配置项）可以通过迁移脚本中的 `INSERT` 语句填充。
-    *   大量的测试数据或非必要初始数据，应通过单独的、幂等的填充脚本或命令完成，不建议放在迁移脚本中。
+- **工具选型**: 推荐使用 `golang-migrate/migrate`。这是一个独立于 ORM 的流行 Go 库，支持多种数据库（包括本项目选用的 SQLite），并允许使用 SQL 文件进行迁移。
+- **迁移管理**:
+  - 迁移文件存储在 `/backend/internal/migrations` 目录（或其他指定位置）。
+  - 文件名包含版本号和描述性名称（例如 `000001_create_initial_tables.up.sql` 和 `000001_create_initial_tables.down.sql`）。`.up.sql` 用于应用变更，`.down.sql` 用于回滚变更。
+  - 使用迁移工具的命令行或集成到应用启动（仅限开发环境）或部署脚本中来应用迁移。
+- **数据填充 (Seeding)**:
+  - 核心基础数据（如默认权限、配置项）可以通过迁移脚本中的 `INSERT` 语句填充。
+  - 大量的测试数据或非必要初始数据，应通过单独的、幂等的填充脚本或命令完成，不建议放在迁移脚本中。
 
 ### 5.1 迁移测试
 
 为了确保迁移脚本的正确性和可靠性，应进行测试：
 
-*   **手动测试 (基础):**
-    *   在干净的数据库上运行 `migrate ... up` 命令，验证 Schema 是否正确创建，`schema_migrations` 表是否正确记录。
-    *   运行 `migrate ... down <n>` 命令，验证 Schema 是否能正确回滚到之前的状态。
-    *   再次运行 `migrate ... up`，验证是否能重新应用迁移。
-    *   建议使用 SQLite 客户端工具 (如 DB Browser for SQLite) 辅助验证。
+- **手动测试 (基础):**
 
-*   **自动化测试 (推荐，未来实现):**
-    *   编写 Go 集成测试。
-    *   在测试中使用 `golang-migrate/migrate` 库的 API，针对临时数据库 (内存或文件) 执行 `Up()` 和 `Down()` 操作。
-    *   通过查询数据库或使用 Schema diff 工具验证结构是否符合预期。
-    *   将自动化测试集成到 CI/CD 流程中。 
+  - 在干净的数据库上运行 `migrate ... up` 命令，验证 Schema 是否正确创建，`schema_migrations` 表是否正确记录。
+  - 运行 `migrate ... down <n>` 命令，验证 Schema 是否能正确回滚到之前的状态。
+  - 再次运行 `migrate ... up`，验证是否能重新应用迁移。
+  - 建议使用 SQLite 客户端工具 (如 DB Browser for SQLite) 辅助验证。
+
+- **自动化测试 (推荐，未来实现):**
+  - 编写 Go 集成测试。
+  - 在测试中使用 `golang-migrate/migrate` 库的 API，针对临时数据库 (内存或文件) 执行 `Up()` 和 `Down()` 操作。
+  - 通过查询数据库或使用 Schema diff 工具验证结构是否符合预期。
+  - 将自动化测试集成到 CI/CD 流程中。
 
 ### 5.2 测试数据填充策略 (Seeding Strategy)
 
 为了方便生成和管理用于开发和测试环境的数据，项目将采用基于 **Go 代码** 的填充方式，并结合 **Factory 模式**：
 
-*   **Seeder 包:** 在 `backend/internal/seed` (或类似路径) 创建专门的包来管理数据填充逻辑。
-*   **Factory 模式:**
-    *   为核心数据模型 (如 `User`, `Environment`, `Service` 等) 在 `backend/internal/factories` (或类似路径) 实现 Factory 函数或结构体。
-    *   每个 Factory 提供创建具有合理默认值的模型实例的方法，并允许通过链式调用 (e.g., `WithName("...").WithStatus("...")`) 覆盖特定字段。
-    *   Factory 的 `
+- **Seeder 包:** 在 `backend/internal/seed` (或类似路径) 创建专门的包来管理数据填充逻辑。
+- **Factory 模式:**
+  - 为核心数据模型 (如 `User`, `Environment`, `Service` 等) 在 `backend/internal/factories` (或类似路径) 实现 Factory 函数或结构体。
+  - 每个 Factory 提供创建具有合理默认值的模型实例的方法，并允许通过链式调用 (e.g., `WithName("...").WithStatus("...")`) 覆盖特定字段。
+  - Factory 的 `Description` 字段应确保存在且正确。
+
+请先进行上述修改，然后告诉我结果。如果你能提供 `models.Role` 结构体当前的代码，我可以帮你直接给出修改建议。

@@ -29,6 +29,8 @@ import (
 	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/router" // Package being tested
 	"EffiPlat/backend/internal/service"
+
+	"go.uber.org/zap"
 )
 
 // Constants for testing
@@ -71,14 +73,14 @@ func setupTestRouter() (*gin.Engine, *gorm.DB) {
 
 	// --- Initialize Dependencies ---
 	// Normally use a test logger, using Nop for simplicity now
-	// testLogger := zap.NewNop() // REMOVED: Unused variable
+	noopLogger := zap.NewNop() // Use a no-op logger for tests
 
 	// JWT Key
 	jwtKey := []byte(testJWTSecret)
 
 	// Create real instances pointing to the test DB
 	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo, jwtKey)
+	authService := service.NewAuthService(userRepo, jwtKey, noopLogger)
 	authHandler := handler.NewAuthHandler(authService)
 	userService := service.NewUserService(userRepo)
 	userHandler := handler.NewUserHandler(userService)

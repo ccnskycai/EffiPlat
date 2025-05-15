@@ -90,3 +90,4 @@ func (s *AuthService) Register(user *models.User) error {
 	}
 	return nil
 }
+ 

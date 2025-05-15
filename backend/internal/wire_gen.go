@@ -10,15 +10,38 @@ import (
 	"EffiPlat/backend/internal/handler"
 	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/service"
+	"github.com/google/wire"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // Injectors from wire.go:
 
-func InitAuthHandler(db *gorm.DB, jwtKey []byte, logger *zap.Logger) *handler.AuthHandler {
+// InitializeUserHandler is the injector for UserHandler and its dependencies.
+// It takes the database connection as input.
+// This function will be callable from other packages (like main) because it's exported.
+func InitializeUserHandler(db *gorm.DB) (*handler.UserHandler, error) {
 	userRepository := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepository, jwtKey)
-	authHandler := handler.NewAuthHandler(authService)
-	return authHandler
+	userService := service.NewUserService(userRepository)
+	userHandler := handler.NewUserHandler(userService)
+	return userHandler, nil
 }
+
+// InitializeAuthHandler is the injector for AuthHandler.
+// Make sure it has the //go:build wireinject tags if it's in a wireinject file.
+// If wire.go is itself a wireinject file (based on build tags at the top),
+// then this function template is fine.
+func InitializeAuthHandler(db *gorm.DB, jwtKey []byte, logger *zap.Logger) (*handler.AuthHandler, error) {
+	userRepository := repository.NewUserRepository(db)
+	authService := service.NewAuthService(userRepository, jwtKey, logger)
+	authHandler := handler.NewAuthHandler(authService)
+	return authHandler, nil
+}
+
+// wire.go:
+
+// ProviderSet for user components
+var UserSet = wire.NewSet(repository.NewUserRepository, service.NewUserService, handler.NewUserHandler)
+
+// ProviderSet for auth components
+var AuthSet = wire.NewSet(repository.NewUserRepository, service.NewAuthService, handler.NewAuthHandler)

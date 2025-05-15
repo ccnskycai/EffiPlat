@@ -1,15 +1,13 @@
 package main
 
 import (
-	"EffiPlat/backend/internal"
-	"EffiPlat/backend/internal/handler" // Added for NewUserHandler and AuthHandler type
+	"EffiPlat/backend/internal" // Added for NewUserHandler and AuthHandler type
 	"EffiPlat/backend/internal/pkg/config"
 	pkgdb "EffiPlat/backend/internal/pkg/database"
 	"EffiPlat/backend/internal/pkg/logger"
-	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/router"
-	"EffiPlat/backend/internal/service" // Added for NewUserService
 
+	// Added for NewUserService
 	// user "EffiPlat/backend/internal/user" // Removed, types now in handler & service
 	"fmt"
 	"log"
@@ -49,13 +47,17 @@ func main() {
 	}
 
 	// 5. Initialize Dependencies
-	// InitAuthHandler is expected to return *handler.AuthHandler
-	authHandler := internal.InitAuthHandler(dbConn, jwtKey, appLogger)
+	// Initialize Auth components using Wire
+	authHandler, err := internal.InitializeAuthHandler(dbConn, jwtKey, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize auth handler", zap.Error(err))
+	}
 
-	// Initialize User components
-	userRepoImpl := repository.NewUserRepository(dbConn)
-	userService := service.NewUserService(userRepoImpl) // Use service.NewUserService
-	userHandler := handler.NewUserHandler(userService) // Use handler.NewUserHandler
+	// Initialize User components using Wire
+	userHandler, err := internal.InitializeUserHandler(dbConn)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize user handler", zap.Error(err))
+	}
 
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
