@@ -77,3 +77,24 @@ func InitializeAuthHandler(db *gorm.DB, jwtKey []byte, logger *zap.Logger) (*han
 	)
 	return nil, nil // Wire will replace this
 }
+
+// ProviderSet for permission components
+var PermissionSet = wire.NewSet(
+	repository.NewPermissionRepository,
+	wire.Bind(new(repository.PermissionRepository), new(*repository.PermissionRepositoryImpl)),
+
+	repository.NewRoleRepository, // Needed by NewPermissionService
+	wire.Bind(new(repository.RoleRepository), new(*repository.RoleRepositoryImpl)),
+
+	service.NewPermissionService, // Provider returns the interface type, explicit bind for its own interface is redundant
+
+	handler.NewPermissionHandler,
+)
+
+// InitializePermissionHandler is the injector for PermissionHandler and its dependencies.
+func InitializePermissionHandler(db *gorm.DB, logger *zap.Logger) (*handler.PermissionHandler, error) {
+	wire.Build(
+		PermissionSet,
+	)
+	return nil, nil // Wire will replace this
+}

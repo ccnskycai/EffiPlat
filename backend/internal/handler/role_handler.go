@@ -35,28 +35,6 @@ type UpdateRoleRequest struct {
 	PermissionIDs []uint `json:"permissionIds"`
 }
 
-// Unified API Response
-func RespondWithError(c *gin.Context, statusCode int, errorCode int, message string) {
-	c.AbortWithStatusJSON(statusCode, gin.H{
-		"code":    errorCode,
-		"message": message,
-		"data":    nil,
-	})
-}
-
-func RespondWithSuccess(c *gin.Context, statusCode int, data interface{}) {
-	response := gin.H{
-		"code":    0,
-		"message": "Success",
-	}
-	if data != nil {
-		response["data"] = data
-	} else {
-		response["data"] = nil // Ensure data is explicitly null if no data
-	}
-	c.JSON(statusCode, response)
-}
-
 // CreateRole godoc
 // @Summary Create a new role
 // @Description Create a new role with name and description
@@ -72,7 +50,7 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 	var req CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("CreateRole: Failed to bind JSON", zap.Error(err))
-		RespondWithError(c, http.StatusBadRequest, 40000, "Invalid request payload: "+err.Error())
+		RespondWithError(c, http.StatusBadRequest, "Invalid request payload: "+err.Error())
 		return
 	}
 
@@ -91,17 +69,15 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 	createdRole, err := h.roleService.CreateRole(c.Request.Context(), &roleToCreate, req.PermissionIDs) // Adjusted to pass PermissionIDs
 	if err != nil {
 		h.logger.Error("CreateRole: Service error", zap.Error(err))
-		// TODO: Differentiate errors, e.g., 400 for "name already exists" (40002 from design)
-		// For now, a generic 500, or check error type from service
 		if err.Error() == "role name already exists" { // Placeholder for actual error checking
-			RespondWithError(c, http.StatusBadRequest, 40002, "Validation error: Role name already exists")
+			RespondWithError(c, http.StatusBadRequest, "Validation error: Role name already exists")
 		} else {
-			RespondWithError(c, http.StatusInternalServerError, 50000, "Failed to create role")
+			RespondWithError(c, http.StatusInternalServerError, "Failed to create role")
 		}
 		return
 	}
 
-	RespondWithSuccess(c, http.StatusCreated, createdRole)
+	RespondWithSuccess(c, http.StatusCreated, "Role created successfully", createdRole)
 }
 
 // GetRoles godoc
@@ -138,11 +114,11 @@ func (h *RoleHandler) GetRoles(c *gin.Context) {
 	roles, total, err := h.roleService.GetRoles(c.Request.Context(), params)
 	if err != nil {
 		h.logger.Error("GetRoles: Service error", zap.Error(err))
-		RespondWithError(c, http.StatusInternalServerError, 50000, "Failed to retrieve roles")
+		RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve roles")
 		return
 	}
 
-	RespondWithSuccess(c, http.StatusOK, gin.H{
+	RespondWithSuccess(c, http.StatusOK, "Roles retrieved successfully", gin.H{
 		"items":    roles,
 		"total":    total,
 		"page":     page,
@@ -166,7 +142,7 @@ func (h *RoleHandler) GetRoleByID(c *gin.Context) {
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
 		h.logger.Error("GetRoleByID: Invalid role ID format", zap.String("roleId", roleIDStr), zap.Error(err))
-		RespondWithError(c, http.StatusBadRequest, 40000, "Invalid role ID format")
+		RespondWithError(c, http.StatusBadRequest, "Invalid role ID format")
 		return
 	}
 
@@ -175,16 +151,15 @@ func (h *RoleHandler) GetRoleByID(c *gin.Context) {
 	roleDetails, err := h.roleService.GetRoleByID(c.Request.Context(), uint(roleID))
 	if err != nil {
 		h.logger.Error("GetRoleByID: Service error", zap.Uint("roleId", uint(roleID)), zap.Error(err))
-		// TODO: Differentiate errors, e.g., 404 for "not found" (40402 from design)
 		if err.Error() == "role not found" { // Placeholder
-			RespondWithError(c, http.StatusNotFound, 40402, "Role not found")
+			RespondWithError(c, http.StatusNotFound, "Role not found")
 		} else {
-			RespondWithError(c, http.StatusInternalServerError, 50000, "Failed to retrieve role")
+			RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve role")
 		}
 		return
 	}
 
-	RespondWithSuccess(c, http.StatusOK, roleDetails)
+	RespondWithSuccess(c, http.StatusOK, "Role retrieved successfully", roleDetails)
 }
 
 // UpdateRole godoc
@@ -205,14 +180,14 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
 		h.logger.Error("UpdateRole: Invalid role ID format", zap.String("roleId", roleIDStr), zap.Error(err))
-		RespondWithError(c, http.StatusBadRequest, 40000, "Invalid role ID format")
+		RespondWithError(c, http.StatusBadRequest, "Invalid role ID format")
 		return
 	}
 
 	var req UpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("UpdateRole: Failed to bind JSON", zap.Error(err))
-		RespondWithError(c, http.StatusBadRequest, 40000, "Invalid request payload: "+err.Error())
+		RespondWithError(c, http.StatusBadRequest, "Invalid request payload: "+err.Error())
 		return
 	}
 
@@ -225,18 +200,17 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	updatedRole, err := h.roleService.UpdateRole(c.Request.Context(), uint(roleID), &roleToUpdate, req.PermissionIDs) // Adjusted
 	if err != nil {
 		h.logger.Error("UpdateRole: Service error", zap.Uint("roleId", uint(roleID)), zap.Error(err))
-		// TODO: Differentiate errors (40402, 40002)
 		if err.Error() == "role not found" { // Placeholder
-			RespondWithError(c, http.StatusNotFound, 40402, "Role not found")
+			RespondWithError(c, http.StatusNotFound, "Role not found")
 		} else if err.Error() == "role name already exists" { // Placeholder
-			RespondWithError(c, http.StatusBadRequest, 40002, "Validation error: Role name already exists")
+			RespondWithError(c, http.StatusBadRequest, "Validation error: Role name already exists")
 		} else {
-			RespondWithError(c, http.StatusInternalServerError, 50000, "Failed to update role")
+			RespondWithError(c, http.StatusInternalServerError, "Failed to update role")
 		}
 		return
 	}
 
-	RespondWithSuccess(c, http.StatusOK, updatedRole)
+	RespondWithSuccess(c, http.StatusOK, "Role updated successfully", updatedRole)
 }
 
 // DeleteRole godoc
@@ -255,26 +229,27 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 	roleID, err := strconv.ParseUint(roleIDStr, 10, 32)
 	if err != nil {
 		h.logger.Error("DeleteRole: Invalid role ID format", zap.String("roleId", roleIDStr), zap.Error(err))
-		RespondWithError(c, http.StatusBadRequest, 40000, "Invalid role ID format")
+		RespondWithError(c, http.StatusBadRequest, "Invalid role ID format")
 		return
 	}
 
 	err = h.roleService.DeleteRole(c.Request.Context(), uint(roleID))
 	if err != nil {
 		h.logger.Error("DeleteRole: Service error", zap.Uint("roleId", uint(roleID)), zap.Error(err))
-		// TODO: Differentiate errors (40402, 40003)
 		if err.Error() == "role not found" { // Placeholder
-			RespondWithError(c, http.StatusNotFound, 40402, "Role not found")
-		} else if err.Error() == "role assigned to users" { // Placeholder
-			RespondWithError(c, http.StatusBadRequest, 40003, "Role is assigned to users and cannot be deleted")
+			RespondWithError(c, http.StatusNotFound, "Role not found")
+		} else if err.Error() == "role is assigned to users" { // Placeholder for actual error check
+			RespondWithError(c, http.StatusBadRequest, "Cannot delete role: it is assigned to one or more users")
 		} else {
-			RespondWithError(c, http.StatusInternalServerError, 50000, "Failed to delete role")
+			RespondWithError(c, http.StatusInternalServerError, "Failed to delete role")
 		}
 		return
 	}
 
-	// Successfully deleted, return 204 No Content
-	c.Status(http.StatusNoContent) // Return 204 No Content
+	// For 204 No Content, the common RespondWithSuccess might add a body, which is fine.
+	// If strictly no body is needed for 204, use c.Status(http.StatusNoContent) directly.
+	// Let's assume for now that our unified response with null data is acceptable.
+	RespondWithSuccess(c, http.StatusNoContent, "Role deleted successfully", nil)
 }
 
 // TODO: Add handlers for role permissions if needed (GET /roles/{roleId}/permissions, etc.)

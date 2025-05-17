@@ -12,7 +12,7 @@ import (
 
 // SetupRouter 配置和返回 Gin 引擎
 // 添加 jwtKey 参数
-func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler, roleHdlr *handler.RoleHandler, jwtKey []byte /*, etc. */) *gin.Engine {
+func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler, roleHdlr *handler.RoleHandler, permissionHdlr *handler.PermissionHandler, jwtKey []byte /*, etc. */) *gin.Engine {
 	r := gin.Default()
 
 	// 禁用自动重定向
@@ -32,9 +32,10 @@ func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler
 	// API v1 路由组
 	v1 := r.Group("/api/v1")
 	{
-		authRoutes(v1, authHandler, jwtKey) // 传递 jwtKey
-		userRoutes(v1, userHdlr, jwtKey)    // userHdlr is now *handler.UserHandler
-		roleRoutes(v1, roleHdlr, jwtKey)    // Add this line for role routes
+		authRoutes(v1, authHandler, jwtKey)              // 传递 jwtKey
+		userRoutes(v1, userHdlr, jwtKey)                 // userHdlr is now *handler.UserHandler
+		roleRoutes(v1, roleHdlr, permissionHdlr, jwtKey) // Add this line for role routes
+		permissionRoutes(v1, permissionHdlr, jwtKey)     // Register permission routes
 		// ... 其他路由组 ...
 	}
 
@@ -71,24 +72,44 @@ func userRoutes(rg *gin.RouterGroup, userHdlr *handler.UserHandler, jwtKey []byt
 	users := rg.Group("/users")
 	users.Use(middleware.JWTAuthMiddleware(jwtKey))
 	{
-		users.GET("", userHdlr.GetUsers)                // GET /api/v1/users
-		users.POST("", userHdlr.CreateUser)             // POST /api/v1/users
-		users.GET(":userId", userHdlr.GetUserByID)      // GET /api/v1/users/{userId}
-		users.PUT(":userId", userHdlr.UpdateUser)       // PUT /api/v1/users/{userId}
-		users.DELETE(":userId", userHdlr.DeleteUser)    // DELETE /api/v1/users/{userId}
+		users.GET("", userHdlr.GetUsers)             // GET /api/v1/users
+		users.POST("", userHdlr.CreateUser)          // POST /api/v1/users
+		users.GET(":userId", userHdlr.GetUserByID)   // GET /api/v1/users/{userId}
+		users.PUT(":userId", userHdlr.UpdateUser)    // PUT /api/v1/users/{userId}
+		users.DELETE(":userId", userHdlr.DeleteUser) // DELETE /api/v1/users/{userId}
 	}
 }
 
 // roleRoutes 注册角色管理相关的路由
-func roleRoutes(rg *gin.RouterGroup, roleHdlr *handler.RoleHandler, jwtKey []byte) {
+func roleRoutes(rg *gin.RouterGroup, roleHdlr *handler.RoleHandler, permissionHdlr *handler.PermissionHandler, jwtKey []byte) {
 	roles := rg.Group("/roles")
 	roles.Use(middleware.JWTAuthMiddleware(jwtKey))
 	{
-		roles.GET("", roleHdlr.GetRoles)                // GET /api/v1/roles
-		roles.POST("", roleHdlr.CreateRole)             // POST /api/v1/roles
-		roles.GET(":roleId", roleHdlr.GetRoleByID)      // GET /api/v1/roles/{roleId}
-		roles.PUT(":roleId", roleHdlr.UpdateRole)       // PUT /api/v1/roles/{roleId}
-		roles.DELETE(":roleId", roleHdlr.DeleteRole)    // DELETE /api/v1/roles/{roleId}
+		roles.GET("", roleHdlr.GetRoles)             // GET /api/v1/roles
+		roles.POST("", roleHdlr.CreateRole)          // POST /api/v1/roles
+		roles.GET(":roleId", roleHdlr.GetRoleByID)   // GET /api/v1/roles/{roleId}
+		roles.PUT(":roleId", roleHdlr.UpdateRole)    // PUT /api/v1/roles/{roleId}
+		roles.DELETE(":roleId", roleHdlr.DeleteRole) // DELETE /api/v1/roles/{roleId}
+
+		// Route to get permissions for a specific role
+		roles.GET(":roleId/permissions", permissionHdlr.GetPermissionsByRoleID)
+	}
+}
+
+// permissionRoutes registers permission management related routes
+func permissionRoutes(rg *gin.RouterGroup, permissionHdlr *handler.PermissionHandler, jwtKey []byte) {
+	permissions := rg.Group("/permissions")
+	permissions.Use(middleware.JWTAuthMiddleware(jwtKey)) // Apply authentication middleware
+	{
+		permissions.GET("", permissionHdlr.GetPermissions)                   // GET /api/v1/permissions
+		permissions.POST("", permissionHdlr.CreatePermission)                // POST /api/v1/permissions
+		permissions.GET(":permissionId", permissionHdlr.GetPermissionByID)   // GET /api/v1/permissions/{permissionId}
+		permissions.PUT(":permissionId", permissionHdlr.UpdatePermission)    // PUT /api/v1/permissions/{permissionId}
+		permissions.DELETE(":permissionId", permissionHdlr.DeletePermission) // DELETE /api/v1/permissions/{permissionId}
+
+		// Add routes for managing role permissions - these handlers are in permissionHdlr
+		permissions.POST("/roles/:roleId", permissionHdlr.AddPermissionsToRole)        // POST /api/v1/permissions/roles/{roleId}
+		permissions.DELETE("/roles/:roleId", permissionHdlr.RemovePermissionsFromRole) // DELETE /api/v1/permissions/roles/{roleId}
 	}
 }
 

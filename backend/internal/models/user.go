@@ -20,12 +20,13 @@ type User struct {
 
 // Role represents a user role
 type Role struct {
-	ID          uint      `json:"id" gorm:"primaryKey"`
-	Name        string    `json:"name" gorm:"size:50;uniqueIndex;not null"`
-	Description string    `json:"description,omitempty" gorm:"size:255"`
-	Users       []User    `json:"-" gorm:"many2many:user_roles;"` // Many-to-many relationship with User
-	CreatedAt   time.Time `json:"createdAt" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time `json:"updatedAt" gorm:"autoUpdateTime"`
+	ID          uint         `json:"id" gorm:"primaryKey"`
+	Name        string       `json:"name" gorm:"size:50;uniqueIndex;not null"`
+	Description string       `json:"description,omitempty" gorm:"size:255"`
+	Users       []User       `json:"-" gorm:"many2many:user_roles;"`                           // Many-to-many relationship with User
+	Permissions []Permission `json:"permissions,omitempty" gorm:"many2many:role_permissions;"` // Many-to-many relationship with Permission
+	CreatedAt   time.Time    `json:"createdAt" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time    `json:"updatedAt" gorm:"autoUpdateTime"`
 }
 
 // TableName specifies the table name for the User model.

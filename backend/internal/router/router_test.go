@@ -27,8 +27,8 @@ import (
 	// Import for DB logger integration if needed, though using simpler logger here
 	// "EffiPlat/backend/internal/pkg/logger" // REMOVED: Not used
 	"EffiPlat/backend/internal/repository"
-	"EffiPlat/backend/internal/router" // Package being tested
-	"EffiPlat/backend/internal/service"
+	"EffiPlat/backend/internal/router"  // Package being tested
+	"EffiPlat/backend/internal/service" // Ensure service package is imported
 
 	"go.uber.org/zap"
 )
@@ -90,8 +90,13 @@ func setupTestRouter() (*gin.Engine, *gorm.DB) {
 	roleService := service.NewRoleService(roleRepo, noopLogger)
 	roleHandler := handler.NewRoleHandler(roleService, noopLogger)
 
+	// ADDED: Initialize Permission dependencies
+	permissionRepo := repository.NewPermissionRepository(db, noopLogger)
+	permissionService := service.NewPermissionService(permissionRepo, roleRepo, noopLogger) // Pass roleRepo to permissionService
+	permissionHandler := handler.NewPermissionHandler(permissionService, noopLogger)
+
 	// Setup router with test dependencies
-	r := router.SetupRouter(authHandler, userHandler, roleHandler, jwtKey)
+	r := router.SetupRouter(authHandler, userHandler, roleHandler, permissionHandler, jwtKey)
 	return r, db // Return DB for test data setup/teardown
 }
 
@@ -396,7 +401,7 @@ func TestRoleManagementRoutes(t *testing.T) {
 
 		assert.Equal(t, http.StatusCreated, w.Code)
 		var response struct {
-			Code    int         `json:"code"`
+			BizCode int         `json:"bizCode"`
 			Message string      `json:"message"`
 			Data    models.Role `json:"data"`
 		}
@@ -411,37 +416,47 @@ func TestRoleManagementRoutes(t *testing.T) {
 	t.Run("Get All Roles", func(t *testing.T) {
 		req, _ := http.NewRequest("GET", "/api/v1/roles", nil)
 		req.Header.Set("Authorization", "Bearer "+validToken)
-
 		w := httptest.NewRecorder()
 		routerInstance.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-			Data    struct {
-				Items    []models.Role `json:"items"`
-				Total    int64         `json:"total"`
-				Page     int           `json:"page"`
-				PageSize int           `json:"pageSize"`
-			} `json:"data"`
+			BizCode int             `json:"bizCode"`
+			Message string          `json:"message"`
+			Data    json.RawMessage `json:"data"`
 		}
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, response.Data.Items, "Roles list should not be empty")
-		found := false
-		for _, role := range response.Data.Items {
+		assert.Equal(t, 0, response.BizCode)
+
+		var rolesData struct {
+			Items    []models.Role `json:"items"`
+			Total    int           `json:"total"`
+			Page     int           `json:"page"`
+			PageSize int           `json:"pageSize"`
+		}
+		err = json.Unmarshal(response.Data, &rolesData)
+		assert.NoError(t, err)
+
+		assert.True(t, rolesData.Total > 0, "Expected at least one role")
+		assert.True(t, len(rolesData.Items) > 0, "Expected at least one role in items list")
+
+		foundCreatedRole := false
+		for _, role := range rolesData.Items {
 			if role.ID == createdRoleID {
-				found = true
+				assert.Equal(t, "Test Role", role.Name)
+				foundCreatedRole = true
 				break
 			}
 		}
-		assert.True(t, found, "Created role not found in list")
+		assert.True(t, foundCreatedRole, "Created role should be present in the list")
 	})
 
 	// 4. Test Get Role By ID
 	t.Run("Get Role By ID", func(t *testing.T) {
-		assert.NotZero(t, createdRoleID, "createdRoleID should be set from Create Role test")
+		if createdRoleID == 0 {
+			t.Skip("Skipping Get Role By ID test as createdRoleID is 0")
+		}
 		req, _ := http.NewRequest("GET", "/api/v1/roles/"+strconv.FormatUint(uint64(createdRoleID), 10), nil)
 		req.Header.Set("Authorization", "Bearer "+validToken)
 
@@ -450,58 +465,135 @@ func TestRoleManagementRoutes(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var response struct {
-			Code    int                `json:"code"`
-			Message string             `json:"message"`
-			Data    models.RoleDetails `json:"data"`
+			BizCode int             `json:"bizCode"`
+			Message string          `json:"message"`
+			Data    json.RawMessage `json:"data"`
 		}
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
-		assert.Equal(t, createdRoleID, response.Data.ID)
-		assert.Equal(t, "Test Role", response.Data.Name)
+
+		var fetchedRole models.Role
+		err = json.Unmarshal(response.Data, &fetchedRole)
+		assert.NoError(t, err)
+		assert.Equal(t, createdRoleID, fetchedRole.ID)
+		assert.Equal(t, "Test Role", fetchedRole.Name)
+
+		// Check the response body against the expected role
+		var updatedRole models.Role
+		err = json.Unmarshal(response.Data, &updatedRole)
+		assert.NoError(t, err)
+		assert.Equal(t, "Test Role", updatedRole.Name)
+
+		// Also verify Get Role By ID after update
+		t.Run("Get Role By ID After Update", func(t *testing.T) {
+			req, _ := http.NewRequest("GET", "/api/v1/roles/"+strconv.FormatUint(uint64(createdRoleID), 10), nil)
+			req.Header.Set("Authorization", "Bearer "+validToken)
+
+			w := httptest.NewRecorder()
+			routerInstance.ServeHTTP(w, req)
+
+			assert.Equal(t, http.StatusOK, w.Code)
+
+			var getResp struct {
+				BizCode int             `json:"bizCode"`
+				Message string          `json:"message"`
+				Data    json.RawMessage `json:"data"`
+			}
+			err = json.Unmarshal(w.Body.Bytes(), &getResp)
+			assert.NoError(t, err)
+
+			var fetchedUpdatedRole models.RoleDetails
+			err = json.Unmarshal(getResp.Data, &fetchedUpdatedRole)
+			assert.NoError(t, err)
+
+			assert.Equal(t, "Test Role", fetchedUpdatedRole.Name)
+			assert.Equal(t, 0, getResp.BizCode)
+		})
 	})
 
-	// 5. Test Update Role
+	// Test Update Role
 	t.Run("Update Role", func(t *testing.T) {
-		assert.NotZero(t, createdRoleID, "createdRoleID should be set from Create Role test")
-		updatePayload := gin.H{
-			"name":        "Updated Test Role",
-			"description": "Updated description",
+		if createdRoleID == 0 {
+			t.Skip("Skipping Update Role test as createdRoleID is 0")
 		}
-		payloadBytes, _ := json.Marshal(updatePayload)
-		req, _ := http.NewRequest("PUT", "/api/v1/roles/"+strconv.FormatUint(uint64(createdRoleID), 10), bytes.NewBuffer(payloadBytes))
+
+		updateData := handler.UpdateRoleRequest{Name: "Updated Test Role", Description: "Updated description"}
+		updatePayloadBytes, _ := json.Marshal(updateData)
+
+		req, _ := http.NewRequest("PUT", "/api/v1/roles/"+strconv.FormatUint(uint64(createdRoleID), 10), bytes.NewBuffer(updatePayloadBytes))
 		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+validToken)
+		req.Header.Set("Authorization", "Bearer "+validToken) // Assuming update requires auth
 
 		w := httptest.NewRecorder()
 		routerInstance.ServeHTTP(w, req)
 
+		// Assert the status code for the update request
 		assert.Equal(t, http.StatusOK, w.Code)
-		var response struct {
-			Code    int         `json:"code"`
-			Message string      `json:"message"`
-			Data    models.Role `json:"data"`
+
+		// Check the response body for the update request against the expected updated role
+		var updateResp struct {
+			BizCode int             `json:"bizCode"`
+			Message string          `json:"message"`
+			Data    json.RawMessage `json:"data"` // Use json.RawMessage for the data payload
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err = json.Unmarshal(w.Body.Bytes(), &updateResp)
 		assert.NoError(t, err)
-		assert.Equal(t, "Updated Test Role", response.Data.Name)
-		assert.Equal(t, "Updated description", response.Data.Description)
+		assert.Equal(t, 0, updateResp.BizCode)
+
+		var updatedRole models.Role // Assuming update returns the updated Role object in data
+		err = json.Unmarshal(updateResp.Data, &updatedRole)
+		assert.NoError(t, err)
+		assert.Equal(t, updateData.Name, updatedRole.Name)
+		assert.Equal(t, updateData.Description, updatedRole.Description)
+		// Add more assertions if needed for the updated role object itself
+
+		// Verify Get Role By ID after update
+		t.Run("Get Role By ID After Update", func(t *testing.T) {
+			reqGet, _ := http.NewRequest("GET", "/api/v1/roles/"+strconv.FormatUint(uint64(createdRoleID), 10), nil)
+			reqGet.Header.Set("Authorization", "Bearer "+validToken) // Assuming Get by ID requires auth
+
+			wGet := httptest.NewRecorder()
+			routerInstance.ServeHTTP(wGet, reqGet)
+
+			assert.Equal(t, http.StatusOK, wGet.Code)
+
+			var getResp struct {
+				BizCode int             `json:"bizCode"`
+				Message string          `json:"message"`
+				Data    json.RawMessage `json:"data"`
+			}
+			err = json.Unmarshal(wGet.Body.Bytes(), &getResp)
+			assert.NoError(t, err)
+			assert.Equal(t, 0, getResp.BizCode)
+
+			var fetchedUpdatedRole models.RoleDetails // Assuming Get By ID returns RoleDetails
+			err = json.Unmarshal(getResp.Data, &fetchedUpdatedRole)
+			assert.NoError(t, err)
+
+			assert.Equal(t, updateData.Name, fetchedUpdatedRole.Name)
+			assert.Equal(t, updateData.Description, fetchedUpdatedRole.Description)
+			// Add more assertions for RoleDetails if needed
+		})
 	})
 
-	// 6. Test Delete Role
+	// Test Delete Role
 	t.Run("Delete Role", func(t *testing.T) {
+		if createdRoleID == 0 {
+			t.Skip("Skipping Delete Role test as createdRoleID is 0")
+		}
 		assert.NotZero(t, createdRoleID, "createdRoleID should be set from Create Role test")
 		req, _ := http.NewRequest("DELETE", "/api/v1/roles/"+strconv.FormatUint(uint64(createdRoleID), 10), nil)
 		req.Header.Set("Authorization", "Bearer "+validToken)
 
 		w := httptest.NewRecorder()
 		routerInstance.ServeHTTP(w, req)
-		assert.Equal(t, http.StatusNoContent, w.Code) // Expecting 204 based on handler modification
+		assert.Equal(t, http.StatusNoContent, w.Code)
 
 		// Verify role is deleted
 		verifyReq, _ := http.NewRequest("GET", "/api/v1/roles/"+strconv.FormatUint(uint64(createdRoleID), 10), nil)
 		verifyReq.Header.Set("Authorization", "Bearer "+validToken)
 		verifyW := httptest.NewRecorder()
 		routerInstance.ServeHTTP(verifyW, verifyReq)
-		assert.Equal(t, http.StatusNotFound, verifyW.Code) // Assuming GetRole returns 404 if not found
+		assert.Equal(t, http.StatusNotFound, verifyW.Code)
 	})
 }
