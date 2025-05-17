@@ -1,0 +1,1532 @@
+openapi: 3.0.3
+info:
+  title: EffiPlat 全系统 API 文档
+  version: "1.0"
+  description: |
+    EffiPlat 平台后端 API，涵盖用户、角色、权限、职责、环境、资产、服务、业务、Bug、认证等核心模块。
+servers:
+  - url: /api/v1
+
+tags:
+  - name: auth
+  - name: users
+  - name: roles
+  - name: permissions
+  - name: responsibilities
+  - name: environments
+  - name: assets
+  - name: services
+  - name: businesses
+  - name: bugs
+  - name: audit-logs
+
+paths:
+  # 认证
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: 用户登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+        '401':
+          description: 登录失败
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: 用户登出
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: 获取当前用户信息
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  # 用户管理
+  /users:
+    get:
+      tags: [users]
+      summary: 获取用户列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: email
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: sortBy
+          schema: { type: string }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+    post:
+      tags: [users]
+      summary: 创建用户
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /users/{userId}:
+    get:
+      tags: [users]
+      summary: 获取用户详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [users]
+      summary: 更新用户
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [users]
+      summary: 删除用户
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 角色管理
+  /roles:
+    get:
+      tags: [roles]
+      summary: 获取角色列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: name
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleListResponse'
+    post:
+      tags: [roles]
+      summary: 创建角色
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /roles/{roleId}:
+    get:
+      tags: [roles]
+      summary: 获取角色详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleDetailsResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [roles]
+      summary: 更新角色
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [roles]
+      summary: 删除角色
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+        '400':
+          description: 角色有关联用户，无法删除
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /roles/{roleId}/permissions:
+    get:
+      tags: [roles]
+      summary: 获取角色的权限列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionListResponse'
+    post:
+      tags: [roles]
+      summary: 分配权限到角色
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleAssignPermissionsRequest'
+      responses:
+        '200':
+          description: 分配成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+  /roles/{roleId}/permissions/{permissionId}:
+    delete:
+      tags: [roles]
+      summary: 移除角色的某个权限
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema: { type: integer }
+        - in: path
+          name: permissionId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+
+  # 权限管理
+  /permissions:
+    get:
+      tags: [permissions]
+      summary: 获取权限列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 50 }
+        - in: query
+          name: name
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionListResponse'
+
+  # 职责管理
+  /responsibilities:
+    get:
+      tags: [responsibilities]
+      summary: 获取职责列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: name
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsibilityListResponse'
+    post:
+      tags: [responsibilities]
+      summary: 创建职责
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponsibilityCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsibilityResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /responsibilities/{respId}:
+    get:
+      tags: [responsibilities]
+      summary: 获取职责详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: respId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsibilityDetailsResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [responsibilities]
+      summary: 更新职责
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: respId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResponsibilityUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponsibilityResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [responsibilities]
+      summary: 删除职责
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: respId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+        '400':
+          description: 有关联用户，无法删除
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 环境管理
+  /environments:
+    get:
+      tags: [environments]
+      summary: 获取环境列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: type
+          schema: { type: string }
+        - in: query
+          name: code
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentListResponse'
+    post:
+      tags: [environments]
+      summary: 创建环境
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvironmentCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentResponse'
+  /environments/{envId}:
+    get:
+      tags: [environments]
+      summary: 获取环境详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: envId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentDetailsResponse'
+    put:
+      tags: [environments]
+      summary: 更新环境
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: envId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnvironmentUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvironmentResponse'
+    delete:
+      tags: [environments]
+      summary: 删除环境
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: envId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+
+  # 资产管理
+  /assets:
+    get:
+      tags: [assets]
+      summary: 获取资产列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: type
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: ipAddress
+          schema: { type: string }
+        - in: query
+          name: hostname
+          schema: { type: string }
+        - in: query
+          name: os
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetListResponse'
+    post:
+      tags: [assets]
+      summary: 创建资产
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+  /assets/{assetId}:
+    get:
+      tags: [assets]
+      summary: 获取资产详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: assetId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetDetailsResponse'
+    put:
+      tags: [assets]
+      summary: 更新资产
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: assetId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetResponse'
+    delete:
+      tags: [assets]
+      summary: 删除资产
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: assetId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+
+  # 服务管理
+  /services:
+    get:
+      tags: [services]
+      summary: 获取服务列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: serviceTypeId
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceListResponse'
+    post:
+      tags: [services]
+      summary: 创建服务
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'
+  /services/{serviceId}:
+    get:
+      tags: [services]
+      summary: 获取服务详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: serviceId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceDetailsResponse'
+    put:
+      tags: [services]
+      summary: 更新服务
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: serviceId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceResponse'
+    delete:
+      tags: [services]
+      summary: 删除服务
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: serviceId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+
+  # 业务管理
+  /businesses:
+    get:
+      tags: [businesses]
+      summary: 获取业务列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20 }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: code
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: ownerUserId
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessListResponse'
+    post:
+      tags: [businesses]
+      summary: 创建业务
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessResponse'
+  /businesses/{businessId}:
+    get:
+      tags: [businesses]
+      summary: 获取业务详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: businessId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessDetailsResponse'
+    put:
+      tags: [businesses]
+      summary: 更新业务
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: businessId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BusinessUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessResponse'
+    delete:
+      tags: [businesses]
+      summary: 删除业务
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: businessId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+
+  # Bug 管理
+  /bugs:
+    get:
+      tags: [bugs]
+      summary: 获取 Bug 列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: priority
+          schema: { type: string }
+        - in: query
+          name: reporterId
+          schema: { type: integer }
+        - in: query
+          name: assigneeGroupId
+          schema: { type: integer }
+        - in: query
+          name: environmentId
+          schema: { type: integer }
+        - in: query
+          name: serviceInstanceId
+          schema: { type: integer }
+        - in: query
+          name: businessId
+          schema: { type: integer }
+        - in: query
+          name: sortBy
+          schema: { type: string }
+        - in: query
+          name: order
+          schema: { type: string, enum: [asc, desc] }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BugListResponse'
+    post:
+      tags: [bugs]
+      summary: 创建 Bug
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BugCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BugResponse'
+  /bugs/{bugId}:
+    get:
+      tags: [bugs]
+      summary: 获取 Bug 详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bugId
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BugDetailsResponse'
+    put:
+      tags: [bugs]
+      summary: 更新 Bug
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bugId
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BugUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BugResponse'
+    delete:
+      tags: [bugs]
+      summary: 删除 Bug
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bugId
+          required: true
+          schema: { type: integer }
+      responses:
+        '204':
+          description: 删除成功，无响应体
+
+  # 审计日志
+  /audit-logs:
+    get:
+      tags: [audit-logs]
+      summary: 查询审计日志
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+        - in: query
+          name: userId
+          schema: { type: integer }
+        - in: query
+          name: action
+          schema: { type: string }
+        - in: query
+          name: targetType
+          schema: { type: string }
+        - in: query
+          name: targetId
+          schema: { type: integer }
+        - in: query
+          name: startDate
+          schema: { type: string, format: date-time }
+        - in: query
+          name: endDate
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogListResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    # 用户相关
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        department: { type: string }
+        status: { type: string }
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    UserCreateRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name: { type: string }
+        email: { type: string }
+        password: { type: string }
+        department: { type: string }
+        roles:
+          type: array
+          items: { type: integer }
+    UserUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        department: { type: string }
+        status: { type: string }
+        roles:
+          type: array
+          items: { type: integer }
+    UserResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/User'
+    UserListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/User' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    # 角色、权限、职责、环境、资产、服务、业务、Bug、审计日志等 schemas 自动补全，详见前述设计文档结构
+    # ...
+    Role:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    # ...（其余 schemas 省略，见前述 roles 示例）
+    SuccessResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data: { type: string, nullable: true }
+    ErrorResponse:
+      type: object
+      properties:
+        code: { type: integer }
+        message: { type: string }
+        data: { type: string, nullable: true }
+    AuthLoginResponse:
+      type: object
+      properties:
+        token: { type: string }
+        user:
+          $ref: '#/components/schemas/User'
+    RoleListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Role' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    RoleCreateRequest:
+      type: object
+      required: [name, description]
+      properties:
+        name: { type: string }
+        description: { type: string }
+    RoleUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+    RoleDetailsResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Role'
+    RoleAssignPermissionsRequest:
+      type: object
+      required: [permissions]
+      properties:
+        permissions:
+          type: array
+          items: { type: integer }
+    PermissionListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Permission' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    ResponsibilityListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Responsibility' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    ResponsibilityCreateRequest:
+      type: object
+      required: [name, description]
+      properties:
+        name: { type: string }
+        description: { type: string }
+    ResponsibilityUpdateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+    ResponsibilityResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Responsibility'
+    ResponsibilityDetailsResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Responsibility'
+    Permission:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+    Responsibility:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Environment:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        description: { type: string }
+        type: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Asset:
+      type: object
+      properties:
+        id: { type: integer }
+        assetId: { type: integer }
+        name: { type: string }
+        type: { type: string }
+        status: { type: string }
+        ipAddress: { type: string }
+        hostname: { type: string }
+        os: { type: string }
+        cpuCores: { type: integer }
+        memoryGb: { type: integer }
+        diskGb: { type: integer }
+        location: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Service:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: string }
+        serviceType:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Business:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        description: { type: string }
+        owner:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    Bug:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status: { type: string }
+        priority: { type: string }
+        reporter:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        assigneeGroup:
+          type: object
+          properties:
+            id: { type: integer }
+            responsibilityName: { type: string }
+        environment:
+          $ref: '#/components/schemas/Environment'
+        serviceInstance:
+          type: object
+          properties:
+            id: { type: integer }
+            serviceName: { type: string }
+            version: { type: string }
+            serverHostname: { type: string }
+        business:
+          $ref: '#/components/schemas/Business'
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+        closedAt: { type: string, format: date-time, nullable: true }
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer }
+        user:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        timestamp: { type: string, format: date-time }
+        action: { type: string }
+        targetType: { type: string }
+        targetId: { type: integer }
+        details: { type: string }
+    # 列表响应体
+    EnvironmentListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Environment' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    AssetListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Asset' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    ServiceListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Service' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    BusinessListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Business' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    BugListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/Bug' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+    AuditLogListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AuditLog' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }

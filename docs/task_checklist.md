@@ -27,7 +27,7 @@
 - [ ] 设置日志实例的依赖注入机制
 - [x] 实现用户认证 API (`/auth`) - 登录、获取用户、登出 完成
 - [x] 实现用户管理 API (`/users`) - 后端已完成
-- [ ] 实现角色与权限管理基础 API (`/roles`)
+- [x] 实现角色与权限管理基础 API (`/roles`)
 - [ ] 实现职责与职责组管理 API (`/responsibilities`, `/responsibility-groups`)
 - [ ] 实现环境管理 API (`/environments`)
 - [ ] 实现资产管理 API (服务器) (`/assets`)
