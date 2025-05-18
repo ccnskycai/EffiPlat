@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/pkg/config" // Use correct module path
 
 	"go.uber.org/zap"
@@ -74,6 +75,29 @@ func NewConnection(cfg config.DBConfig, appLogger *zap.Logger) (*gorm.DB, error)
 	// appLogger.Info("Database schema auto-migration completed (if enabled)")
 
 	return db, nil
+}
+
+// AutoMigrate runs GORM auto-migration for all necessary models.
+func AutoMigrate(db *gorm.DB, logger *zap.Logger) error {
+	logger.Info("Starting database auto-migration...")
+
+	// List all models that need to be migrated
+	err := db.AutoMigrate(
+		&models.User{},           // From models/user.go
+		&models.Role{},           // From models/user.go
+		&models.UserRole{},       // From models/user.go
+		&models.Permission{},     // From models/permission_models.go
+		&models.RolePermission{}, // From models/permission_models.go
+		// Add other models here if any
+	)
+
+	if err != nil {
+		logger.Error("Database auto-migration failed", zap.Error(err))
+		return fmt.Errorf("database auto-migration failed: %w", err)
+	}
+
+	logger.Info("Database auto-migration completed successfully.")
+	return nil
 }
 
 // ---- GORM Logger Integration with Zap ----

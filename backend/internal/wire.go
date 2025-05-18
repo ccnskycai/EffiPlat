@@ -26,7 +26,7 @@ var UserSet = wire.NewSet(
 // InitializeUserHandler is the injector for UserHandler and its dependencies.
 // It takes the database connection as input.
 // This function will be callable from other packages (like main) because it's exported.
-func InitializeUserHandler(db *gorm.DB) (*handler.UserHandler, error) {
+func InitializeUserHandler(db *gorm.DB, logger *zap.Logger) (*handler.UserHandler, error) {
 	wire.Build(
 		UserSet,
 	)
@@ -54,7 +54,7 @@ func InitializeRoleHandler(db *gorm.DB, logger *zap.Logger) (*handler.RoleHandle
 
 // ProviderSet for auth components
 var AuthSet = wire.NewSet(
-	repository.NewUserRepository, // Shared, or could be in a common set
+	repository.NewUserRepository, // This now returns the interface type
 	service.NewAuthService,
 	handler.NewAuthHandler,
 	// Potentially add wire.Bind here if NewAuthService returns concrete but needs interface, etc.

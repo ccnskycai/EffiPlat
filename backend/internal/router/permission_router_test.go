@@ -21,8 +21,8 @@ import (
 // TestPermissionManagementRoutes tests the permission management API endpoints.
 func TestPermissionManagementRoutes(t *testing.T) {
 	// Setup the test router with necessary dependencies.
-	// Assuming setupTestRouter is in router_test.go and returns router and db
-	routerInstance, db := setupTestRouter()
+	// Using the more complete setup function from user_roles_router_test.go
+	routerInstance, db, _, _, _, _, _ := setupAppTestRouter(t) // Using the new setup function
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 

@@ -20,8 +20,8 @@ import (
 // InitializeUserHandler is the injector for UserHandler and its dependencies.
 // It takes the database connection as input.
 // This function will be callable from other packages (like main) because it's exported.
-func InitializeUserHandler(db *gorm.DB) (*handler.UserHandler, error) {
-	userRepository := repository.NewUserRepository(db)
+func InitializeUserHandler(db *gorm.DB, logger *zap.Logger) (*handler.UserHandler, error) {
+	userRepository := repository.NewUserRepository(db, logger)
 	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
 	return userHandler, nil
@@ -40,7 +40,7 @@ func InitializeRoleHandler(db *gorm.DB, logger *zap.Logger) (*handler.RoleHandle
 // If wire.go is itself a wireinject file (based on build tags at the top),
 // then this function template is fine.
 func InitializeAuthHandler(db *gorm.DB, jwtKey []byte, logger *zap.Logger) (*handler.AuthHandler, error) {
-	userRepository := repository.NewUserRepository(db)
+	userRepository := repository.NewUserRepository(db, logger)
 	authService := service.NewAuthService(userRepository, jwtKey, logger)
 	authHandler := handler.NewAuthHandler(authService)
 	return authHandler, nil

@@ -82,34 +82,53 @@ func (f *UserFactory) Create(db *gorm.DB) (*models.User, error) {
 		Email:    f.Email,
 		Password: string(hashedPassword),
 		Status:   f.Status,
-		// CreatedAt and UpdatedAt are handled by default values or GORM hooks
 	}
-
-	// Handle optional Department
 	if f.Department != nil {
 		user.Department = *f.Department
 	}
 
-	// Create user within a transaction
 	err = db.Transaction(func(tx *gorm.DB) error {
-		// Create the user
 		if err := tx.Create(user).Error; err != nil {
 			return fmt.Errorf("failed to create user: %w", err)
 		}
-
-		// Assign roles if any
 		if len(f.Roles) > 0 {
 			if err := tx.Model(user).Association("Roles").Append(f.Roles); err != nil {
 				return fmt.Errorf("failed to assign roles: %w", err)
 			}
 		}
-
+		// Reload user to get ID and potentially preloaded associations if needed by caller
+		// For now, just returning the user as created.
 		return nil
 	})
 
 	if err != nil {
 		return nil, err
 	}
-
 	return user, nil
+}
+
+// CreateUser is a helper function to quickly create and save a user.
+// It takes a user model (Password field should be plain text, it will be hashed).
+// Roles defined in user.Roles will be associated.
+func CreateUser(db *gorm.DB, userDetails *models.User) (*models.User, error) {
+	factory := NewUserFactory().
+		WithName(userDetails.Name).
+		WithEmail(userDetails.Email).
+		WithStatus(userDetails.Status)
+
+	if userDetails.Password != "" { // Allow creating user without password for factory if needed, though real users need it
+		factory.WithPassword(userDetails.Password)
+	} else {
+		factory.WithPassword("testpassword") // Default if not provided in model
+	}
+
+	if userDetails.Department != "" {
+		factory.WithDepartment(userDetails.Department)
+	}
+
+	if len(userDetails.Roles) > 0 {
+		factory.WithRoles(userDetails.Roles)
+	}
+
+	return factory.Create(db)
 }

@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// Initialize User components using Wire
-	userHandler, err := internal.InitializeUserHandler(dbConn)
+	userHandler, err := internal.InitializeUserHandler(dbConn, appLogger)
 	if err != nil {
 		appLogger.Fatal("Failed to initialize user handler", zap.Error(err))
 	}

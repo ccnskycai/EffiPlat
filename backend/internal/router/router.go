@@ -6,37 +6,81 @@ import (
 
 	// userHandler "EffiPlat/backend/internal/user" // Removed
 	"net/http" // 引入 net/http 包
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 // SetupRouter 配置和返回 Gin 引擎
 // 添加 jwtKey 参数
-func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler, roleHdlr *handler.RoleHandler, permissionHdlr *handler.PermissionHandler, jwtKey []byte /*, etc. */) *gin.Engine {
+func SetupRouter(authHandler *handler.AuthHandler, userHandler *handler.UserHandler, roleHandler *handler.RoleHandler, permissionHandler *handler.PermissionHandler, jwtKey []byte /*, etc. */) *gin.Engine {
 	r := gin.Default()
+
+	// CORS Middleware
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080"}, // Adjust for your frontend
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// Logger middleware (Gin's default logger is quite good)
+	// For custom logging, you can add r.Use(middleware.LoggingMiddleware(logger)) here if you have one
 
 	// 禁用自动重定向
 	r.RedirectTrailingSlash = false
 	r.RedirectFixedPath = false
-
-	// 可以添加全局中间件，例如:
-	// r.Use(gin.Logger())
-	// r.Use(gin.Recovery())
-	// r.Use(middleware.CORSMiddleware()) // 假设有 CORS 中间件
 
 	// 健康检查 (可以放在根路径或 API 组外)
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "UP"})
 	})
 
-	// API v1 路由组
-	v1 := r.Group("/api/v1")
+	// Public routes (e.g., login, register if it were public)
+	apiV1Public := r.Group("/api/v1")
 	{
-		authRoutes(v1, authHandler, jwtKey)              // 传递 jwtKey
-		userRoutes(v1, userHdlr, jwtKey)                 // userHdlr is now *handler.UserHandler
-		roleRoutes(v1, roleHdlr, permissionHdlr, jwtKey) // Add this line for role routes
-		permissionRoutes(v1, permissionHdlr, jwtKey)     // Register permission routes
-		// ... 其他路由组 ...
+		// Only login should be public within auth group
+		publicAuth := apiV1Public.Group("/auth")
+		{
+			publicAuth.POST("/login", authHandler.Login)
+		}
+		// If user registration was public, it would be here
+		// e.g., apiV1Public.POST("/register", userHandler.RegisterUser) // Example, if RegisterUser exists and is public
+	}
+
+	// Authenticated routes
+	apiV1Authenticated := r.Group("/api/v1")
+	apiV1Authenticated.Use(middleware.JWTAuthMiddleware(jwtKey)) // Apply auth middleware to this group
+	{
+		// Authenticated Auth routes (me, logout)
+		authAuth := apiV1Authenticated.Group("/auth")
+		{
+			authAuth.GET("/me", authHandler.GetMe)
+			authAuth.POST("/logout", authHandler.Logout)
+		}
+
+		// User routes (already includes CRUD for users)
+		userRoutes := apiV1Authenticated.Group("/users")
+		{
+			userRoutes.GET("", userHandler.GetUsers)
+			userRoutes.POST("", userHandler.CreateUser) // CreateUser might be admin-only or public depending on policy
+			userRoutes.GET("/:userId", userHandler.GetUserByID)
+			userRoutes.PUT("/:userId", userHandler.UpdateUser)
+			userRoutes.DELETE("/:userId", userHandler.DeleteUser)
+
+			// Routes for assigning/removing roles to/from a user
+			userRoutes.POST("/:userId/roles", userHandler.AssignRolesToUser)
+			userRoutes.DELETE("/:userId/roles", userHandler.RemoveRolesFromUser)
+		}
+
+		// Role routes
+		roleRoutes(apiV1Authenticated.Group("/roles"), roleHandler, permissionHandler) // permissionHandler was added for /roles/{roleId}/permissions
+
+		// Permission routes (already includes CRUD for permissions and associating them with roles)
+		permissionRoutes(apiV1Authenticated.Group("/permissions"), permissionHandler)
 	}
 
 	// 处理404路由
@@ -55,15 +99,15 @@ func SetupRouter(authHandler *handler.AuthHandler, userHdlr *handler.UserHandler
 	return r
 }
 
-// authRoutes 注册认证相关的路由
-// 添加 jwtKey 参数
-func authRoutes(rg *gin.RouterGroup, authHandler *handler.AuthHandler, jwtKey []byte) {
-	auth := rg.Group("/auth")
+// authRoutes 注册认证相关的路由 - NOW ONLY FOR LOGIN
+// Remove jwtKey parameter as it's no longer needed for a public login route
+func authRoutes(rg *gin.RouterGroup, authHandler *handler.AuthHandler) {
+	// This function is now effectively reduced or could be inlined above
+	// For clarity, let's assume it's still called for login only.
+	auth := rg.Group("/auth") // This was previously apiV1Public, so path is /api/v1/auth
 	{
 		auth.POST("/login", authHandler.Login)
-		// 取消注释并添加 Logout 和 GetMe 路由
-		auth.POST("/logout", middleware.JWTAuthMiddleware(jwtKey), authHandler.Logout) // 应用 JWT 中间件
-		auth.GET("/me", middleware.JWTAuthMiddleware(jwtKey), authHandler.GetMe)       // 应用 JWT 中间件
+		// GET /me and POST /logout are now under apiV1Authenticated
 	}
 }
 
@@ -81,35 +125,31 @@ func userRoutes(rg *gin.RouterGroup, userHdlr *handler.UserHandler, jwtKey []byt
 }
 
 // roleRoutes 注册角色管理相关的路由
-func roleRoutes(rg *gin.RouterGroup, roleHdlr *handler.RoleHandler, permissionHdlr *handler.PermissionHandler, jwtKey []byte) {
-	roles := rg.Group("/roles")
-	roles.Use(middleware.JWTAuthMiddleware(jwtKey))
+func roleRoutes(rg *gin.RouterGroup, roleHdlr *handler.RoleHandler, permissionHdlr *handler.PermissionHandler) {
 	{
-		roles.GET("", roleHdlr.GetRoles)             // GET /api/v1/roles
-		roles.POST("", roleHdlr.CreateRole)          // POST /api/v1/roles
-		roles.GET(":roleId", roleHdlr.GetRoleByID)   // GET /api/v1/roles/{roleId}
-		roles.PUT(":roleId", roleHdlr.UpdateRole)    // PUT /api/v1/roles/{roleId}
-		roles.DELETE(":roleId", roleHdlr.DeleteRole) // DELETE /api/v1/roles/{roleId}
+		rg.GET("", roleHdlr.GetRoles)             // GET /api/v1/roles
+		rg.POST("", roleHdlr.CreateRole)          // POST /api/v1/roles
+		rg.GET(":roleId", roleHdlr.GetRoleByID)   // GET /api/v1/roles/{roleId}
+		rg.PUT(":roleId", roleHdlr.UpdateRole)    // PUT /api/v1/roles/{roleId}
+		rg.DELETE(":roleId", roleHdlr.DeleteRole) // DELETE /api/v1/roles/{roleId}
 
 		// Route to get permissions for a specific role
-		roles.GET(":roleId/permissions", permissionHdlr.GetPermissionsByRoleID)
+		rg.GET(":roleId/permissions", permissionHdlr.GetPermissionsByRoleID)
 	}
 }
 
 // permissionRoutes registers permission management related routes
-func permissionRoutes(rg *gin.RouterGroup, permissionHdlr *handler.PermissionHandler, jwtKey []byte) {
-	permissions := rg.Group("/permissions")
-	permissions.Use(middleware.JWTAuthMiddleware(jwtKey)) // Apply authentication middleware
+func permissionRoutes(rg *gin.RouterGroup, permissionHdlr *handler.PermissionHandler) {
 	{
-		permissions.GET("", permissionHdlr.GetPermissions)                   // GET /api/v1/permissions
-		permissions.POST("", permissionHdlr.CreatePermission)                // POST /api/v1/permissions
-		permissions.GET(":permissionId", permissionHdlr.GetPermissionByID)   // GET /api/v1/permissions/{permissionId}
-		permissions.PUT(":permissionId", permissionHdlr.UpdatePermission)    // PUT /api/v1/permissions/{permissionId}
-		permissions.DELETE(":permissionId", permissionHdlr.DeletePermission) // DELETE /api/v1/permissions/{permissionId}
+		rg.GET("", permissionHdlr.GetPermissions)                   // GET /api/v1/permissions
+		rg.POST("", permissionHdlr.CreatePermission)                // POST /api/v1/permissions
+		rg.GET(":permissionId", permissionHdlr.GetPermissionByID)   // GET /api/v1/permissions/{permissionId}
+		rg.PUT(":permissionId", permissionHdlr.UpdatePermission)    // PUT /api/v1/permissions/{permissionId}
+		rg.DELETE(":permissionId", permissionHdlr.DeletePermission) // DELETE /api/v1/permissions/{permissionId}
 
 		// Add routes for managing role permissions - these handlers are in permissionHdlr
-		permissions.POST("/roles/:roleId", permissionHdlr.AddPermissionsToRole)        // POST /api/v1/permissions/roles/{roleId}
-		permissions.DELETE("/roles/:roleId", permissionHdlr.RemovePermissionsFromRole) // DELETE /api/v1/permissions/roles/{roleId}
+		rg.POST("/roles/:roleId", permissionHdlr.AddPermissionsToRole)        // POST /api/v1/permissions/roles/{roleId}
+		rg.DELETE("/roles/:roleId", permissionHdlr.RemovePermissionsFromRole) // DELETE /api/v1/permissions/roles/{roleId}
 	}
 }
 

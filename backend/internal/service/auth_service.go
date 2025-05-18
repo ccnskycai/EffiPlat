@@ -14,12 +14,12 @@ import (
 )
 
 type AuthService struct {
-	userRepo *repository.UserRepository
+	userRepo repository.UserRepository
 	jwtKey   []byte
 	logger   *zap.Logger
 }
 
-func NewAuthService(userRepo *repository.UserRepository, jwtKey []byte, logger *zap.Logger) *AuthService {
+func NewAuthService(userRepo repository.UserRepository, jwtKey []byte, logger *zap.Logger) *AuthService {
 	return &AuthService{userRepo: userRepo, jwtKey: jwtKey, logger: logger}
 }
 

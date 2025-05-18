@@ -4,7 +4,6 @@ import (
 	// Go Standard Library
 	"bytes"
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -16,21 +15,16 @@ import (
 
 	// "go.uber.org/zap" // REMOVED: Not used
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	gormlogger "gorm.io/gorm/logger" // Import gorm logger with alias
 
+	// Import gorm logger with alias
 	// Internal Packages
 	"EffiPlat/backend/internal/handler"
 	"EffiPlat/backend/internal/models" // May need config for defaults if used by handlers/services
-
 	// Import for DB logger integration if needed, though using simpler logger here
 	// "EffiPlat/backend/internal/pkg/logger" // REMOVED: Not used
-	"EffiPlat/backend/internal/repository"
-	"EffiPlat/backend/internal/router"  // Package being tested
-	"EffiPlat/backend/internal/service" // Ensure service package is imported
-
-	"go.uber.org/zap"
+	// Package being tested
+	// Ensure service package is imported
 )
 
 // Constants for testing
@@ -39,66 +33,6 @@ const (
 	testUserPassword = "password"
 	testJWTSecret    = "test_secret_key_for_router_tests" // Use a fixed secret for tests
 )
-
-// Helper to setup router with real dependencies connected to an in-memory DB
-func setupTestRouter() (*gin.Engine, *gorm.DB) {
-	gin.SetMode(gin.TestMode) // Set Gin to test mode
-
-	// Setup in-memory SQLite for testing
-	// Using "file::memory:?cache=shared" allows multiple connections in the same test process if needed,
-	// but requires careful handling or ensuring single connection use per test run.
-	// Simpler "file:test.db?mode=memory&cache=shared" might also work.
-	// Using a unique name per test run avoids conflicts if tests run concurrently (less likely in Go by default).
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
-		// Use a simpler logger for tests to avoid noise, or configure properly
-		Logger: gormlogger.Default.LogMode(gormlogger.Silent), // Use gorm's logger
-	})
-	if err != nil {
-		log.Fatalf("Failed to connect test database: %v", err)
-	}
-
-	// Run Migrations for the test database
-	// This assumes migrate CLI is available or uses GORM's AutoMigrate
-	// Using AutoMigrate for simplicity here. Ensure all required models are included.
-	err = db.AutoMigrate(
-		&models.User{},
-		// Add other models needed by the tested routes if any
-		&models.Role{},
-		// &models.Permission{},
-		// ...
-	)
-	if err != nil {
-		log.Fatalf("Failed to migrate test database: %v", err)
-	}
-
-	// --- Initialize Dependencies ---
-	// Normally use a test logger, using Nop for simplicity now
-	noopLogger := zap.NewNop() // Use a no-op logger for tests
-
-	// JWT Key
-	jwtKey := []byte(testJWTSecret)
-
-	// Create real instances pointing to the test DB
-	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo, jwtKey, noopLogger)
-	authHandler := handler.NewAuthHandler(authService)
-	userService := service.NewUserService(userRepo)
-	userHandler := handler.NewUserHandler(userService)
-
-	// ADDED: Initialize Role dependencies
-	roleRepo := repository.NewRoleRepository(db, noopLogger)
-	roleService := service.NewRoleService(roleRepo, noopLogger)
-	roleHandler := handler.NewRoleHandler(roleService, noopLogger)
-
-	// ADDED: Initialize Permission dependencies
-	permissionRepo := repository.NewPermissionRepository(db, noopLogger)
-	permissionService := service.NewPermissionService(permissionRepo, roleRepo, noopLogger) // Pass roleRepo to permissionService
-	permissionHandler := handler.NewPermissionHandler(permissionService, noopLogger)
-
-	// Setup router with test dependencies
-	r := router.SetupRouter(authHandler, userHandler, roleHandler, permissionHandler, jwtKey)
-	return r, db // Return DB for test data setup/teardown
-}
 
 // Helper to create a test user directly in the DB
 func createTestUser(db *gorm.DB, email, password string) (*models.User, error) {
@@ -119,7 +53,7 @@ func createTestUser(db *gorm.DB, email, password string) (*models.User, error) {
 // --- Test Cases ---
 
 func TestHealthRoute(t *testing.T) {
-	router, db := setupTestRouter()
+	router, db, _, _, _, _, _ := setupAppTestRouter(t)
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close() // Ensure DB connection is closed after test
 
@@ -132,7 +66,7 @@ func TestHealthRoute(t *testing.T) {
 }
 
 func TestLoginRoute(t *testing.T) {
-	router, db := setupTestRouter()
+	router, db, _, _, _, _, _ := setupAppTestRouter(t)
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
@@ -184,7 +118,7 @@ func TestLoginRoute(t *testing.T) {
 }
 
 func TestGetMeRoute(t *testing.T) {
-	router, db := setupTestRouter()
+	router, db, _, _, _, _, _ := setupAppTestRouter(t)
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
@@ -234,11 +168,10 @@ func TestGetMeRoute(t *testing.T) {
 	router.ServeHTTP(wInvalidToken, reqInvalidToken)
 	assert.Equal(t, http.StatusUnauthorized, wInvalidToken.Code)
 	assert.Contains(t, wInvalidToken.Body.String(), "invalid token")
-
 }
 
 func TestLogoutRoute(t *testing.T) {
-	router, db := setupTestRouter()
+	router, db, _, _, _, _, _ := setupAppTestRouter(t)
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
@@ -275,7 +208,7 @@ func TestLogoutRoute(t *testing.T) {
 }
 
 func TestUserManagementRoutes(t *testing.T) {
-	router, db := setupTestRouter()
+	router, db, _, _, _, _, _ := setupAppTestRouter(t)
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
@@ -363,7 +296,7 @@ func stringPtr(s string) *string {
 
 // ADDED: TestRoleManagementRoutes
 func TestRoleManagementRoutes(t *testing.T) {
-	routerInstance, db := setupTestRouter() // Renamed router to routerInstance to avoid conflict with package name
+	routerInstance, db, _, _, _, _, _ := setupAppTestRouter(t) // Renamed router to routerInstance to avoid conflict with package name
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
