@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS service_types;
 DROP TABLE IF EXISTS server_assets;
 DROP TABLE IF EXISTS assets;
 DROP TABLE IF EXISTS environments;
+DROP TABLE IF EXISTS responsibility_group_responsibilities;
 DROP TABLE IF EXISTS responsibility_groups;
 DROP TABLE IF EXISTS responsibilities;
 DROP TABLE IF EXISTS role_permissions;

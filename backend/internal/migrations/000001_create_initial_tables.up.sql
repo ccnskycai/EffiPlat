@@ -18,7 +18,9 @@ CREATE INDEX idx_users_status ON users(status);
 CREATE TABLE roles (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    description TEXT
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_roles_name ON roles(name);
 
@@ -58,22 +60,34 @@ CREATE INDEX idx_role_permissions_permission_id ON role_permissions(permission_i
 CREATE TABLE responsibilities (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    description TEXT
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_responsibilities_name ON responsibilities(name);
 
--- responsibility_groups table
+-- Create new responsibility_groups table
 CREATE TABLE responsibility_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    responsibility_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    is_primary INTEGER DEFAULT 0, -- 0 for false, 1 for true
-    FOREIGN KEY (responsibility_id) REFERENCES responsibilities(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE (responsibility_id, user_id) -- 一个用户在一个职责下只能出现一次
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-CREATE INDEX idx_resp_groups_resp_id ON responsibility_groups(responsibility_id);
-CREATE INDEX idx_resp_groups_user_id ON responsibility_groups(user_id);
+
+CREATE INDEX idx_responsibility_groups_name ON responsibility_groups(name);
+
+-- Create responsibility_group_responsibilities join table
+CREATE TABLE responsibility_group_responsibilities (
+    responsibility_group_id INTEGER NOT NULL,
+    responsibility_id INTEGER NOT NULL,
+    PRIMARY KEY (responsibility_group_id, responsibility_id),
+    FOREIGN KEY (responsibility_group_id) REFERENCES responsibility_groups(id) ON DELETE CASCADE,
+    FOREIGN KEY (responsibility_id) REFERENCES responsibilities(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_resp_group_resp_group_id ON responsibility_group_responsibilities(responsibility_group_id);
+CREATE INDEX idx_resp_group_resp_resp_id ON responsibility_group_responsibilities(responsibility_id);
 
 -- environments table
 CREATE TABLE environments (
