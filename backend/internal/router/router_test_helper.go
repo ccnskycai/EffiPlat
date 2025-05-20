@@ -2,6 +2,7 @@ package router
 
 import (
 	"EffiPlat/backend/internal/handler"
+	envhandlers "EffiPlat/backend/internal/handlers" // Added for EnvironmentHandler
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/pkg/config"
 	pkgdb "EffiPlat/backend/internal/pkg/database"
@@ -40,6 +41,7 @@ type TestAppComponents struct {
 	PermissionHandler          *handler.PermissionHandler
 	ResponsibilityHandler      *handler.ResponsibilityHandler
 	ResponsibilityGroupHandler *handler.ResponsibilityGroupHandler
+	EnvironmentHandler         *envhandlers.EnvironmentHandler // Added
 	JWTKey                     []byte
 }
 
@@ -67,6 +69,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		&models.Permission{},
 		&models.Responsibility{},
 		&models.ResponsibilityGroup{},
+		&models.Environment{}, // Added
 		// Add any other models that are usually migrated by pkgdb.AutoMigrate
 	)
 	assert.NoError(t, err, "AutoMigrate should not fail")
@@ -77,6 +80,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	permRepo := repository.NewPermissionRepository(db, appLogger)
 	responsibilityRepo := repository.NewGormResponsibilityRepository(db, appLogger)
 	responsibilityGroupRepo := repository.NewGormResponsibilityGroupRepository(db, appLogger)
+	environmentRepo := repository.NewGormEnvironmentRepository(db, appLogger) // Added
 
 	// Initialize services
 	jwtKey := []byte(os.Getenv("JWT_SECRET_TEST"))
@@ -89,6 +93,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	permissionService := service.NewPermissionService(permRepo, roleRepo, appLogger)
 	responsibilityService := service.NewResponsibilityService(responsibilityRepo, appLogger)
 	responsibilityGroupService := service.NewResponsibilityGroupService(responsibilityGroupRepo, responsibilityRepo, appLogger)
+	environmentService := service.NewEnvironmentService(environmentRepo, appLogger) // Added
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -97,6 +102,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	permissionHandler := handler.NewPermissionHandler(permissionService, appLogger)
 	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, appLogger)
 	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, appLogger)
+	environmentHandler := envhandlers.NewEnvironmentHandler(environmentService, appLogger) // Added
 
 	routerInstance := SetupRouter(
 		authHandler,
@@ -105,6 +111,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		permissionHandler,
 		responsibilityHandler,
 		responsibilityGroupHandler,
+		environmentHandler, // Added
 		jwtKey,
 	)
 
@@ -118,6 +125,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		PermissionHandler:          permissionHandler,
 		ResponsibilityHandler:      responsibilityHandler,
 		ResponsibilityGroupHandler: responsibilityGroupHandler,
+		EnvironmentHandler:         environmentHandler, // Added
 		JWTKey:                     jwtKey,
 	}
 }

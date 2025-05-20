@@ -1,16 +1,27 @@
 package router
 
 import (
-	"EffiPlat/backend/internal/handler"    // Corrected import path
+	"EffiPlat/backend/internal/handler"    // Corrected import path for existing handlers
+	envhandlers "EffiPlat/backend/internal/handlers" // Import for EnvironmentHandler
 	"EffiPlat/backend/internal/middleware" // Corrected import path
 
 	// userHandler "EffiPlat/backend/internal/user" // Removed
 	"net/http" // 引入 net/http 包
+	"regexp"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 )
+
+var alphanumDashRegex = regexp.MustCompile("^[a-zA-Z0-9-]+$")
+
+// validateAlphanumDash implements validator.Func for 'alphanumdash' tag
+func validateAlphanumDash(fl validator.FieldLevel) bool {
+	return alphanumDashRegex.MatchString(fl.Field().String())
+}
 
 // SetupRouter 配置和返回 Gin 引擎
 // 添加 jwtKey 参数
@@ -21,9 +32,17 @@ func SetupRouter(
 	permissionHandler *handler.PermissionHandler,
 	responsibilityHandler *handler.ResponsibilityHandler, // Added
 	responsibilityGroupHandler *handler.ResponsibilityGroupHandler, // Added
+	environmentHandler *envhandlers.EnvironmentHandler, // Changed to envhandlers
 	jwtKey []byte, /*, etc. */
 ) *gin.Engine {
 	r := gin.Default()
+
+	// Register custom validators
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		// It's good practice to log this or handle the error appropriately
+		// For now, we'll ignore the error for brevity, but in production, it should be handled.
+		_ = v.RegisterValidation("alphanumdash", validateAlphanumDash)
+	}
 
 	// CORS Middleware
 	r.Use(cors.New(cors.Config{
@@ -95,6 +114,9 @@ func SetupRouter(
 
 		// Responsibility Group routes
 		responsibilityGroupRoutes(apiV1Authenticated.Group("/responsibility-groups"), responsibilityGroupHandler)
+
+		// Environment routes
+		environmentRoutes(apiV1Authenticated.Group("/environments"), environmentHandler)
 	}
 
 	// 处理404路由
@@ -190,6 +212,18 @@ func responsibilityGroupRoutes(rg *gin.RouterGroup, hdlr *handler.Responsibility
 		// Routes for managing responsibilities within a group
 		rg.POST("/:groupId/responsibilities/:responsibilityId", hdlr.AddResponsibilityToGroup)        // POST /api/v1/responsibility-groups/{groupId}/responsibilities/{responsibilityId}
 		rg.DELETE("/:groupId/responsibilities/:responsibilityId", hdlr.RemoveResponsibilityFromGroup) // DELETE /api/v1/responsibility-groups/{groupId}/responsibilities/{responsibilityId}
+	}
+}
+
+// environmentRoutes 注册环境管理相关的路由
+func environmentRoutes(rg *gin.RouterGroup, hdlr *envhandlers.EnvironmentHandler) { // Changed to envhandlers
+	{
+		rg.POST("", hdlr.CreateEnvironment)                     // POST /api/v1/environments
+		rg.GET("", hdlr.GetEnvironments)                       // GET /api/v1/environments
+		rg.GET("/:id", hdlr.GetEnvironmentByID)             // GET /api/v1/environments/{id}
+		rg.GET("/slug/:slug", hdlr.GetEnvironmentBySlug)       // GET /api/v1/environments/slug/{slug}
+		rg.PUT("/:id", hdlr.UpdateEnvironment)             // PUT /api/v1/environments/{id}
+		rg.DELETE("/:id", hdlr.DeleteEnvironment)          // DELETE /api/v1/environments/{id}
 	}
 }
 

@@ -1,11 +1,14 @@
 package main
 
 import (
-	"EffiPlat/backend/internal" // Added for NewUserHandler and AuthHandler type
+	"EffiPlat/backend/internal"                // Added for NewUserHandler and AuthHandler type
+	hdlrs "EffiPlat/backend/internal/handlers" // Use alias hdlrs
 	"EffiPlat/backend/internal/pkg/config"
 	pkgdb "EffiPlat/backend/internal/pkg/database"
 	"EffiPlat/backend/internal/pkg/logger"
+	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/router"
+	"EffiPlat/backend/internal/service"
 
 	// Added for NewUserService
 	// user "EffiPlat/backend/internal/user" // Removed, types now in handler & service
@@ -83,6 +86,12 @@ func main() {
 		appLogger.Fatal("Failed to initialize responsibility group handler", zap.Error(err))
 	}
 
+	// Initialize Environment components
+	environmentRepository := repository.NewGormEnvironmentRepository(dbConn, appLogger)
+	environmentService := service.NewEnvironmentService(environmentRepository, appLogger)
+	environmentHandler := hdlrs.NewEnvironmentHandler(environmentService, appLogger) // Use alias
+	// TODO: Consider adding InitializeEnvironmentHandler to wire.go for consistency if this becomes permanent
+
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
 	r := router.SetupRouter(
@@ -92,6 +101,7 @@ func main() {
 		permissionHandler,
 		responsibilityHandler,
 		responsibilityGroupHandler,
+		environmentHandler, // Added
 		jwtKey,
 	)
 
