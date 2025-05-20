@@ -27,8 +27,8 @@
 - [x] 设置日志实例的依赖注入机制
 - [x] 实现用户认证 API (`/auth`) - 登录、获取用户、登出 完成
 - [x] 实现用户管理 API (`/users`) - 后端已完成
-- [x] 实现角色与权限管理基础 API (`/roles`)
-- [ ] 实现职责与职责组管理 API (`/responsibilities`, `/responsibility-groups`)
+- [x] 实现角色与权限管理基础 API (`/roles`, `/permissions`, 角色权限关联) - 后端已完成 (基本路由测试已覆盖)
+- [x] 实现职责与职责组管理 API (`/responsibilities`, `/responsibility-groups`) - 后端已完成 (基本路由测试已覆盖)
 - [ ] 实现环境管理 API (`/environments`)
 - [ ] 实现资产管理 API (服务器) (`/assets`)
 - [ ] 实现服务管理 API (`/services`)
@@ -69,7 +69,17 @@
 
 ## 阶段三：测试与部署
 
-- [ ] 编写后端单元测试
+- [ ] 编写后端单元测试 (路由层测试部分完成)
+  - [x] 路由层测试: 用户认证 (auth)
+  - [x] 路由层测试: 用户管理 (users CRUD)
+  - [x] 路由层测试: 角色管理 (roles CRUD)
+  - [x] 路由层测试: 权限管理 (permissions CRUD)
+  - [x] 路由层测试: 角色权限分配 (permissions/roles/:id, roles/:id/permissions)
+  - [x] 路由层测试: 用户角色分配 (users/:id/roles)
+  - [x] 路由层测试: 职责管理 (responsibilities CRUD)
+  - [x] 路由层测试: 职责组管理 (responsibility-groups CRUD, 职责组与职责关联)
+  - [ ] 服务层单元测试 (待进行)
+  - [ ] 仓库层单元测试 (待进行)
 - [ ] 编写前端单元/集成测试
 - [ ] 完成 V1.0 功能测试
 - [ ] 准备 V1.0 部署文档 (`docs/design/deployment_strategy.md`)

@@ -379,4 +379,61 @@ func TestUserManagementRoutes(t *testing.T) {
 		// json.Unmarshal(w.Body.Bytes(), &errResp)
 		// assert.Contains(t, errResp.Message, "not found") // or a specific error code
 	})
+
+	// Test PUT /users/:id - Update User
+	t.Run("UpdateUser", func(t *testing.T) {
+		assert.NotZero(t, createdUserID, "createdUserID should be set from CreateUser test")
+		updateURL := fmt.Sprintf("/api/v1/users/%d", createdUserID)
+
+		updatedName := "Updated User Name"
+		// Assuming handler.UpdateUserRequest exists and takes pointers for optional fields
+		// If not, this might be a map[string]interface{} or a specific local struct.
+		updatePayload := map[string]interface{}{
+			"name": updatedName,
+			// Email will not be updated, so it should remain "newuser@example.com"
+		}
+		payloadBytes, _ := json.Marshal(updatePayload)
+
+		req, _ := http.NewRequest(http.MethodPut, updateURL, bytes.NewBuffer(payloadBytes))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		w := httptest.NewRecorder()
+		rtr.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code, "Update user request failed")
+
+		var respBody struct {
+			Code    int         `json:"code"`
+			Message string      `json:"message"`
+			Data    models.User `json:"data"`
+		}
+		err := json.Unmarshal(w.Body.Bytes(), &respBody)
+		assert.NoError(t, err, "Failed to unmarshal update user response")
+		assert.Equal(t, 0, respBody.Code, "Response code should be 0 for successful user update")
+		assert.Equal(t, createdUserID, respBody.Data.ID, "User ID in response should match createdUserID")
+		assert.Equal(t, updatedName, respBody.Data.Name, "User name should be updated")
+		assert.Equal(t, "newuser@example.com", respBody.Data.Email, "User email should remain unchanged") // Assuming email was not part of update payload
+	})
+
+	// Test DELETE /users/:id - Delete User
+	t.Run("DeleteUser", func(t *testing.T) {
+		assert.NotZero(t, createdUserID, "createdUserID should be set from CreateUser test")
+		deleteURL := fmt.Sprintf("/api/v1/users/%d", createdUserID)
+
+		req, _ := http.NewRequest(http.MethodDelete, deleteURL, nil)
+		req.Header.Set("Authorization", "Bearer "+adminToken)
+
+		w := httptest.NewRecorder()
+		rtr.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusNoContent, w.Code, "Delete user request should return 204 No Content")
+
+		// Verify user is deleted by trying to get them again
+		verifyReq, _ := http.NewRequest("GET", deleteURL, nil) // deleteURL is same as getUserURL for createdUserID
+		verifyReq.Header.Set("Authorization", "Bearer "+adminToken)
+		verifyW := httptest.NewRecorder()
+		rtr.ServeHTTP(verifyW, verifyReq)
+		assert.Equal(t, http.StatusNotFound, verifyW.Code, "User should not be found after deletion")
+	})
 }

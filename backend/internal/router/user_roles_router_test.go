@@ -14,6 +14,7 @@ import (
 
 	"EffiPlat/backend/internal/router"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -230,17 +231,21 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		var err error // Declare err for reuse
 
 		// Create admin user and get token for this sub-test
-		adminEmail := "admin_assign_empty_roles@example.com" // Unique email
+		sanitizedTestName := strings.ReplaceAll(strings.ToLower(t.Name()), "/", "_") // Sanitize t.Name()
+		adminEmail := "admin_" + sanitizedTestName + "@example.com"
 		adminPassword := "password123"
-		_, err = factories.CreateUser(db, &models.User{Name: "Admin Assign Empty Roles", Email: adminEmail, Password: adminPassword, Status: "active"})
-		require.NoError(t, err, "Failed to create admin user for assign empty roles test")
+		_, err = factories.CreateUser(db, &models.User{Name: "Admin for " + t.Name(), Email: adminEmail, Password: adminPassword, Status: "active"})
+		require.NoError(t, err, "Failed to create admin user for "+t.Name())
 		adminToken := getAuthTokenForSubTest(t, rtr, db, adminEmail, adminPassword)
 
 		// 1. Create a target user
+		targetUserEmail := fmt.Sprintf("target_empty_roles_%s@example.com", uuid.New().String()[:8])
 		targetUser, err := factories.CreateUser(db, &models.User{
 			Name:  "Target User Empty Roles",
-			Email: "target_empty_roles_ur@example.com",
+			Email: targetUserEmail,
 		})
+		require.NoError(t, err, "Failed to create target user for assign empty roles test")
+		require.NotNil(t, targetUser, "Target user must not be nil for assign empty roles test")
 
 		// 2. Prepare request with empty RoleIDs
 		assignReqPayload := models.AssignRemoveRolesRequest{
@@ -358,7 +363,7 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 			Message string `json:"message"`
 		}
 		err = json.Unmarshal(w.Body.Bytes(), &respBody) // Use '=' as err is declared in the sub-test's setup
-		assert.NoError(t, err) // Gin usually returns a parseable JSON error
+		assert.NoError(t, err)                          // Gin usually returns a parseable JSON error
 		assert.Equal(t, http.StatusBadRequest, respBody.Code)
 		// The exact message might depend on Gin's JSON parsing or your custom error handling
 		// Common messages include "invalid character", "unexpected end of JSON input", etc.
@@ -604,7 +609,7 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		// 4. Assertions - Expecting a 400 Bad Request due to non-existent role ID
 		assert.Equal(t, http.StatusBadRequest, w.Code)
 
-		var respBody models.ErrorResponse // Use the standard error response model
+		var respBody models.ErrorResponse               // Use the standard error response model
 		err = json.Unmarshal(w.Body.Bytes(), &respBody) // Use '=' as err is declared in the sub-test's setup
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, respBody.Code)
@@ -695,9 +700,9 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		regularUserPassword := "password123"
 		regularUser, err := factories.CreateUser(db, &models.User{Name: "Regular User for " + t.Name(), Email: regularUserEmail, Password: regularUserPassword, Status: "active"})
 		require.NoError(t, err, "Failed to create regular user for "+t.Name())
-		_ = regularUser // Prevent declared and not used if only token is used later
+		_ = regularUser                                                                                // Prevent declared and not used if only token is used later
 		unauthorizedToken := getAuthTokenForSubTest(t, rtr, db, regularUserEmail, regularUserPassword) // This token will be from a non-admin
-		_ = unauthorizedToken                                                                      // Mark as used to prevent lint error, as we are intentionally not sending it.
+		_ = unauthorizedToken                                                                          // Mark as used to prevent lint error, as we are intentionally not sending it.
 
 		// 1. Create a target user (ID needed for URL, actual user state doesn't matter for auth check)
 		// We still need an admin to create the target user and roles, if they were to be actually manipulated.
@@ -727,7 +732,7 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		require.NoError(t, err) // Add error check for marshaling
 
 		req, err := http.NewRequest(http.MethodDelete, fmt.Sprintf("/api/v1/users/%d/roles", targetUserForURL.ID), bytes.NewBuffer(payloadBytes)) // Use targetUserForURL
-		require.NoError(t, err) // Add error check for new request
+		require.NoError(t, err)                                                                                                                   // Add error check for new request
 		req.Header.Set("Content-Type", "application/json")
 		// No Authorization header is set, to test the "missing or invalid token" path
 
@@ -791,7 +796,7 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 			Message string `json:"message"`
 		}
 		err = json.Unmarshal(w.Body.Bytes(), &respBody) // Use '=' as err is declared in the sub-test's setup
-		assert.NoError(t, err) // Expecting a parseable JSON error from Gin
+		assert.NoError(t, err)                          // Expecting a parseable JSON error from Gin
 		assert.Equal(t, http.StatusBadRequest, respBody.Code)
 		assert.NotEmpty(t, respBody.Message, "Error message should indicate a binding/parsing issue")
 	})
