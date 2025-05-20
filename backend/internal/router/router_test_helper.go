@@ -42,6 +42,7 @@ type TestAppComponents struct {
 	ResponsibilityHandler      *handler.ResponsibilityHandler
 	ResponsibilityGroupHandler *handler.ResponsibilityGroupHandler
 	EnvironmentHandler         *envhandlers.EnvironmentHandler // Added
+	AssetHandler               *envhandlers.AssetHandler       // Added AssetHandler
 	JWTKey                     []byte
 }
 
@@ -70,6 +71,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		&models.Responsibility{},
 		&models.ResponsibilityGroup{},
 		&models.Environment{}, // Added
+		&models.Asset{},       // Added Asset model
 		// Add any other models that are usually migrated by pkgdb.AutoMigrate
 	)
 	assert.NoError(t, err, "AutoMigrate should not fail")
@@ -81,6 +83,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityRepo := repository.NewGormResponsibilityRepository(db, appLogger)
 	responsibilityGroupRepo := repository.NewGormResponsibilityGroupRepository(db, appLogger)
 	environmentRepo := repository.NewGormEnvironmentRepository(db, appLogger) // Added
+	assetRepo := repository.NewGormAssetRepository(db, appLogger)             // Added AssetRepository
 
 	// Initialize services
 	jwtKey := []byte(os.Getenv("JWT_SECRET_TEST"))
@@ -94,6 +97,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityService := service.NewResponsibilityService(responsibilityRepo, appLogger)
 	responsibilityGroupService := service.NewResponsibilityGroupService(responsibilityGroupRepo, responsibilityRepo, appLogger)
 	environmentService := service.NewEnvironmentService(environmentRepo, appLogger) // Added
+	assetService := service.NewAssetService(assetRepo, environmentRepo, appLogger)  // Added AssetService
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -103,6 +107,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, appLogger)
 	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, appLogger)
 	environmentHandler := envhandlers.NewEnvironmentHandler(environmentService, appLogger) // Added
+	assetHandler := envhandlers.NewAssetHandler(assetService, appLogger)                   // Added AssetHandler
 
 	routerInstance := SetupRouter(
 		authHandler,
@@ -112,6 +117,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		responsibilityHandler,
 		responsibilityGroupHandler,
 		environmentHandler, // Added
+		assetHandler,       // Added AssetHandler
 		jwtKey,
 	)
 
@@ -126,6 +132,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		ResponsibilityHandler:      responsibilityHandler,
 		ResponsibilityGroupHandler: responsibilityGroupHandler,
 		EnvironmentHandler:         environmentHandler, // Added
+		AssetHandler:               assetHandler,       // Added AssetHandler
 		JWTKey:                     jwtKey,
 	}
 }

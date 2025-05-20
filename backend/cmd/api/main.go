@@ -92,6 +92,13 @@ func main() {
 	environmentHandler := hdlrs.NewEnvironmentHandler(environmentService, appLogger) // Use alias
 	// TODO: Consider adding InitializeEnvironmentHandler to wire.go for consistency if this becomes permanent
 
+	// Initialize Asset components
+	assetRepository := repository.NewGormAssetRepository(dbConn, appLogger)
+	// AssetService needs EnvironmentRepository to validate EnvironmentID
+	assetService := service.NewAssetService(assetRepository, environmentRepository, appLogger)
+	assetHandler := hdlrs.NewAssetHandler(assetService, appLogger)
+	// TODO: Consider adding InitializeAssetHandler to wire.go for consistency
+
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
 	r := router.SetupRouter(
@@ -101,7 +108,8 @@ func main() {
 		permissionHandler,
 		responsibilityHandler,
 		responsibilityGroupHandler,
-		environmentHandler, // Added
+		environmentHandler,
+		assetHandler, // Added assetHandler
 		jwtKey,
 	)
 

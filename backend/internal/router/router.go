@@ -1,9 +1,9 @@
 package router
 
 import (
-	"EffiPlat/backend/internal/handler"    // Corrected import path for existing handlers
-	envhandlers "EffiPlat/backend/internal/handlers" // Import for EnvironmentHandler
-	"EffiPlat/backend/internal/middleware" // Corrected import path
+	"EffiPlat/backend/internal/handler"              // Corrected import path for existing handlers
+	envhandlers "EffiPlat/backend/internal/handlers" // Import for EnvironmentHandler AND AssetHandler
+	"EffiPlat/backend/internal/middleware"           // Corrected import path
 
 	// userHandler "EffiPlat/backend/internal/user" // Removed
 	"net/http" // 引入 net/http 包
@@ -33,6 +33,7 @@ func SetupRouter(
 	responsibilityHandler *handler.ResponsibilityHandler, // Added
 	responsibilityGroupHandler *handler.ResponsibilityGroupHandler, // Added
 	environmentHandler *envhandlers.EnvironmentHandler, // Changed to envhandlers
+	assetHandler *envhandlers.AssetHandler, // Added AssetHandler
 	jwtKey []byte, /*, etc. */
 ) *gin.Engine {
 	r := gin.Default()
@@ -117,6 +118,9 @@ func SetupRouter(
 
 		// Environment routes
 		environmentRoutes(apiV1Authenticated.Group("/environments"), environmentHandler)
+
+		// Asset routes
+		assetRoutes(apiV1Authenticated.Group("/assets"), assetHandler)
 	}
 
 	// 处理404路由
@@ -218,12 +222,23 @@ func responsibilityGroupRoutes(rg *gin.RouterGroup, hdlr *handler.Responsibility
 // environmentRoutes 注册环境管理相关的路由
 func environmentRoutes(rg *gin.RouterGroup, hdlr *envhandlers.EnvironmentHandler) { // Changed to envhandlers
 	{
-		rg.POST("", hdlr.CreateEnvironment)                     // POST /api/v1/environments
-		rg.GET("", hdlr.GetEnvironments)                       // GET /api/v1/environments
-		rg.GET("/:id", hdlr.GetEnvironmentByID)             // GET /api/v1/environments/{id}
-		rg.GET("/slug/:slug", hdlr.GetEnvironmentBySlug)       // GET /api/v1/environments/slug/{slug}
-		rg.PUT("/:id", hdlr.UpdateEnvironment)             // PUT /api/v1/environments/{id}
-		rg.DELETE("/:id", hdlr.DeleteEnvironment)          // DELETE /api/v1/environments/{id}
+		rg.POST("", hdlr.CreateEnvironment)              // POST /api/v1/environments
+		rg.GET("", hdlr.GetEnvironments)                 // GET /api/v1/environments
+		rg.GET("/:id", hdlr.GetEnvironmentByID)          // GET /api/v1/environments/{id}
+		rg.GET("/slug/:slug", hdlr.GetEnvironmentBySlug) // GET /api/v1/environments/slug/{slug}
+		rg.PUT("/:id", hdlr.UpdateEnvironment)           // PUT /api/v1/environments/{id}
+		rg.DELETE("/:id", hdlr.DeleteEnvironment)        // DELETE /api/v1/environments/{id}
+	}
+}
+
+// assetRoutes 注册资产管理相关的路由
+func assetRoutes(rg *gin.RouterGroup, hdlr *envhandlers.AssetHandler) {
+	{
+		rg.POST("", hdlr.CreateAsset)       // POST /api/v1/assets
+		rg.GET("", hdlr.ListAssets)         // GET /api/v1/assets
+		rg.GET("/:id", hdlr.GetAssetByID)   // GET /api/v1/assets/{id}
+		rg.PUT("/:id", hdlr.UpdateAsset)    // PUT /api/v1/assets/{id}
+		rg.DELETE("/:id", hdlr.DeleteAsset) // DELETE /api/v1/assets/{id}
 	}
 }
 

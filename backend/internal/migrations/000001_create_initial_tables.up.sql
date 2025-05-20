@@ -104,16 +104,26 @@ CREATE INDEX idx_environments_code ON environments(code);
 CREATE INDEX idx_environments_status ON environments(status);
 
 -- assets table
-CREATE TABLE assets (
+CREATE TABLE IF NOT EXISTS assets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    type TEXT NOT NULL, -- 'server', 'network_device', etc.
-    status TEXT NOT NULL DEFAULT 'in_use', -- e.g., 'in_use', 'in_stock', 'retired'
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- REMOVED ON UPDATE for SQLite compatibility
+    hostname VARCHAR(255) NOT NULL UNIQUE,
+    ip_address VARCHAR(100) NOT NULL UNIQUE,
+    asset_type VARCHAR(50) NOT NULL DEFAULT 'other',
+    status VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    description TEXT,
+    environment_id INTEGER,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME,
+    FOREIGN KEY (environment_id) REFERENCES environments(id) ON DELETE SET NULL -- or ON DELETE CASCADE depending on desired behavior
 );
-CREATE INDEX idx_assets_type ON assets(type);
-CREATE INDEX idx_assets_status ON assets(status);
+
+CREATE INDEX IF NOT EXISTS idx_assets_hostname ON assets (hostname);
+CREATE INDEX IF NOT EXISTS idx_assets_ip_address ON assets (ip_address);
+CREATE INDEX IF NOT EXISTS idx_assets_asset_type ON assets (asset_type);
+CREATE INDEX IF NOT EXISTS idx_assets_status ON assets (status);
+CREATE INDEX IF NOT EXISTS idx_assets_environment_id ON assets (environment_id);
+CREATE INDEX IF NOT EXISTS idx_assets_deleted_at ON assets (deleted_at);
 
 -- server_assets table
 CREATE TABLE server_assets (
@@ -284,4 +294,6 @@ CREATE INDEX idx_bugs_reporter_id ON bugs(reporter_id);
 CREATE INDEX idx_bugs_assignee_group_id ON bugs(assignee_group_id);
 CREATE INDEX idx_bugs_env_id ON bugs(environment_id);
 CREATE INDEX idx_bugs_svc_inst_id ON bugs(service_instance_id);
-CREATE INDEX idx_bugs_biz_id ON bugs(business_id); 
+CREATE INDEX idx_bugs_biz_id ON bugs(business_id);
+
+-- COMMIT; -- Removed explicit COMMIT statement 

@@ -19,6 +19,7 @@ var migrationsFS embed.FS
 // setupTestDB creates an in-memory SQLite DB and a migrate instance for testing.
 func setupTestDB(t *testing.T) (*sql.DB, *migrate.Migrate) {
 	// Use in-memory SQLite for isolated testing
+	// Removed _x_no_tx=1 from DSN as we'll try NoTxWrap in sqlite3.Config
 	dsn := "file::memory:?cache=shared"
 	sqlDB, err := sql.Open("sqlite3", dsn)
 	require.NoError(t, err, "Failed to open in-memory db")
@@ -27,7 +28,8 @@ func setupTestDB(t *testing.T) (*sql.DB, *migrate.Migrate) {
 	sourceDriver, err := iofs.New(migrationsFS, "migrations") // Load from embedded FS, root is migrations
 	require.NoError(t, err, "Failed to create source driver")
 
-	dbDriver, err := sqlite3.WithInstance(sqlDB, &sqlite3.Config{})
+	// Use NoTxWrap: true in sqlite3.Config to prevent migrate from wrapping migrations in transactions.
+	dbDriver, err := sqlite3.WithInstance(sqlDB, &sqlite3.Config{NoTxWrap: true})
 	require.NoError(t, err, "Failed to create database driver")
 
 	migrateInstance, err := migrate.NewWithInstance("iofs", sourceDriver, "sqlite3", dbDriver)
