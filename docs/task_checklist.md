@@ -29,7 +29,15 @@
 - [x] 实现用户管理 API (`/users`) - 后端已完成
 - [x] 实现角色与权限管理基础 API (`/roles`, `/permissions`, 角色权限关联) - 后端已完成 (基本路由测试已覆盖)
 - [x] 实现职责与职责组管理 API (`/responsibilities`, `/responsibility-groups`) - 后端已完成 (基本路由测试已覆盖)
-- [ ] 实现环境管理 API (`/environments`)
+- [x] 实现环境管理 API (`/environments`) - 基本完成
+  - [x] 设计 Environment 模型 (models/environment.go)
+  - [x] 检查数据库迁移 (已在初始迁移中包含 environments 表)
+  - [x] 实现 Service 层 (service/environment_service.go) - 基本完成
+  - [x] 实现 Repository 层 (repository/environment_repository.go) - 基本完成
+  - [x] 实现 Handler 层 (handlers/environment_handler.go) - 结构和占位符方法完成
+  - [x] 注册路由 (router.go) - 完成
+  - [x] 编写测试 (router/environment_router_test.go) - 测试通过
+  - [ ] (注意) 检查并实现 `alphanumdash` 校验器 (如果需要)
 - [ ] 实现资产管理 API (服务器) (`/assets`)
 - [ ] 实现服务管理 API (`/services`)
 - [ ] 实现服务实例管理基础 API (`/service-instances`)
@@ -78,6 +86,7 @@
   - [x] 路由层测试: 用户角色分配 (users/:id/roles)
   - [x] 路由层测试: 职责管理 (responsibilities CRUD)
   - [x] 路由层测试: 职责组管理 (responsibility-groups CRUD, 职责组与职责关联)
+  - [x] 路由层测试: 环境管理 (environments CRUD) - 测试通过
   - [ ] 服务层单元测试 (待进行)
   - [ ] 仓库层单元测试 (待进行)
 - [ ] 编写前端单元/集成测试
@@ -99,4 +108,4 @@
 
 ---
 
-_注意：这是一个初步的任务列表，请根据 `docs/requirements/execution_plan.md` 和实际项目进展进行调整和细化。_
+_注意：这是一个初步的任务列表，请根据 `docs/requirements/execution_plan.md`
