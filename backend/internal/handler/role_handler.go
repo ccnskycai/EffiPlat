@@ -248,8 +248,8 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 
 	// For 204 No Content, the common RespondWithSuccess might add a body, which is fine.
 	// If strictly no body is needed for 204, use c.Status(http.StatusNoContent) directly.
-	// Let's assume for now that our unified response with null data is acceptable.
-	RespondWithSuccess(c, http.StatusNoContent, "Role deleted successfully", nil)
+	// RespondWithSuccess(c, http.StatusNoContent, "Role deleted successfully", nil) // Or use http.StatusOK for consistency
+	c.Status(http.StatusNoContent) // Consistent with 204 No Content for DELETE
 }
 
 // TODO: Add handlers for role permissions if needed (GET /roles/{roleId}/permissions, etc.)

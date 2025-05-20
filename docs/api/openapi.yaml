@@ -74,7 +74,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                $ref: '#/components/schemas/UserMeResponse'
 
   # 用户管理
   /users:
@@ -1207,6 +1207,19 @@ components:
             total: { type: integer }
             page: { type: integer }
             pageSize: { type: integer }
+    AuthMeData:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+    UserMeResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/AuthMeData'
     # 角色、权限、职责、环境、资产、服务、业务、Bug、审计日志等 schemas 自动补全，详见前述设计文档结构
     # ...
     Role:

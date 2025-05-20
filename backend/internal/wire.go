@@ -98,3 +98,34 @@ func InitializePermissionHandler(db *gorm.DB, logger *zap.Logger) (*handler.Perm
 	)
 	return nil, nil // Wire will replace this
 }
+
+// ProviderSet for responsibility components
+var ResponsibilitySet = wire.NewSet(
+	repository.NewGormResponsibilityRepository,
+	service.NewResponsibilityService,
+	handler.NewResponsibilityHandler,
+)
+
+// InitializeResponsibilityHandler is the injector for ResponsibilityHandler and its dependencies.
+func InitializeResponsibilityHandler(db *gorm.DB, logger *zap.Logger) (*handler.ResponsibilityHandler, error) {
+	wire.Build(
+		ResponsibilitySet,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// ProviderSet for responsibility group components
+var ResponsibilityGroupSet = wire.NewSet(
+	repository.NewGormResponsibilityGroupRepository,
+	repository.NewGormResponsibilityRepository, // For validation in service
+	service.NewResponsibilityGroupService,
+	handler.NewResponsibilityGroupHandler,
+)
+
+// InitializeResponsibilityGroupHandler is the injector for ResponsibilityGroupHandler and its dependencies.
+func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*handler.ResponsibilityGroupHandler, error) {
+	wire.Build(
+		ResponsibilityGroupSet,
+	)
+	return nil, nil // Wire will replace this
+}

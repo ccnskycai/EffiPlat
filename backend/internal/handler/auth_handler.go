@@ -19,15 +19,15 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		RespondWithError(c, http.StatusBadRequest, "Invalid request payload")
 		return
 	}
 	resp, err := h.authService.Login(c.Request.Context(), req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		RespondWithError(c, http.StatusUnauthorized, "Invalid email or password")
 		return
 	}
-	c.JSON(http.StatusOK, resp)
+	RespondWithSuccess(c, http.StatusOK, "Login successful", resp)
 }
 
 // GetMe retrieves the current user's information based on the JWT claims.
@@ -35,20 +35,18 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 	// Retrieve claims set by the JWT middleware
 	claimsValue, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "user claims not found in context"})
+		RespondWithError(c, http.StatusInternalServerError, "User claims not found in context")
 		return
 	}
 
 	claims, ok := claimsValue.(*models.Claims)
 	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid claims format in context"})
+		RespondWithError(c, http.StatusInternalServerError, "Invalid claims format in context")
 		return
 	}
 
 	// Respond with user information from claims
-	// Consider fetching full user details from service/repo if needed,
-	// but for basic /me, claims might be sufficient.
-	c.JSON(http.StatusOK, gin.H{
+	RespondWithSuccess(c, http.StatusOK, "User details retrieved successfully", gin.H{
 		"id":    claims.UserID,
 		"name":  claims.Name,
 		"email": claims.Email,
@@ -60,5 +58,5 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 // Server-side action (like blacklisting) is optional and more complex.
 func (h *AuthHandler) Logout(c *gin.Context) {
 	// Optionally: Add token to a blacklist here if implementing server-side invalidation.
-	c.JSON(http.StatusOK, gin.H{"message": "logout successful"})
+	RespondWithSuccess(c, http.StatusOK, "Logout successful", nil)
 }

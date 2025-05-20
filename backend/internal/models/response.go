@@ -2,15 +2,16 @@ package models
 
 // SuccessResponse defines the structure for a successful API response.
 type SuccessResponse struct {
-	BizCode int         `json:"bizCode"`
+	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
 }
 
 // ErrorResponse defines the structure for an error API response.
 type ErrorResponse struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int         `json:"code"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
 }
 
 // PaginatedData defines the structure for paginated data within a SuccessResponse.

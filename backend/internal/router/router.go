@@ -14,7 +14,15 @@ import (
 
 // SetupRouter 配置和返回 Gin 引擎
 // 添加 jwtKey 参数
-func SetupRouter(authHandler *handler.AuthHandler, userHandler *handler.UserHandler, roleHandler *handler.RoleHandler, permissionHandler *handler.PermissionHandler, jwtKey []byte /*, etc. */) *gin.Engine {
+func SetupRouter(
+	authHandler *handler.AuthHandler,
+	userHandler *handler.UserHandler,
+	roleHandler *handler.RoleHandler,
+	permissionHandler *handler.PermissionHandler,
+	responsibilityHandler *handler.ResponsibilityHandler, // Added
+	responsibilityGroupHandler *handler.ResponsibilityGroupHandler, // Added
+	jwtKey []byte, /*, etc. */
+) *gin.Engine {
 	r := gin.Default()
 
 	// CORS Middleware
@@ -81,6 +89,12 @@ func SetupRouter(authHandler *handler.AuthHandler, userHandler *handler.UserHand
 
 		// Permission routes (already includes CRUD for permissions and associating them with roles)
 		permissionRoutes(apiV1Authenticated.Group("/permissions"), permissionHandler)
+
+		// Responsibility routes
+		responsibilityRoutes(apiV1Authenticated.Group("/responsibilities"), responsibilityHandler)
+
+		// Responsibility Group routes
+		responsibilityGroupRoutes(apiV1Authenticated.Group("/responsibility-groups"), responsibilityGroupHandler)
 	}
 
 	// 处理404路由
@@ -150,6 +164,32 @@ func permissionRoutes(rg *gin.RouterGroup, permissionHdlr *handler.PermissionHan
 		// Add routes for managing role permissions - these handlers are in permissionHdlr
 		rg.POST("/roles/:roleId", permissionHdlr.AddPermissionsToRole)        // POST /api/v1/permissions/roles/{roleId}
 		rg.DELETE("/roles/:roleId", permissionHdlr.RemovePermissionsFromRole) // DELETE /api/v1/permissions/roles/{roleId}
+	}
+}
+
+// responsibilityRoutes 注册职责管理相关的路由
+func responsibilityRoutes(rg *gin.RouterGroup, hdlr *handler.ResponsibilityHandler) {
+	{
+		rg.POST("", hdlr.CreateResponsibility)                     // POST /api/v1/responsibilities
+		rg.GET("", hdlr.GetResponsibilities)                       // GET /api/v1/responsibilities
+		rg.GET("/:responsibilityId", hdlr.GetResponsibilityByID)   // GET /api/v1/responsibilities/{responsibilityId}
+		rg.PUT("/:responsibilityId", hdlr.UpdateResponsibility)    // PUT /api/v1/responsibilities/{responsibilityId}
+		rg.DELETE("/:responsibilityId", hdlr.DeleteResponsibility) // DELETE /api/v1/responsibilities/{responsibilityId}
+	}
+}
+
+// responsibilityGroupRoutes 注册职责组管理相关的路由
+func responsibilityGroupRoutes(rg *gin.RouterGroup, hdlr *handler.ResponsibilityGroupHandler) {
+	{
+		rg.POST("", hdlr.CreateResponsibilityGroup)            // POST /api/v1/responsibility-groups
+		rg.GET("", hdlr.GetResponsibilityGroups)               // GET /api/v1/responsibility-groups
+		rg.GET("/:groupId", hdlr.GetResponsibilityGroupByID)   // GET /api/v1/responsibility-groups/{groupId}
+		rg.PUT("/:groupId", hdlr.UpdateResponsibilityGroup)    // PUT /api/v1/responsibility-groups/{groupId}
+		rg.DELETE("/:groupId", hdlr.DeleteResponsibilityGroup) // DELETE /api/v1/responsibility-groups/{groupId}
+
+		// Routes for managing responsibilities within a group
+		rg.POST("/:groupId/responsibilities/:responsibilityId", hdlr.AddResponsibilityToGroup)        // POST /api/v1/responsibility-groups/{groupId}/responsibilities/{responsibilityId}
+		rg.DELETE("/:groupId/responsibilities/:responsibilityId", hdlr.RemoveResponsibilityFromGroup) // DELETE /api/v1/responsibility-groups/{groupId}/responsibilities/{responsibilityId}
 	}
 }
 

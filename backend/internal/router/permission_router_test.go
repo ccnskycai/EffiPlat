@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"EffiPlat/backend/internal/models" // Assuming models are correctly imported
+	"EffiPlat/backend/internal/router" // Added for router.SetupTestApp and router.GetAuthTokenForTest
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -20,28 +21,14 @@ import (
 
 // TestPermissionManagementRoutes tests the permission management API endpoints.
 func TestPermissionManagementRoutes(t *testing.T) {
-	// Setup the test router with necessary dependencies.
-	// Using the more complete setup function from user_roles_router_test.go
-	routerInstance, db, _, _, _, _, _ := setupAppTestRouter(t) // Using the new setup function
+	components := router.SetupTestApp(t)
+	routerInstance := components.Router
+	db := components.DB
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
 
-	// 1. Create a test user and get a token (needed for authenticated routes)
-	// Assuming createTestUser is in router_test.go
-	_, err := createTestUser(db, "perm_test_user@example.com", "password")
-	assert.NoError(t, err)
-
-	loginPayload := models.LoginRequest{Email: "perm_test_user@example.com", Password: "password"}
-	loginPayloadBytes, _ := json.Marshal(loginPayload)
-	loginReq, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(loginPayloadBytes))
-	loginReq.Header.Set("Content-Type", "application/json")
-	loginW := httptest.NewRecorder()
-	routerInstance.ServeHTTP(loginW, loginReq)
-	assert.Equal(t, http.StatusOK, loginW.Code)
-	var loginResp models.LoginResponse
-	err = json.Unmarshal(loginW.Body.Bytes(), &loginResp)
-	assert.NoError(t, err)
-	validToken := loginResp.Token
+	// Get a valid token for authenticated routes using the helper from router_test_helper.go
+	validToken := router.GetAuthTokenForTest(t, routerInstance, db)
 
 	var createdPermissionID uint
 	var createdRoleID uint // Need a role to test association
@@ -67,7 +54,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 			Message string      `json:"message"`
 			Data    models.Role `json:"data"`
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		createdRoleID = response.Data.ID
 		assert.NotZero(t, createdRoleID)
@@ -95,7 +82,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 			Message string            `json:"message"`
 			Data    models.Permission `json:"data"`
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, response.BizCode)
 		assert.Equal(t, "test:action", response.Data.Name)
@@ -124,7 +111,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 				pageSize int                 `json:"pageSize"` // Note: JSON tag should be "pageSize"
 			} `json:"data"`
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, response.BizCode)
 		assert.NotEmpty(t, response.Data.Items, "Permissions list should not be empty")
@@ -154,7 +141,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 			Message string            `json:"message"`
 			Data    models.Permission `json:"data"`
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, response.BizCode)
 		assert.Equal(t, createdPermissionID, response.Data.ID)
@@ -182,7 +169,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 			Message string            `json:"message"`
 			Data    models.Permission `json:"data"`
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, response.BizCode)
 		assert.Equal(t, createdPermissionID, response.Data.ID)
@@ -214,7 +201,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 			Message string      `json:"message"`
 			Data    interface{} `json:"data"` // Data is null on success
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, response.BizCode)
 		assert.Equal(t, "Permissions added to role successfully", response.Message)
@@ -237,7 +224,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 			Message string              `json:"message"`
 			Data    []models.Permission `json:"data"` // Expecting a list of permissions
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, response.BizCode)
 		assert.Equal(t, "Permissions for role retrieved successfully", response.Message)
@@ -274,7 +261,7 @@ func TestPermissionManagementRoutes(t *testing.T) {
 			Message string      `json:"message"`
 			Data    interface{} `json:"data"` // Data is null on success
 		}
-		err = json.Unmarshal(w.Body.Bytes(), &response)
+		err := json.Unmarshal(w.Body.Bytes(), &response)
 		assert.NoError(t, err)
 		assert.Equal(t, 0, response.BizCode)
 		assert.Equal(t, "Permissions removed from role successfully", response.Message)
@@ -288,9 +275,9 @@ func TestPermissionManagementRoutes(t *testing.T) {
 
 			assert.Equal(t, http.StatusOK, rr.Code, "Status code should be 200 after removing permissions")
 			var listRespAfterRemove models.SuccessResponse
-			err = json.Unmarshal(rr.Body.Bytes(), &listRespAfterRemove)
+			err := json.Unmarshal(rr.Body.Bytes(), &listRespAfterRemove)
 			assert.NoError(t, err, "Should unmarshal list response after removing permissions")
-			assert.Equal(t, 0, listRespAfterRemove.BizCode, "Response bizCode in body should be 0 after removing")
+			assert.Equal(t, 0, listRespAfterRemove.Code, "Response code in body should be 0 after removing")
 
 			// Depending on how empty list is represented. Assuming data is an empty slice or nil.
 			if listRespAfterRemove.Data != nil {

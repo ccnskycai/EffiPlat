@@ -55,6 +55,23 @@ func InitializePermissionHandler(db *gorm.DB, logger *zap.Logger) (*handler.Perm
 	return permissionHandler, nil
 }
 
+// InitializeResponsibilityHandler is the injector for ResponsibilityHandler and its dependencies.
+func InitializeResponsibilityHandler(db *gorm.DB, logger *zap.Logger) (*handler.ResponsibilityHandler, error) {
+	responsibilityRepository := repository.NewGormResponsibilityRepository(db, logger)
+	responsibilityService := service.NewResponsibilityService(responsibilityRepository, logger)
+	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, logger)
+	return responsibilityHandler, nil
+}
+
+// InitializeResponsibilityGroupHandler is the injector for ResponsibilityGroupHandler and its dependencies.
+func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*handler.ResponsibilityGroupHandler, error) {
+	responsibilityGroupRepository := repository.NewGormResponsibilityGroupRepository(db, logger)
+	responsibilityRepository := repository.NewGormResponsibilityRepository(db, logger)
+	responsibilityGroupService := service.NewResponsibilityGroupService(responsibilityGroupRepository, responsibilityRepository, logger)
+	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, logger)
+	return responsibilityGroupHandler, nil
+}
+
 // wire.go:
 
 // ProviderSet for user components
@@ -68,3 +85,9 @@ var AuthSet = wire.NewSet(repository.NewUserRepository, service.NewAuthService, 
 
 // ProviderSet for permission components
 var PermissionSet = wire.NewSet(repository.NewPermissionRepository, wire.Bind(new(repository.PermissionRepository), new(*repository.PermissionRepositoryImpl)), repository.NewRoleRepository, wire.Bind(new(repository.RoleRepository), new(*repository.RoleRepositoryImpl)), service.NewPermissionService, handler.NewPermissionHandler)
+
+// ProviderSet for responsibility components
+var ResponsibilitySet = wire.NewSet(repository.NewGormResponsibilityRepository, service.NewResponsibilityService, handler.NewResponsibilityHandler)
+
+// ProviderSet for responsibility group components
+var ResponsibilityGroupSet = wire.NewSet(repository.NewGormResponsibilityGroupRepository, repository.NewGormResponsibilityRepository, service.NewResponsibilityGroupService, handler.NewResponsibilityGroupHandler)

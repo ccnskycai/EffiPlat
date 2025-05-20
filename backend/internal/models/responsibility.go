@@ -16,3 +16,11 @@ type Responsibility struct {
 func (Responsibility) TableName() string {
 	return "responsibilities"
 }
+
+// ResponsibilityListParams defines parameters for listing responsibilities.
+type ResponsibilityListParams struct {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"pageSize,default=10"`
+	Name     string `form:"name"` // For searching by name
+	// Add other filter parameters as needed, e.g., by group, by creation date range
+}

@@ -28,3 +28,22 @@ type ResponsibilityGroupResponsibility struct {
 func (ResponsibilityGroupResponsibility) TableName() string {
 	return "responsibility_group_responsibilities"
 }
+
+// ResponsibilityGroupListParams defines parameters for listing responsibility groups.
+type ResponsibilityGroupListParams struct {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"pageSize,default=10"`
+	Name     string `form:"name"` // For searching by group name
+}
+
+// ResponsibilityGroupDetail represents a responsibility group with its associated responsibilities.
+// This can be the same as ResponsibilityGroup if the Responsibilities field is always populated for detail views.
+// Or it can be a dedicated struct if more/different fields are needed for the detail view.
+type ResponsibilityGroupDetail struct {
+	ID               uint             `json:"id"`
+	Name             string           `json:"name"`
+	Description      string           `json:"description,omitempty"`
+	CreatedAt        time.Time        `json:"createdAt"`
+	UpdatedAt        time.Time        `json:"updatedAt"`
+	Responsibilities []Responsibility `json:"responsibilities"`
+}

@@ -53,15 +53,27 @@
   ```
   Authorization: Bearer <jwt_token>
   ```
-- **响应体：**
+- **响应体 (成功):**
   ```json
   {
-    "id": 1,
-    "name": "张三",
-    "email": "user@example.com"
+    "code": 0,
+    "message": "User details retrieved successfully",
+    "data": {
+      "id": 1,
+      "name": "张三",
+      "email": "user@example.com"
+    }
   }
   ```
-- **实现状态**: 已完成。
+- **响应体 (失败):**
+  ```json
+  {
+    "code": 40101, // Example error code
+    "message": "Unauthorized: Invalid or missing token",
+    "data": null
+  }
+  ```
+- **实现状态**: 已完成，并遵循统一响应格式。
 - **实现说明**: 通过 JWT 中间件获取 Claims，直接返回其中的用户信息。
 - **Curl 示例:**
   ```bash

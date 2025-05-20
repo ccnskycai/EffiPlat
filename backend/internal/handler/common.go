@@ -11,6 +11,7 @@ func RespondWithError(c *gin.Context, code int, message string) {
 	c.JSON(code, models.ErrorResponse{
 		Code:    code,
 		Message: message,
+		Data:    nil,
 	})
 }
 
@@ -20,7 +21,7 @@ func RespondWithSuccess(c *gin.Context, code int, message string, data interface
 		message = "success"
 	}
 	c.JSON(code, models.SuccessResponse{
-		BizCode: 0,
+		Code:    0,
 		Message: message,
 		Data:    data,
 	})
