@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: EffiPlat 全系统 API 文档
   version: "1.0"
@@ -1360,27 +1360,26 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        code: { type: string }
-        description: { type: string }
-        type: { type: string }
-        status: { type: string }
+        slug: { type: string, description: "URL-friendly identifier for the environment" }
+        description: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     Asset:
       type: object
       properties:
         id: { type: integer }
-        assetId: { type: integer }
-        name: { type: string }
-        type: { type: string }
-        status: { type: string }
-        ipAddress: { type: string }
         hostname: { type: string }
-        os: { type: string }
-        cpuCores: { type: integer }
-        memoryGb: { type: integer }
-        diskGb: { type: integer }
-        location: { type: string }
+        ipAddress: { type: string }
+        assetType:
+          type: string
+          description: Type of the asset (e.g., physical_server, virtual_machine, container, network_device, other)
+          enum: [physical_server, virtual_machine, container, network_device, other]
+        status:
+          type: string
+          description: Status of the asset (e.g., active, inactive, maintenance, decommissioned, unknown)
+          enum: [active, inactive, maintenance, decommissioned, unknown]
+        description: { type: string, nullable: true }
+        environmentId: { type: integer, nullable: true }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     Service:
@@ -1477,16 +1476,17 @@ components:
       type: object
       properties:
         code: { type: integer, example: 0 }
-        message: { type: string }
+        message: { type: string, example: "Success" }
         data:
           type: object
+          required: [items, total, page, pageSize]
           properties:
             items:
               type: array
               items: { $ref: '#/components/schemas/Asset' }
-            total: { type: integer }
-            page: { type: integer }
-            pageSize: { type: integer }
+            total: { type: integer, description: "Total number of assets" }
+            page: { type: integer, description: "Current page number" }
+            pageSize: { type: integer, description: "Number of assets per page" }
     ServiceListResponse:
       type: object
       properties:
@@ -1543,3 +1543,90 @@ components:
             total: { type: integer }
             page: { type: integer }
             pageSize: { type: integer }
+
+    # Asset Schemas
+    AssetCreateRequest:
+      type: object
+      required: [hostname, ipAddress, assetType, environmentId]
+      properties:
+        hostname: { type: string, description: "Hostname of the asset" }
+        ipAddress: { type: string, description: "IP address of the asset" }
+        assetType:
+          type: string
+          description: "Type of the asset"
+          enum: [physical_server, virtual_machine, container, network_device, other]
+        status:
+          type: string
+          description: "Status of the asset"
+          enum: [active, inactive, maintenance, decommissioned, unknown]
+          default: "unknown"
+        description: { type: string, nullable: true, description: "Description of the asset" }
+        environmentId: { type: integer, description: "ID of the environment this asset belongs to" }
+
+    AssetUpdateRequest:
+      type: object
+      properties:
+        hostname: { type: string, nullable: true, description: "Hostname of the asset" }
+        ipAddress: { type: string, nullable: true, description: "IP address of the asset" }
+        assetType:
+          type: string
+          nullable: true
+          description: "Type of the asset"
+          enum: [physical_server, virtual_machine, container, network_device, other]
+        status:
+          type: string
+          nullable: true
+          description: "Status of the asset"
+          enum: [active, inactive, maintenance, decommissioned, unknown]
+        description: { type: string, nullable: true, description: "Description of the asset" }
+        environmentId: { type: integer, nullable: true, description: "ID of the environment this asset belongs to" }
+
+    AssetResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          $ref: '#/components/schemas/Asset'
+
+    AssetDetailsResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          $ref: '#/components/schemas/Asset'
+
+    # Environment Schemas
+    EnvironmentCreateRequest:
+      type: object
+      required: [name, slug]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100, description: "Name of the environment" }
+        description: { type: string, nullable: true, description: "Description of the environment" }
+        slug: { type: string, minLength: 2, maxLength: 50, pattern: "^[a-zA-Z0-9_-]+$", description: "URL-friendly slug (alphanumeric, dash, underscore)" }
+
+    EnvironmentUpdateRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100, nullable: true, description: "Name of the environment" }
+        description: { type: string, nullable: true, description: "Description of the environment" }
+        slug: { type: string, minLength: 2, maxLength: 50, pattern: "^[a-zA-Z0-9_-]+$", nullable: true, description: "URL-friendly slug (alphanumeric, dash, underscore)" }
+
+    EnvironmentResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          $ref: '#/components/schemas/Environment'
+
+    EnvironmentDetailsResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          $ref: '#/components/schemas/Environment'
+
+    # Next: Check and adjust EnvironmentListResponse

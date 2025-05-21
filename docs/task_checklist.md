@@ -38,7 +38,7 @@
   - [x] 注册路由 (router.go) - 完成
   - [x] 编写测试 (router/environment_router_test.go) - 测试通过
   - [ ] (注意) 检查并实现 `alphanumdash` 校验器 (如果需要)
-- [ ] 实现资产管理 API (服务器) (`/assets`)
+- [x] 实现资产管理 API (服务器) (`/assets`) - 后端基本 CRUD 和路由测试完成
 - [ ] 实现服务管理 API (`/services`)
 - [ ] 实现服务实例管理基础 API (`/service-instances`)
 - [ ] 实现业务管理 API (`/businesses`)
