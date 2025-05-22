@@ -3,8 +3,10 @@ package service
 import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/repository"
+	"EffiPlat/backend/internal/utils"
 	"context"
 	"errors"
+	"fmt"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -39,7 +41,7 @@ func (s *RoleServiceImpl) CreateRole(ctx context.Context, roleData *models.Role,
 	// 检查重名
 	roles, _, err := s.roleRepo.ListRoles(ctx, models.RoleListParams{Name: roleData.Name, Page: 1, PageSize: 1})
 	if err == nil && len(roles) > 0 {
-		return nil, errors.New("role name already exists")
+		return nil, fmt.Errorf("role name '%s' already exists: %w", roleData.Name, utils.ErrAlreadyExists)
 	}
 	role, err := s.roleRepo.CreateRole(ctx, roleData)
 	if err != nil {
@@ -60,7 +62,7 @@ func (s *RoleServiceImpl) GetRoleByID(ctx context.Context, id uint) (*models.Rol
 	role, err := s.roleRepo.GetRoleByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("role not found")
+			return nil, utils.ErrNotFound
 		}
 		return nil, err
 	}
@@ -81,12 +83,12 @@ func (s *RoleServiceImpl) UpdateRole(ctx context.Context, id uint, roleData *mod
 	// 检查重名
 	roles, _, err := s.roleRepo.ListRoles(ctx, models.RoleListParams{Name: roleData.Name, Page: 1, PageSize: 1})
 	if err == nil && len(roles) > 0 && roles[0].ID != id {
-		return nil, errors.New("role name already exists")
+		return nil, fmt.Errorf("role name '%s' already exists: %w", roleData.Name, utils.ErrAlreadyExists)
 	}
 	role, err := s.roleRepo.UpdateRole(ctx, id, roleData)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("role not found")
+			return nil, utils.ErrNotFound
 		}
 		s.logger.Error("UpdateRole: repo error", zap.Error(err))
 		return nil, err
@@ -100,7 +102,7 @@ func (s *RoleServiceImpl) DeleteRole(ctx context.Context, id uint) error {
 	err := s.roleRepo.DeleteRole(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("role not found")
+			return utils.ErrNotFound
 		}
 		s.logger.Error("DeleteRole: repo error", zap.Error(err))
 		return err

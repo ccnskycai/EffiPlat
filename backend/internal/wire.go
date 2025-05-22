@@ -2,6 +2,11 @@
 //go:build wireinject
 // +build wireinject
 
+// To regenerate wire_gen.go, navigate to the `backend` directory and run:
+// go generate ./...
+// If you encounter issues, ensure wire CLI is installed and in your PATH, then you might try:
+// cd backend && wire
+
 package internal
 
 import (
@@ -19,8 +24,10 @@ import (
 // ProviderSet for user components
 var UserSet = wire.NewSet(
 	repository.NewUserRepository,
+	repository.NewRoleRepository,
 	service.NewUserService,
 	handler.NewUserHandler,
+	wire.Bind(new(repository.RoleRepository), new(*repository.RoleRepositoryImpl)),
 )
 
 // InitializeUserHandler is the injector for UserHandler and its dependencies.

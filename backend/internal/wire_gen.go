@@ -22,7 +22,8 @@ import (
 // This function will be callable from other packages (like main) because it's exported.
 func InitializeUserHandler(db *gorm.DB, logger *zap.Logger) (*handler.UserHandler, error) {
 	userRepository := repository.NewUserRepository(db, logger)
-	userService := service.NewUserService(userRepository)
+	roleRepositoryImpl := repository.NewRoleRepository(db, logger)
+	userService := service.NewUserService(userRepository, roleRepositoryImpl, logger)
 	userHandler := handler.NewUserHandler(userService)
 	return userHandler, nil
 }
@@ -75,7 +76,7 @@ func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*han
 // wire.go:
 
 // ProviderSet for user components
-var UserSet = wire.NewSet(repository.NewUserRepository, service.NewUserService, handler.NewUserHandler)
+var UserSet = wire.NewSet(repository.NewUserRepository, repository.NewRoleRepository, service.NewUserService, handler.NewUserHandler, wire.Bind(new(repository.RoleRepository), new(*repository.RoleRepositoryImpl)))
 
 // ProviderSet for role components
 var RoleSet = wire.NewSet(repository.NewRoleRepository, service.NewRoleService, handler.NewRoleHandler, wire.Bind(new(repository.RoleRepository), new(*repository.RoleRepositoryImpl)), wire.Bind(new(service.RoleService), new(*service.RoleServiceImpl)))

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"EffiPlat/backend/internal/models"
+	apputils "EffiPlat/backend/internal/utils"
 	"context"
 	"errors"
 
@@ -93,7 +94,7 @@ func (r *gormEnvironmentRepository) GetBySlug(ctx context.Context, slug string) 
 func (r *gormEnvironmentRepository) Update(ctx context.Context, env *models.Environment) (*models.Environment, error) {
 	r.logger.Debug("GORM: Updating environment", zap.Any("environment", env))
 	if env.ID == 0 {
-		return nil, errors.New("cannot update environment without ID")
+		return nil, apputils.ErrMissingID
 	}
 
 	// GORM's Save will update all fields of the struct if primary key is set.

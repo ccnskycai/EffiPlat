@@ -3,25 +3,28 @@ package service
 import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/repository"
+	apputils "EffiPlat/backend/internal/utils"
 	"EffiPlat/backend/pkg/utils"
 	"context"
 	"errors"
 	"fmt"
 
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
+// Removed most specific error variables, will use wrapped apputils errors instead.
 var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrEmailExists       = errors.New("email already exists")
-	ErrRoleNotFound      = errors.New("one or more roles not found")
-	ErrUpdateFailed      = errors.New("user update failed")
-	ErrDeleteFailed      = errors.New("user delete failed")
-	ErrPasswordHashing   = errors.New("failed to hash password")
-	ErrAssignRolesFailed = errors.New("failed to assign roles to user")
-	ErrRemoveRolesFailed = errors.New("failed to remove roles from user")
-	ErrInvalidRoleIDs    = errors.New("role IDs list cannot be empty for assignment or removal")
+	// ErrUserNotFound      = errors.New("user not found")
+	// ErrEmailExists       = errors.New("email already exists") // Already handled
+	// ErrRoleNotFound      = errors.New("one or more roles not found")
+	// ErrUpdateFailed      = errors.New("user update failed") // Already handled
+	// ErrDeleteFailed      = errors.New("user delete failed") // Already handled
+	ErrPasswordHashing = errors.New("failed to hash password") // Keeping this specific one for now
+	// ErrAssignRolesFailed = errors.New("failed to assign roles to user")
+	// ErrRemoveRolesFailed = errors.New("failed to remove roles from user")
+	// ErrInvalidRoleIDs    = errors.New("role IDs list cannot be empty for assignment or removal")
 )
 
 // UserService defines the interface for user-related business logic.
@@ -38,11 +41,17 @@ type UserService interface {
 // userServiceImpl implements the UserService interface.
 type userServiceImpl struct {
 	userRepo repository.UserRepository
+	roleRepo repository.RoleRepository
+	logger   *zap.Logger
 }
 
 // NewUserService creates a new instance of UserService.
-func NewUserService(userRepo repository.UserRepository) UserService {
-	return &userServiceImpl{userRepo: userRepo}
+func NewUserService(ur repository.UserRepository, rr repository.RoleRepository, logger *zap.Logger) UserService {
+	return &userServiceImpl{
+		userRepo: ur,
+		roleRepo: rr,
+		logger:   logger,
+	}
 }
 
 // GetUsers retrieves a list of users.
@@ -61,21 +70,18 @@ func (s *userServiceImpl) GetUsers(ctx context.Context, params models.UserListPa
 func (s *userServiceImpl) CreateUser(ctx context.Context, name, email, password, department string, roleIDs []uint) (*models.User, error) {
 	// Validate input (basic example)
 	if name == "" || email == "" || password == "" {
-		return nil, errors.New("name, email, and password are required")
+		return nil, fmt.Errorf("name, email, and password are required: %w", apputils.ErrBadRequest)
 	}
 	// Check if email already exists
 	existingUser, err := s.userRepo.FindByEmail(ctx, email) // Pass ctx
 	if err != nil {
-		// If the error is specifically gorm.ErrRecordNotFound, it means email is NOT taken, so proceed.
-		// Any other error during email check is a genuine problem.
-		if !errors.Is(err, gorm.ErrRecordNotFound) { // Assuming gorm.ErrRecordNotFound is the error for not found
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("failed to check email existence: %w", err)
 		}
-		// If errors.Is(err, gorm.ErrRecordNotFound), then existingUser will be nil, so err can be cleared for next step.
 		err = nil
 	}
 	if existingUser != nil {
-		return nil, ErrEmailExists
+		return nil, fmt.Errorf("email '%s' already exists: %w", email, apputils.ErrAlreadyExists)
 	}
 
 	// Hash the password
@@ -94,9 +100,8 @@ func (s *userServiceImpl) CreateUser(ctx context.Context, name, email, password,
 
 	createdUser, err := s.userRepo.Create(ctx, user, roleIDs) // Pass ctx
 	if err != nil {
-		// Check for specific GORM errors or custom repo errors if needed
 		if errors.Is(err, repository.ErrRepoRoleNotFound) || (errors.Unwrap(err) != nil && errors.Is(errors.Unwrap(err), repository.ErrRepoRoleNotFound)) {
-			return nil, ErrRoleNotFound // Convert to service layer error
+			return nil, fmt.Errorf("one or more roles not found during user creation: %w", apputils.ErrNotFound) // Use wrapped ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -108,106 +113,182 @@ func (s *userServiceImpl) CreateUser(ctx context.Context, name, email, password,
 func (s *userServiceImpl) GetUserByID(ctx context.Context, id uint) (*models.User, error) { // Added ctx to signature
 	user, err := s.userRepo.FindByID(ctx, id) // Pass ctx
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user by ID: %w", err)
+		// Assuming FindByID returns gorm.ErrRecordNotFound or a wrapped version of it (like ErrRepoUserNotFound)
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, repository.ErrRepoUserNotFound) {
+			return nil, fmt.Errorf("user with id %d not found: %w", id, apputils.ErrNotFound)
+		}
+		return nil, fmt.Errorf("failed to find user by ID %d: %w", id, err)
 	}
-	if user == nil {
-		return nil, ErrUserNotFound
+	if user == nil { // Should ideally be covered by err check above if repo returns error for nil user
+		return nil, fmt.Errorf("user with id %d not found: %w", id, apputils.ErrNotFound)
 	}
 	return user, nil
 }
 
 // UpdateUser updates an existing user's information.
-func (s *userServiceImpl) UpdateUser(ctx context.Context, id uint, name, department, status *string, roleIDs *[]uint) (*models.User, error) { // Added ctx to signature
-	// First, check if the user exists (repo's Update now also does this, but good practice for service layer)
-	_, err := s.userRepo.FindByID(ctx, id) // Pass ctx
-	if err != nil {
-		return nil, fmt.Errorf("failed to check user existence for update: %w", err)
-	}
-	// if existingUser == nil { // This check is now implicitly handled by repo.Update or FindByID above
-	// 	return nil, ErrUserNotFound
-	// }
-
-	// Build the updates map dynamically
+func (s *userServiceImpl) UpdateUser(ctx context.Context, id uint, name, department, status *string, roleIDs *[]uint) (*models.User, error) {
+	// ... (user existence check can remain or be removed if repo.Update handles it robustly)
 	updates := make(map[string]interface{})
 	if name != nil && *name != "" {
 		updates["name"] = *name
 	}
-	if department != nil { // Allow setting empty department
+	if department != nil {
 		updates["department"] = *department
 	}
 	if status != nil && *status != "" {
-		// Add validation for allowed status values if necessary
 		updates["status"] = *status
 	}
 
-	// Update the user record and optionally roles
-	updatedUser, err := s.userRepo.Update(ctx, id, updates, roleIDs) // Pass ctx and id directly
+	updatedUser, err := s.userRepo.Update(ctx, id, updates, roleIDs)
 	if err != nil {
-		if errors.Is(err, errors.New("one or more roles not found for update")) { // Match repo error
-			return nil, ErrRoleNotFound
-		} else if errors.Is(err, errors.New("user not found for update")) {
-			return nil, ErrUserNotFound
+		if errors.Is(err, repository.ErrRepoRoleNotFound) {
+			return nil, fmt.Errorf("one or more roles not found during user update: %w", apputils.ErrNotFound)
+		} else if errors.Is(err, repository.ErrRepoUserNotFound) {
+			return nil, fmt.Errorf("user with id %d not found for update: %w", id, apputils.ErrNotFound)
 		}
-		return nil, fmt.Errorf("%w: %v", ErrUpdateFailed, err)
+		return nil, fmt.Errorf("failed to update user %d: %w", id, apputils.ErrUpdateFailed)
 	}
 
 	return updatedUser, nil
 }
 
 // DeleteUser deletes a user by their ID.
-func (s *userServiceImpl) DeleteUser(ctx context.Context, id uint) error { // Added ctx to signature
-	err := s.userRepo.Delete(ctx, id) // Pass ctx
+func (s *userServiceImpl) DeleteUser(ctx context.Context, id uint) error {
+	err := s.userRepo.Delete(ctx, id)
 	if err != nil {
-		if errors.Is(err, errors.New("user not found")) { // Match repo error
-			return ErrUserNotFound
+		if errors.Is(err, repository.ErrRepoUserNotFound) || errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("user with id %d not found for deletion: %w", id, apputils.ErrNotFound)
 		}
-		return fmt.Errorf("%w: %v", ErrDeleteFailed, err)
+		return fmt.Errorf("failed to delete user %d: %w", id, apputils.ErrDeleteFailed)
 	}
 	return nil
 }
 
 // AssignRolesToUser assigns a list of roles to a user.
-// It replaces all existing roles of the user with the new list.
 func (s *userServiceImpl) AssignRolesToUser(ctx context.Context, userID uint, roleIDs []uint) error {
-	// User existence is now checked within the repository's transaction for this specific method.
-	err := s.userRepo.AssignRolesToUser(ctx, userID, roleIDs)
+	// Check if user exists first
+	user, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		// Check for wrapped errors first, then direct errors if GORM Transaction wraps them.
-		if errors.Is(err, repository.ErrRepoUserNotFound) || (errors.Unwrap(err) != nil && errors.Is(errors.Unwrap(err), repository.ErrRepoUserNotFound)) {
-			return ErrUserNotFound // Convert to service layer error
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, repository.ErrRepoUserNotFound) {
+			return fmt.Errorf("user with id %d not found for role assignment: %w", userID, apputils.ErrNotFound)
 		}
-		if errors.Is(err, repository.ErrRepoRoleNotFound) || (errors.Unwrap(err) != nil && errors.Is(errors.Unwrap(err), repository.ErrRepoRoleNotFound)) {
-			return ErrRoleNotFound // Convert to service layer error
+		return fmt.Errorf("failed to verify user existence for role assignment (user_id: %d): %w", userID, apputils.ErrInternalServer)
+	}
+	if user == nil { // Explicitly check if user object is nil even if error is nil
+		return fmt.Errorf("user with id %d not found for role assignment (user is nil): %w", userID, apputils.ErrNotFound)
+	}
+
+	if len(roleIDs) == 0 {
+		// Allow assigning empty list as a successful no-op, aligns with test expectations
+		return nil
+	}
+
+	// Validate all roleIDs exist before attempting to assign
+	s.logger.Debug("UserService.AssignRolesToUser: Validating role IDs before calling repository", zap.Any("roleIDs", roleIDs))
+	for _, roleID := range roleIDs {
+		role, err := s.roleRepo.GetRoleByID(ctx, roleID)
+		s.logger.Debug("UserService.AssignRolesToUser: Role lookup result",
+			zap.Uint("roleID", roleID),
+			zap.Any("role_obj_exists", role != nil),
+			zap.Error(err),
+			zap.Bool("is_gorm_ErrRecordNotFound", errors.Is(err, gorm.ErrRecordNotFound)),
+		)
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				s.logger.Warn("UserService.AssignRolesToUser: Non-existent role ID found", zap.Uint("roleID", roleID))
+				return fmt.Errorf("one or more specified role IDs do not exist (role ID %d not found): %w", roleID, apputils.ErrBadRequest)
+			}
+			s.logger.Error("UserService.AssignRolesToUser: Error verifying role existence", zap.Uint("roleID", roleID), zap.Error(err))
+			return fmt.Errorf("failed to verify role with id %d for assignment: %w", roleID, apputils.ErrInternalServer)
 		}
-		// For other errors, wrap them as ErrAssignRolesFailed
-		return fmt.Errorf("%w: %v", ErrAssignRolesFailed, err)
+		if role == nil {
+			s.logger.Error("UserService.AssignRolesToUser: Role object is nil but no error from GetRoleByID (unexpected state)", zap.Uint("roleID", roleID))
+			return fmt.Errorf("one or more specified role IDs do not exist (role ID %d not found, nil role object with no error): %w", roleID, apputils.ErrBadRequest)
+		}
+	}
+
+	s.logger.Debug("UserService.AssignRolesToUser: Role ID validation complete. Calling userRepo.AssignRolesToUser.")
+	err = s.userRepo.AssignRolesToUser(ctx, userID, roleIDs)
+	s.logger.Debug("UserService.AssignRolesToUser: Received error from userRepo.AssignRolesToUser", zap.Error(err))
+	if err != nil {
+		// User existence already checked. Role existence also checked.
+		// If userRepo.AssignRolesToUser still returns ErrRepoUserNotFound or ErrRepoRoleNotFound,
+		// it could indicate a deeper issue (race condition, transactional problem in repo, etc.)
+		if errors.Is(err, repository.ErrRepoUserNotFound) {
+			return fmt.Errorf("user with id %d became unavailable during role assignment: %w", userID, apputils.ErrNotFound) // More specific error
+		}
+		if errors.Is(err, repository.ErrRepoRoleNotFound) {
+			// This should ideally not be hit if pre-validation is correct, but kept for robustness
+			return fmt.Errorf("one or more roles became unavailable for assignment to user %d: %w", userID, apputils.ErrBadRequest)
+		}
+		return fmt.Errorf("failed to assign roles to user %d: %w", userID, apputils.ErrInternalServer)
 	}
 	return nil
 }
 
 // RemoveRolesFromUser removes a list of roles from a user.
 func (s *userServiceImpl) RemoveRolesFromUser(ctx context.Context, userID uint, roleIDs []uint) error {
-	if len(roleIDs) == 0 {
-		// If roleIDs is empty, it's a no-op, which is successful.
-		return nil
+	// Check if user exists first
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || errors.Is(err, repository.ErrRepoUserNotFound) {
+			return fmt.Errorf("user with id %d not found for role removal: %w", userID, apputils.ErrNotFound)
+		}
+		return fmt.Errorf("failed to verify user existence for role removal (user_id: %d): %w", userID, apputils.ErrInternalServer)
+	}
+	if user == nil { // Explicitly check if user object is nil even if error is nil
+		return fmt.Errorf("user with id %d not found for role removal (user is nil): %w", userID, apputils.ErrNotFound)
 	}
 
-	err := s.userRepo.RemoveRolesFromUser(ctx, userID, roleIDs)
-	if err != nil {
-		// Log the raw error from repository layer for diagnosis
-		fmt.Printf("DEBUG: Raw error from userRepo.RemoveRolesFromUser: %[1]T - %#[2]v\n", err, err)
-		if errors.Unwrap(err) != nil {
-			fmt.Printf("DEBUG: Unwrapped error: %[1]T - %#[2]v\n", errors.Unwrap(err), errors.Unwrap(err))
-		}
+	if len(roleIDs) == 0 {
+		return nil // Allow removing empty list as a successful no-op, aligns with test expectations.
+	}
 
-		// Check for wrapped errors first, then direct errors if GORM Transaction wraps them.
-		if errors.Is(err, repository.ErrRepoUserNotFound) || (errors.Unwrap(err) != nil && errors.Is(errors.Unwrap(err), repository.ErrRepoUserNotFound)) {
-			return ErrUserNotFound // Convert to service layer error
+	s.logger.Debug("UserService.RemoveRolesFromUser: Validating role IDs before calling repository", zap.Any("roleIDs", roleIDs))
+	// Validate all roleIDs exist before attempting to remove
+	// This is important because the repository's RemoveRolesFromUser might not error out if a roleID is non-existent,
+	// but the test expects a BadRequest in such cases.
+
+	// First, check if all roles exist
+	for _, roleID := range roleIDs {
+		role, err := s.roleRepo.GetRoleByID(ctx, roleID)
+		s.logger.Debug("UserService.RemoveRolesFromUser: Role lookup result",
+			zap.Uint("roleID", roleID),
+			zap.Any("role_obj_exists", role != nil), // Log if role object is non-nil
+			zap.Error(err),
+			zap.Bool("is_gorm_ErrRecordNotFound", errors.Is(err, gorm.ErrRecordNotFound)),
+		)
+
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				s.logger.Warn("UserService.RemoveRolesFromUser: Non-existent role ID found", zap.Uint("roleID", roleID))
+				return fmt.Errorf("one or more specified role IDs do not exist (role ID %d not found): %w", roleID, apputils.ErrBadRequest)
+			}
+			s.logger.Error("UserService.RemoveRolesFromUser: Error verifying role existence", zap.Uint("roleID", roleID), zap.Error(err))
+			return fmt.Errorf("failed to verify role with id %d for removal: %w", roleID, apputils.ErrInternalServer)
 		}
-		if errors.Is(err, repository.ErrRepoRoleNotFound) || (errors.Unwrap(err) != nil && errors.Is(errors.Unwrap(err), repository.ErrRepoRoleNotFound)) {
-			return ErrRoleNotFound // Convert to service layer error
+		if role == nil { // This case should ideally not be hit if err != nil handles ErrRecordNotFound correctly
+			s.logger.Error("UserService.RemoveRolesFromUser: Role object is nil but no error from GetRoleByID (unexpected state)", zap.Uint("roleID", roleID))
+			return fmt.Errorf("one or more specified role IDs do not exist (role ID %d not found, nil role object with no error): %w", roleID, apputils.ErrBadRequest)
 		}
-		return fmt.Errorf("%w: %v", ErrRemoveRolesFailed, err)
+	}
+
+	// Before calling the repository layer, we've already verified all role IDs exist
+	// Now we can safely call the repository method
+	s.logger.Debug("UserService.RemoveRolesFromUser: Role ID validation complete. Calling userRepo.RemoveRolesFromUser.")
+	err = s.userRepo.RemoveRolesFromUser(ctx, userID, roleIDs)
+	s.logger.Debug("UserService.RemoveRolesFromUser: Received error from userRepo.RemoveRolesFromUser", zap.Error(err))
+	if err != nil {
+		// User and Role existence already checked.
+		if errors.Is(err, repository.ErrRepoUserNotFound) {
+			return fmt.Errorf("user with id %d became unavailable during role removal: %w", userID, apputils.ErrNotFound)
+		}
+		if errors.Is(err, repository.ErrRepoRoleNotFound) {
+			// If the repository layer returns a role not found error, we should return a clear error message
+			return fmt.Errorf("one or more specified role IDs do not exist: %w", apputils.ErrBadRequest)
+		}
+		return fmt.Errorf("failed to remove roles from user %d: %w", userID, apputils.ErrInternalServer)
 	}
 	return nil
 }

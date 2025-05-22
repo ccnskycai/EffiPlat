@@ -2,6 +2,7 @@ package repository
 
 import (
 	"EffiPlat/backend/internal/models"
+	apputils "EffiPlat/backend/internal/utils"
 	"context"
 	"errors"
 
@@ -111,7 +112,7 @@ func (r *gormResponsibilityGroupRepository) Update(ctx context.Context, group *m
 	r.logger.Debug("GORM: Updating responsibility group", zap.Uint("id", group.ID), zap.Any("responsibilityIDs_ptr", responsibilityIDs != nil))
 
 	if group.ID == 0 {
-		return nil, errors.New("cannot update responsibility group without ID")
+		return nil, apputils.ErrMissingID
 	}
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/service"
+	"EffiPlat/backend/internal/utils"
 	"EffiPlat/backend/pkg/response"
 	"errors"
 	"net/http"
@@ -56,7 +57,7 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 	env, err := h.service.CreateEnvironment(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to create environment", zap.Error(err))
-		if errors.Is(err, service.ErrEnvironmentSlugExists) {
+		if errors.Is(err, utils.ErrAlreadyExists) {
 			response.Error(c, http.StatusConflict, err.Error())
 		} else {
 			response.Error(c, http.StatusInternalServerError, "Failed to create environment: "+err.Error())
@@ -120,7 +121,7 @@ func (h *EnvironmentHandler) GetEnvironmentByID(c *gin.Context) {
 
 	env, err := h.service.GetEnvironmentByID(c.Request.Context(), uint(id))
 	if err != nil {
-		if errors.Is(err, service.ErrEnvironmentNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			response.Error(c, http.StatusNotFound, err.Error())
 		} else {
 			h.logger.Error("Failed to get environment by ID", zap.String("id", idStr), zap.Error(err))
@@ -152,7 +153,7 @@ func (h *EnvironmentHandler) GetEnvironmentBySlug(c *gin.Context) {
 
 	env, err := h.service.GetEnvironmentBySlug(c.Request.Context(), slug)
 	if err != nil {
-		if errors.Is(err, service.ErrEnvironmentNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			response.Error(c, http.StatusNotFound, err.Error())
 		} else {
 			h.logger.Error("Failed to get environment by slug", zap.String("slug", slug), zap.Error(err))
@@ -196,11 +197,9 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 	env, err := h.service.UpdateEnvironment(c.Request.Context(), uint(id), req)
 	if err != nil {
 		h.logger.Error("Failed to update environment", zap.String("id", idStr), zap.Error(err))
-		if errors.Is(err, service.ErrEnvironmentNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			response.Error(c, http.StatusNotFound, err.Error())
-		} else if errors.Is(err, service.ErrEnvironmentSlugExists) {
-			response.Error(c, http.StatusConflict, err.Error())
-		} else if errors.Is(err, service.ErrEnvironmentNameExists) { // Added this condition
+		} else if errors.Is(err, utils.ErrAlreadyExists) {
 			response.Error(c, http.StatusConflict, err.Error())
 		} else {
 			response.Error(c, http.StatusInternalServerError, "Failed to update environment: "+err.Error())
@@ -233,14 +232,13 @@ func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 
 	err = h.service.DeleteEnvironment(c.Request.Context(), uint(id))
 	if err != nil {
-		h.logger.Error("Failed to delete environment", zap.String("id", idStr), zap.Error(err))
-		if errors.Is(err, service.ErrEnvironmentNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			response.Error(c, http.StatusNotFound, err.Error())
 		} else {
+			h.logger.Error("Failed to delete environment", zap.String("id", idStr), zap.Error(err))
 			response.Error(c, http.StatusInternalServerError, "Failed to delete environment: "+err.Error())
 		}
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
-

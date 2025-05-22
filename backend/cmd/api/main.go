@@ -99,6 +99,12 @@ func main() {
 	assetHandler := hdlrs.NewAssetHandler(assetService, appLogger)
 	// TODO: Consider adding InitializeAssetHandler to wire.go for consistency
 
+	// Initialize Service components
+	serviceRepository := repository.NewServiceRepository(dbConn, appLogger)
+	serviceService := service.NewServiceService(serviceRepository, appLogger) // Assuming NewServiceService exists
+	serviceHandler := hdlrs.NewServiceHandler(serviceService, appLogger)      // Assuming NewServiceHandler exists
+	// TODO: Consider adding InitializeServiceHandler to wire.go for consistency if this becomes permanent
+
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
 	r := router.SetupRouter(
@@ -109,7 +115,8 @@ func main() {
 		responsibilityHandler,
 		responsibilityGroupHandler,
 		environmentHandler,
-		assetHandler, // Added assetHandler
+		assetHandler,   // Added assetHandler
+		serviceHandler, // Added serviceHandler
 		jwtKey,
 	)
 

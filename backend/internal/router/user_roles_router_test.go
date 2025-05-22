@@ -5,6 +5,7 @@ import (
 	"EffiPlat/backend/internal/models"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -159,7 +160,8 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		assert.NoError(t, err)
 		// The 'Code' in ErrorResponse is the HTTP status code itself.
 		assert.Equal(t, http.StatusNotFound, respBody.Code)
-		assert.Contains(t, respBody.Message, "user not found") // Or the exact error message from service.ErrUserNotFound
+		assert.Contains(t, respBody.Message, fmt.Sprintf("user with id %d", nonExistentUserID))
+		assert.Contains(t, respBody.Message, "not found")
 	})
 
 	// --- Test Case: Assign Roles to User - Invalid Role IDs ---
@@ -213,12 +215,12 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &respBody)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, respBody.Code)
-		assert.Contains(t, respBody.Message, "one or more roles not found", "Error message should indicate role not found for assign")
+		assert.Contains(t, respBody.Message, "one or more specified role IDs do not exist", "Error message should indicate role ID not found for assign")
 
 		// 5. Verify that no roles were assigned if an invalid ID was provided
 		var updatedUser models.User
 		err = db.Preload("Roles").First(&updatedUser, targetUser.ID).Error
-		assert.NoError(t, err, "User record should still be found")
+		assert.NoError(t, err)
 		assert.Empty(t, updatedUser.Roles, "No roles should be assigned if transaction is rolled back due to invalid role ID")
 	})
 
@@ -484,10 +486,11 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &respBody) // Use '=' as err is declared in the sub-test's setup
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusNotFound, respBody.Code)
-		assert.Contains(t, respBody.Message, "user not found")
+		assert.Contains(t, respBody.Message, fmt.Sprintf("user with id %d", nonExistentUserID))
+		assert.Contains(t, respBody.Message, "not found")
 	})
 
-	// --- Test Case: Remove Roles from User - Role Not Assigned to User ---
+	// --- Test Case: Remove Roles from User - Role Not Assigned to User (should be no-op or specific error if designed that way) ---
 	t.Run("Remove_Roles_From_User_Role_Not_Assigned", func(t *testing.T) {
 		// ISOLATED SETUP FOR THIS SUB-TEST
 		components := router.SetupTestApp(t)
@@ -580,7 +583,7 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		})
 		require.NoError(t, err, "Failed to create target user for "+t.Name())
 
-		// 2. Create a role that will be assigned
+		// 2. Ccreate a role that will be assigned (this is the role that remains on the user)
 		assignedRole, err := factories.CreateRole(db, &models.Role{Name: "Role UR Assigned ForInvalidRemove"})
 		require.NoError(t, err, "Failed to create assignedRole for "+t.Name())
 		db.Model(&targetUser).Association("Roles").Append(assignedRole)
@@ -590,12 +593,17 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		db.Preload("Roles").First(&initialUser, targetUser.ID)
 		assert.Len(t, initialUser.Roles, 1, "User should have 1 role initially")
 
-		// 3. Prepare request with one valid (but perhaps not assigned to this user) and one non-existent Role ID
-		validRoleNotAssigned, _ := factories.CreateRole(db, &models.Role{Name: "Role UR ValidButNotAssigned"})
+		// 3. Prepare request: We will attempt to remove a non-existent Role ID.
+		// The 'validRoleNotAssigned' previously created here was unused in the actual test payload.
 		nonExistentRoleID := uint(99996) // Ensure this ID is different
+		// 确保这个ID真的不存在
+		var roleCheck models.Role
+		result := db.First(&roleCheck, nonExistentRoleID)
+		require.Error(t, result.Error, "应该找不到ID为99996的角色")
+		require.True(t, errors.Is(result.Error, gorm.ErrRecordNotFound), "错误应该是记录未找到")
 
 		removeReqPayload := models.AssignRemoveRolesRequest{
-			RoleIDs: []uint{validRoleNotAssigned.ID, nonExistentRoleID},
+			RoleIDs: []uint{nonExistentRoleID}, // Only the non-existent one to isolate
 		}
 		payloadBytes, _ := json.Marshal(removeReqPayload)
 
@@ -613,7 +621,7 @@ func TestUserRoleManagementRoutes(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &respBody) // Use '=' as err is declared in the sub-test's setup
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusBadRequest, respBody.Code)
-		assert.Contains(t, respBody.Message, "one or more roles not found", "Error message should indicate role not found for remove")
+		assert.Contains(t, respBody.Message, "one or more specified role IDs do not exist", "Error message should indicate role ID not found for remove")
 
 		// 5. Verify that the user's original roles are untouched
 		var updatedUser models.User

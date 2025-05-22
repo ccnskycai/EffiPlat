@@ -110,9 +110,6 @@ func (r *UserRepositoryImpl) FindByID(ctx context.Context, id uint) (*models.Use
 	var user models.User
 	err := r.db.WithContext(ctx).Preload("Roles").First(&user, id).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &user, nil
@@ -156,7 +153,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, userID uint, updates ma
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.First(&user, userID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("user not found for update")
+				return ErrRepoUserNotFound // Use defined error
 			}
 			return err
 		}
@@ -174,7 +171,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, userID uint, updates ma
 					return err
 				}
 				if len(rolesToAssign) != len(*roleIDs) {
-					return errors.New("one or more roles not found for update")
+					return ErrRepoRoleNotFound // Use defined error
 				}
 			}
 			if err := tx.Model(&user).Association("Roles").Replace(&rolesToAssign); err != nil {
@@ -196,7 +193,7 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uint) error {
 		var user models.User
 		if err := tx.Preload("Roles").First(&user, id).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return errors.New("user not found")
+				return ErrRepoUserNotFound // Use defined error
 			}
 			return err
 		}
@@ -210,7 +207,7 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uint) error {
 			return result.Error
 		}
 		if result.RowsAffected == 0 {
-			return errors.New("user not found or already deleted during transaction")
+			return ErrRepoUserNotFound // Use defined error (covers "not found or already deleted")
 		}
 		return nil
 	})
@@ -222,9 +219,6 @@ func (r *UserRepositoryImpl) FindRoleByID(ctx context.Context, id uint) (*models
 	var role models.Role
 	err := r.db.WithContext(ctx).First(&role, id).Error
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &role, nil
@@ -238,30 +232,62 @@ func (r *UserRepositoryImpl) AssignRolesToUser(ctx context.Context, userID uint,
 		if err := tx.First(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				r.logger.Warn("User not found for role assignment", zap.Uint("userID", userID))
-				return ErrRepoUserNotFound // Use repository-defined error
+				return ErrRepoUserNotFound
 			}
 			r.logger.Error("Failed to fetch user for role assignment", zap.Uint("userID", userID), zap.Error(err))
 			return err
 		}
 
-		var rolesToAssign []models.Role
-		if len(roleIDs) > 0 {
-			if err := tx.Where("id IN ?", roleIDs).Find(&rolesToAssign).Error; err != nil {
+		// Validate all the roles exist - this is a secondary check after service layer validation
+		var roles []models.Role
+		if len(roleIDs) > 0 { // Important check; if roleIDs is empty, Find would get all roles
+			if err := tx.Where("id IN ?", roleIDs).Find(&roles).Error; err != nil {
 				r.logger.Error("Failed to query roles for assignment", zap.Any("roleIDs", roleIDs), zap.Error(err))
-				return err // DB error during role lookup
+				return err // Database error during role query
 			}
-			if len(rolesToAssign) != len(roleIDs) {
-				r.logger.Warn("One or more roles not found for assignment", zap.Uint("userID", userID), zap.Any("requestedRoleIDs", roleIDs), zap.Int("foundCount", len(rolesToAssign)))
-				return ErrRepoRoleNotFound // Use repository-defined error
+
+			// Strict check: Ensure all requested role IDs exist
+			if len(roles) != len(roleIDs) {
+				// This means some of the provided roleIDs don't correspond to actual roles
+				r.logger.Debug("UserRepository.AssignRolesToUser: Condition len(roles) != len(roleIDs) is TRUE. Returning ErrRepoRoleNotFound",
+					zap.Int("rolesLen", len(roles)),
+					zap.Int("roleIDsLen", len(roleIDs)))
+				r.logger.Warn("One or more roles specified for assignment not found",
+					zap.Uint("userID", userID),
+					zap.Any("requestedRoleIDs", roleIDs),
+					zap.Int("foundRolesForAssignment", len(roles)))
+
+				// Find which role IDs don't exist
+				foundRoleIDs := make(map[uint]bool)
+				for _, role := range roles {
+					foundRoleIDs[role.ID] = true
+				}
+
+				for _, requestedID := range roleIDs {
+					if !foundRoleIDs[requestedID] {
+						r.logger.Warn("Specific role ID not found", zap.Uint("missingRoleID", requestedID))
+					}
+				}
+
+				return ErrRepoRoleNotFound
 			}
+		} else {
+			// Empty roleIDs means clear all roles
+			r.logger.Info("Empty role IDs provided, clearing all roles for user", zap.Uint("userID", userID))
 		}
 
-		// Replace will clear existing associations and add the new ones.
-		// If rolesToAssign is empty (because roleIDs was empty), it will clear all roles.
-		if err := tx.Model(&user).Association("Roles").Replace(&rolesToAssign); err != nil {
+		// Use 'Replace' to replace all roles for the user in one operation
+		r.logger.Debug("UserRepository.AssignRolesToUser: Using Replace Association method",
+			zap.Uint("userID", userID),
+			zap.Any("roleIDs", roleIDs))
+
+		// Use Replace instead of Clear+Append to handle the operation in one step
+		if err := tx.Model(&user).Association("Roles").Replace(&roles); err != nil {
 			r.logger.Error("Failed to replace roles for user", zap.Uint("userID", userID), zap.Any("roleIDs", roleIDs), zap.Error(err))
 			return err
 		}
+
+		r.logger.Debug("UserRepository.AssignRolesToUser: Transaction completed successfully. Returning nil.")
 		r.logger.Info("Successfully assigned roles to user in transaction", zap.Uint("userID", userID), zap.Any("assignedRoleIDs", roleIDs))
 		return nil
 	})
@@ -286,24 +312,44 @@ func (r *UserRepositoryImpl) RemoveRolesFromUser(ctx context.Context, userID uin
 			return err
 		}
 
-		// Validate that all roleIDs to be removed actually exist in the database.
-		// This prevents attempting to remove non-existent roles, though GORM's Delete might handle it gracefully.
-		// However, explicit validation provides clearer error feedback.
+		// 验证所有要移除的角色ID是否实际存在于数据库中
+		// 这可以防止尝试移除不存在的角色
 		var rolesToRemove []models.Role
-		if len(roleIDs) > 0 { // This check is important; if roleIDs is empty, Find would fetch all roles.
+		if len(roleIDs) > 0 { // 这个检查很重要；如果roleIDs为空，Find将获取所有角色
 			if err := tx.Where("id IN ?", roleIDs).Find(&rolesToRemove).Error; err != nil {
 				r.logger.Error("Failed to query roles for removal", zap.Any("roleIDs", roleIDs), zap.Error(err))
-				return err // DB error during role lookup
+				return err // 角色查询期间的数据库错误
 			}
+
+			// 严格检查：确保所有请求的角色ID都存在
 			if len(rolesToRemove) != len(roleIDs) {
-				// This means some of the provided roleIDs do not correspond to actual roles.
-				// Depending on strictness, this could be an error.
-				r.logger.Warn("One or more roles specified for removal not found", zap.Uint("userID", userID), zap.Any("requestedRoleIDs", roleIDs), zap.Int("foundRolesForRemoval", len(rolesToRemove)))
-				return ErrRepoRoleNotFound // Or a more specific error like "ErrAttemptingToRemoveNonExistentRole"
+				// 这意味着提供的roleIDs中有些不对应实际角色
+				r.logger.Debug("UserRepository.RemoveRolesFromUser: 条件 len(rolesToRemove) != len(roleIDs) 为TRUE。返回 ErrRepoRoleNotFound",
+					zap.Int("rolesToRemoveLen", len(rolesToRemove)),
+					zap.Int("roleIDsLen", len(roleIDs)))
+				r.logger.Warn("One or more roles specified for removal not found",
+					zap.Uint("userID", userID),
+					zap.Any("requestedRoleIDs", roleIDs),
+					zap.Int("foundRolesForRemoval", len(rolesToRemove)))
+
+				// 找出哪些角色ID不存在
+				foundRoleIDs := make(map[uint]bool)
+				for _, role := range rolesToRemove {
+					foundRoleIDs[role.ID] = true
+				}
+
+				for _, requestedID := range roleIDs {
+					if !foundRoleIDs[requestedID] {
+						r.logger.Warn("Specific role ID not found", zap.Uint("missingRoleID", requestedID))
+					}
+				}
+
+				return ErrRepoRoleNotFound // 或更具体的错误，如"ErrAttemptingToRemoveNonExistentRole"
 			}
 		} else {
 			// If roleIDs is empty, service layer should have caught this. If it reaches here, it implies removing no roles.
 			r.logger.Info("No role IDs provided for removal from user", zap.Uint("userID", userID))
+			r.logger.Debug("UserRepository.RemoveRolesFromUser: roleIDs is empty. Transaction completed successfully. Returning nil.")
 			return nil // No operation to perform, success.
 		}
 
@@ -311,6 +357,7 @@ func (r *UserRepositoryImpl) RemoveRolesFromUser(ctx context.Context, userID uin
 			r.logger.Error("Failed to remove roles from user", zap.Uint("userID", userID), zap.Any("roleIDs", roleIDs), zap.Error(err))
 			return err
 		}
+		r.logger.Debug("UserRepository.RemoveRolesFromUser: Transaction completed successfully. Returning nil.")
 		r.logger.Info("Successfully removed roles from user in transaction", zap.Uint("userID", userID), zap.Any("removedRoleIDs", roleIDs))
 		return nil
 	})

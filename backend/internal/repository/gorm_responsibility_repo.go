@@ -2,6 +2,7 @@ package repository
 
 import (
 	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/utils" // Added for utils.ErrMissingID
 	"context"
 	"errors" // For placeholder errors initially
 
@@ -77,7 +78,7 @@ func (r *gormResponsibilityRepository) Update(ctx context.Context, resp *models.
 	r.logger.Debug("GORM: Updating responsibility", zap.Any("responsibility", resp))
 	// Ensure ID is present for update, GORM uses primary key from the struct
 	if resp.ID == 0 {
-		return nil, errors.New("cannot update responsibility without ID")
+		return nil, utils.ErrMissingID
 	}
 	// Save will update all fields, or create if not found (but we should ensure it exists first)
 	// Consider using .Model(&models.Responsibility{}).Where("id = ?", resp.ID).Updates(resp) for partial updates

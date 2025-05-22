@@ -3,7 +3,9 @@ package handler
 import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/service"
-	"EffiPlat/backend/pkg/response" // Assuming you have a response package
+	"EffiPlat/backend/internal/utils" // Import apputils
+	"EffiPlat/backend/pkg/response"   // Assuming you have a response package
+	"errors"                          // Import errors
 	"net/http"
 	"strconv"
 
@@ -83,8 +85,8 @@ func (h *ResponsibilityHandler) GetResponsibilityByID(c *gin.Context) {
 
 	resp, err := h.service.GetResponsibilityByID(c.Request.Context(), uint(id))
 	if err != nil {
-		if err == service.ErrResponsibilityNotFound { // Assuming service.ErrResponsibilityNotFound exists
-			h.logger.Warn("Responsibility not found", zap.Uint("responsibilityId", uint(id)))
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			h.logger.Warn("Responsibility not found", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
 			response.NotFound(c, "Responsibility not found")
 		} else {
 			h.logger.Error("Failed to get responsibility by ID", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
@@ -115,8 +117,8 @@ func (h *ResponsibilityHandler) UpdateResponsibility(c *gin.Context) {
 	// req.ID will be ignored by the service layer, it uses the path parameter `id`
 	updatedResp, err := h.service.UpdateResponsibility(c.Request.Context(), uint(id), &req)
 	if err != nil {
-		if err == service.ErrResponsibilityNotFound {
-			h.logger.Warn("Responsibility not found for update", zap.Uint("responsibilityId", uint(id)))
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			h.logger.Warn("Responsibility not found for update", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
 			response.NotFound(c, "Responsibility not found")
 		} else {
 			h.logger.Error("Failed to update responsibility", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
@@ -140,8 +142,8 @@ func (h *ResponsibilityHandler) DeleteResponsibility(c *gin.Context) {
 
 	err = h.service.DeleteResponsibility(c.Request.Context(), uint(id))
 	if err != nil {
-		if err == service.ErrResponsibilityNotFound {
-			h.logger.Warn("Responsibility not found for delete", zap.Uint("responsibilityId", uint(id)))
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			h.logger.Warn("Responsibility not found for delete", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
 			response.NotFound(c, "Responsibility not found")
 		} else {
 			h.logger.Error("Failed to delete responsibility", zap.Uint("responsibilityId", uint(id)), zap.Error(err))

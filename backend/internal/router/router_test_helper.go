@@ -41,8 +41,9 @@ type TestAppComponents struct {
 	PermissionHandler          *handler.PermissionHandler
 	ResponsibilityHandler      *handler.ResponsibilityHandler
 	ResponsibilityGroupHandler *handler.ResponsibilityGroupHandler
-	EnvironmentHandler         *envhandlers.EnvironmentHandler // Added
-	AssetHandler               *envhandlers.AssetHandler       // Added AssetHandler
+	EnvironmentHandler         *envhandlers.EnvironmentHandler
+	AssetHandler               *envhandlers.AssetHandler
+	ServiceHandler             *envhandlers.ServiceHandler
 	JWTKey                     []byte
 }
 
@@ -70,8 +71,10 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		&models.Permission{},
 		&models.Responsibility{},
 		&models.ResponsibilityGroup{},
-		&models.Environment{}, // Added
-		&models.Asset{},       // Added Asset model
+		&models.Environment{},
+		&models.Asset{},
+		&models.ServiceType{}, // Added ServiceType model for migration
+		&models.Service{},     // Added Service model for migration
 		// Add any other models that are usually migrated by pkgdb.AutoMigrate
 	)
 	assert.NoError(t, err, "AutoMigrate should not fail")
@@ -82,8 +85,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	permRepo := repository.NewPermissionRepository(db, appLogger)
 	responsibilityRepo := repository.NewGormResponsibilityRepository(db, appLogger)
 	responsibilityGroupRepo := repository.NewGormResponsibilityGroupRepository(db, appLogger)
-	environmentRepo := repository.NewGormEnvironmentRepository(db, appLogger) // Added
-	assetRepo := repository.NewGormAssetRepository(db, appLogger)             // Added AssetRepository
+	environmentRepo := repository.NewGormEnvironmentRepository(db, appLogger)
+	assetRepo := repository.NewGormAssetRepository(db, appLogger)
+	serviceRepo := repository.NewServiceRepository(db, appLogger) // Added ServiceRepository
 
 	// Initialize services
 	jwtKey := []byte(os.Getenv("JWT_SECRET_TEST"))
@@ -91,13 +95,14 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		jwtKey = []byte("test_secret_key_for_router_tests_effiplat")
 	}
 	authService := service.NewAuthService(userRepo, jwtKey, appLogger)
-	userService := service.NewUserService(userRepo)
+	userService := service.NewUserService(userRepo, roleRepo, appLogger)
 	roleService := service.NewRoleService(roleRepo, appLogger)
 	permissionService := service.NewPermissionService(permRepo, roleRepo, appLogger)
 	responsibilityService := service.NewResponsibilityService(responsibilityRepo, appLogger)
 	responsibilityGroupService := service.NewResponsibilityGroupService(responsibilityGroupRepo, responsibilityRepo, appLogger)
-	environmentService := service.NewEnvironmentService(environmentRepo, appLogger) // Added
-	assetService := service.NewAssetService(assetRepo, environmentRepo, appLogger)  // Added AssetService
+	environmentService := service.NewEnvironmentService(environmentRepo, appLogger)
+	assetService := service.NewAssetService(assetRepo, environmentRepo, appLogger)
+	serviceService := service.NewServiceService(serviceRepo, appLogger) // Added ServiceService
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -106,8 +111,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	permissionHandler := handler.NewPermissionHandler(permissionService, appLogger)
 	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, appLogger)
 	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, appLogger)
-	environmentHandler := envhandlers.NewEnvironmentHandler(environmentService, appLogger) // Added
-	assetHandler := envhandlers.NewAssetHandler(assetService, appLogger)                   // Added AssetHandler
+	environmentHandler := envhandlers.NewEnvironmentHandler(environmentService, appLogger)
+	assetHandler := envhandlers.NewAssetHandler(assetService, appLogger)
+	serviceHandler := envhandlers.NewServiceHandler(serviceService, appLogger) // Corrected: Use envhandlers.NewServiceHandler
 
 	routerInstance := SetupRouter(
 		authHandler,
@@ -116,8 +122,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		permissionHandler,
 		responsibilityHandler,
 		responsibilityGroupHandler,
-		environmentHandler, // Added
-		assetHandler,       // Added AssetHandler
+		environmentHandler,
+		assetHandler,
+		serviceHandler, // Added ServiceHandler
 		jwtKey,
 	)
 
@@ -131,8 +138,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		PermissionHandler:          permissionHandler,
 		ResponsibilityHandler:      responsibilityHandler,
 		ResponsibilityGroupHandler: responsibilityGroupHandler,
-		EnvironmentHandler:         environmentHandler, // Added
-		AssetHandler:               assetHandler,       // Added AssetHandler
+		EnvironmentHandler:         environmentHandler,
+		AssetHandler:               assetHandler,
+		ServiceHandler:             serviceHandler, // Added ServiceHandler
 		JWTKey:                     jwtKey,
 	}
 }

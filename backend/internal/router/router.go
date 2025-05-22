@@ -34,6 +34,7 @@ func SetupRouter(
 	responsibilityGroupHandler *handler.ResponsibilityGroupHandler, // Added
 	environmentHandler *envhandlers.EnvironmentHandler, // Changed to envhandlers
 	assetHandler *envhandlers.AssetHandler, // Added AssetHandler
+	serviceHandler *envhandlers.ServiceHandler, // Added ServiceHandler
 	jwtKey []byte, /*, etc. */
 ) *gin.Engine {
 	r := gin.Default()
@@ -121,6 +122,10 @@ func SetupRouter(
 
 		// Asset routes
 		assetRoutes(apiV1Authenticated.Group("/assets"), assetHandler)
+
+		// ServiceType and Service routes
+		serviceTypeRoutes(apiV1Authenticated.Group("/service-types"), serviceHandler)
+		serviceRoutes(apiV1Authenticated.Group("/services"), serviceHandler)
 	}
 
 	// 处理404路由
@@ -239,6 +244,28 @@ func assetRoutes(rg *gin.RouterGroup, hdlr *envhandlers.AssetHandler) {
 		rg.GET("/:id", hdlr.GetAssetByID)   // GET /api/v1/assets/{id}
 		rg.PUT("/:id", hdlr.UpdateAsset)    // PUT /api/v1/assets/{id}
 		rg.DELETE("/:id", hdlr.DeleteAsset) // DELETE /api/v1/assets/{id}
+	}
+}
+
+// serviceTypeRoutes 注册服务类型管理相关的路由
+func serviceTypeRoutes(rg *gin.RouterGroup, hdlr *envhandlers.ServiceHandler) {
+	{
+		rg.POST("", hdlr.CreateServiceType)       // POST /api/v1/service-types
+		rg.GET("", hdlr.ListServiceTypes)         // GET /api/v1/service-types
+		rg.GET("/:id", hdlr.GetServiceTypeByID)   // GET /api/v1/service-types/{id}
+		rg.PUT("/:id", hdlr.UpdateServiceType)    // PUT /api/v1/service-types/{id}
+		rg.DELETE("/:id", hdlr.DeleteServiceType) // DELETE /api/v1/service-types/{id}
+	}
+}
+
+// serviceRoutes 注册服务管理相关的路由
+func serviceRoutes(rg *gin.RouterGroup, hdlr *envhandlers.ServiceHandler) {
+	{
+		rg.POST("", hdlr.CreateService)       // POST /api/v1/services
+		rg.GET("", hdlr.ListServices)         // GET /api/v1/services
+		rg.GET("/:id", hdlr.GetServiceByID)   // GET /api/v1/services/{id}
+		rg.PUT("/:id", hdlr.UpdateService)    // PUT /api/v1/services/{id}
+		rg.DELETE("/:id", hdlr.DeleteService) // DELETE /api/v1/services/{id}
 	}
 }
 

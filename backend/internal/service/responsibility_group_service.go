@@ -3,8 +3,10 @@ package service
 import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/repository"
+	"EffiPlat/backend/internal/utils" // Import apputils
 	"context"
 	"errors" // For error checking
+	"fmt"    // Import fmt for error wrapping
 
 	"go.uber.org/zap"
 	"gorm.io/gorm" // For gorm.ErrRecordNotFound
@@ -60,7 +62,7 @@ func (s *responsibilityGroupServiceImpl) GetResponsibilityGroupByID(ctx context.
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Responsibility group not found by ID", zap.Uint("id", id))
-			return nil, ErrResponsibilityGroupNotFound
+			return nil, fmt.Errorf("responsibility group with id %d not found: %w", id, utils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error fetching responsibility group by ID", zap.Uint("id", id), zap.Error(err))
 		return nil, err
@@ -78,7 +80,7 @@ func (s *responsibilityGroupServiceImpl) UpdateResponsibilityGroup(ctx context.C
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Responsibility group not found for update", zap.Uint("id", id))
-			return nil, ErrResponsibilityGroupNotFound
+			return nil, fmt.Errorf("responsibility group with id %d not found for update: %w", id, utils.ErrNotFound)
 		}
 		// TODO: Handle other specific errors like duplicate name after update
 		s.logger.Error("Service: Failed to update responsibility group", zap.Uint("id", id), zap.Error(err))
@@ -93,7 +95,7 @@ func (s *responsibilityGroupServiceImpl) DeleteResponsibilityGroup(ctx context.C
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Responsibility group not found for deletion", zap.Uint("id", id))
-			return ErrResponsibilityGroupNotFound
+			return fmt.Errorf("responsibility group with id %d not found for deletion: %w", id, utils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error deleting responsibility group", zap.Uint("id", id), zap.Error(err))
 		return err
@@ -107,7 +109,7 @@ func (s *responsibilityGroupServiceImpl) AddResponsibilityToGroup(ctx context.Co
 	_, err := s.groupRepo.GetByID(ctx, groupID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrResponsibilityGroupNotFound
+			return fmt.Errorf("responsibility group with id %d not found: %w", groupID, utils.ErrNotFound)
 		}
 		return err // Other error
 	}
@@ -115,7 +117,7 @@ func (s *responsibilityGroupServiceImpl) AddResponsibilityToGroup(ctx context.Co
 	_, err = s.responsibilityRepo.GetByID(ctx, responsibilityID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return ErrResponsibilityNotFound
+			return fmt.Errorf("responsibility with id %d not found: %w", responsibilityID, utils.ErrNotFound)
 		}
 		return err // Other error
 	}
@@ -138,7 +140,7 @@ func (s *responsibilityGroupServiceImpl) RemoveResponsibilityFromGroup(ctx conte
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Association not found for removal", zap.Uint("groupID", groupID), zap.Uint("responsibilityID", responsibilityID), zap.Error(err))
-			return ErrNotFound // Map to service.ErrNotFound
+			return fmt.Errorf("association not found for removal (group %d, responsibility %d): %w", groupID, responsibilityID, utils.ErrNotFound) // Map to service.ErrNotFound
 		}
 		s.logger.Error("Service: Failed to remove responsibility from group", zap.Uint("groupID", groupID), zap.Uint("responsibilityID", responsibilityID), zap.Error(err))
 		return err

@@ -162,17 +162,33 @@ CREATE TABLE service_types (
 CREATE INDEX idx_service_types_name ON service_types(name);
 
 -- services table
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
+    name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT,
+    version VARCHAR(50),
+    status VARCHAR(50) NOT NULL DEFAULT 'unknown',
+    external_link VARCHAR(2048),
     service_type_id INTEGER NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- REMOVED ON UPDATE for SQLite compatibility
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME,
     FOREIGN KEY (service_type_id) REFERENCES service_types(id) ON DELETE RESTRICT
 );
-CREATE INDEX idx_services_name ON services(name);
-CREATE INDEX idx_services_type_id ON services(service_type_id);
+
+-- Trigger to update 'updated_at' timestamp on row update for services
+CREATE TRIGGER IF NOT EXISTS trigger_services_updated_at
+AFTER UPDATE ON services
+FOR EACH ROW
+BEGIN
+    UPDATE services SET updated_at = CURRENT_TIMESTAMP WHERE id = OLD.id;
+END;
+
+-- Indexes for services table (moved from 20231027000004_create_services_indexes.up.sql)
+CREATE INDEX IF NOT EXISTS idx_services_name ON services(name);
+CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
+CREATE INDEX IF NOT EXISTS idx_services_service_type_id ON services(service_type_id);
+CREATE INDEX IF NOT EXISTS idx_services_deleted_at ON services(deleted_at);
 
 -- service_instances table
 CREATE TABLE service_instances (

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"EffiPlat/backend/internal/service" // Added to access UserService interface and error variables
+	"EffiPlat/backend/internal/utils"   // Import apputils
 	"errors"
 	"fmt"
 	"net/http"
@@ -99,20 +100,22 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 
 	user, err := h.userService.CreateUser(c.Request.Context(), req.Name, req.Email, req.Password, req.Department, req.Roles)
 	if err != nil {
-		// Determine appropriate status code based on error type
 		statusCode := http.StatusInternalServerError // Default
 		errMsg := fmt.Sprintf("Failed to create user: %v", err)
 
-		// DEBUGGING: Log the error from service layer
-		fmt.Printf("DEBUG CreateUser Handler: error from userService.CreateUser: %[1]T - %#[2]v\n", err, err)
-		if errors.Unwrap(err) != nil {
-			fmt.Printf("DEBUG CreateUser Handler: unwrapped error: %[1]T - %#[2]v\n", errors.Unwrap(err), errors.Unwrap(err))
-		}
-
-		if errors.Is(err, service.ErrEmailExists) || errors.Is(err, service.ErrRoleNotFound) {
+		// Check for specific wrapped errors from the service layer
+		if errors.Is(err, utils.ErrAlreadyExists) { // Was service.ErrEmailExists
 			statusCode = http.StatusBadRequest
-		} else if errors.Is(err, service.ErrPasswordHashing) {
+			errMsg = err.Error() // Use the specific message from service
+		} else if errors.Is(err, utils.ErrNotFound) { // Was service.ErrRoleNotFound
+			statusCode = http.StatusBadRequest
+			errMsg = err.Error() // Use the specific message from service
+		} else if errors.Is(err, service.ErrPasswordHashing) { // This one is still defined in user_service
 			statusCode = http.StatusInternalServerError
+			// errMsg can remain generic or be made specific for password hashing
+		} else if errors.Is(err, utils.ErrBadRequest) { // General bad request from service
+			statusCode = http.StatusBadRequest
+			errMsg = err.Error()
 		}
 		RespondWithError(c, statusCode, errMsg)
 		return
@@ -134,8 +137,9 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		errMsg := fmt.Sprintf("Failed to retrieve user: %v", err)
-		if errors.Is(err, service.ErrUserNotFound) {
+		if errors.Is(err, utils.ErrNotFound) { // Was service.ErrUserNotFound
 			statusCode = http.StatusNotFound
+			errMsg = err.Error() // Use the specific message from service
 		}
 		RespondWithError(c, statusCode, errMsg)
 		return
@@ -206,12 +210,15 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		errMsg := fmt.Sprintf("Failed to update user: %v", err)
-		if errors.Is(err, service.ErrUserNotFound) {
-			statusCode = http.StatusNotFound
-		} else if errors.Is(err, service.ErrRoleNotFound) {
+		if errors.Is(err, utils.ErrNotFound) { // Was service.ErrUserNotFound or service.ErrRoleNotFound (if role not found implies user update issue)
+			statusCode = http.StatusNotFound // Or Bad Request if it's about a role ID not found
+			errMsg = err.Error()             // Use the specific message from service
+		} else if errors.Is(err, utils.ErrUpdateFailed) { // Was service.ErrUpdateFailed
+			statusCode = http.StatusInternalServerError // Or a more specific one if available
+			errMsg = err.Error()
+		} else if errors.Is(err, utils.ErrBadRequest) { // For bad role IDs etc.
 			statusCode = http.StatusBadRequest
-		} else if errors.Is(err, service.ErrUpdateFailed) { // Assuming ErrUpdateFailed is defined in service
-			statusCode = http.StatusInternalServerError
+			errMsg = err.Error()
 		}
 		RespondWithError(c, statusCode, errMsg)
 		return
@@ -250,17 +257,18 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	if err != nil {
 		statusCode := http.StatusInternalServerError
 		errMsg := fmt.Sprintf("Failed to delete user: %v", err)
-		if errors.Is(err, service.ErrUserNotFound) { // Assuming ErrUserNotFound is defined in service
+		if errors.Is(err, utils.ErrNotFound) { // Was service.ErrUserNotFound
 			statusCode = http.StatusNotFound
-		} else if errors.Is(err, service.ErrDeleteFailed) { // Assuming ErrDeleteFailed is defined in service
-			statusCode = http.StatusInternalServerError // Or perhaps a more specific error if available
+			errMsg = err.Error()
+		} else if errors.Is(err, utils.ErrDeleteFailed) { // Was service.ErrDeleteFailed
+			statusCode = http.StatusInternalServerError
+			errMsg = err.Error()
 		}
 		RespondWithError(c, statusCode, errMsg)
 		return
 	}
 
-	// RespondWithSuccess(c, http.StatusOK, "User deleted successfully", nil) // No data to return on successful delete typically
-	c.Status(http.StatusNoContent) // Return 204 No Content on successful deletion
+	RespondWithSuccess(c, http.StatusNoContent, "User deleted successfully", nil)
 }
 
 // hasAdminRole (placeholder - needs proper implementation based on how roles are stored/checked)
@@ -323,7 +331,7 @@ func (h *UserHandler) AssignRolesToUser(c *gin.Context) {
 	userIDStr := c.Param("userId")
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid user ID format: %v", err))
+		RespondWithError(c, http.StatusBadRequest, "Invalid user ID format")
 		return
 	}
 
@@ -333,27 +341,20 @@ func (h *UserHandler) AssignRolesToUser(c *gin.Context) {
 		return
 	}
 
-	// Basic validation for RoleIDs presence, though service layer might also check
-	// For Assign, an empty list might mean "remove all roles", so service handles that logic.
-	// Here, we ensure the binding itself worked for the overall structure.
-
-	// Authorization check: Who can assign roles? (e.g., Admin only)
-	claimsValue, _ := c.Get("user") // Assume middleware has set this
-	claims, ok := claimsValue.(*models.Claims)
-	if !ok || !hasAdminRole(claims) { // hasAdminRole is a placeholder
-		RespondWithError(c, http.StatusForbidden, "Permission denied: Only admins can assign roles to users")
-		return
-	}
-
 	err = h.userService.AssignRolesToUser(c.Request.Context(), uint(userID), req.RoleIDs)
 	if err != nil {
 		statusCode := http.StatusInternalServerError
-		errMsg := fmt.Sprintf("Failed to assign roles: %v", err)
-		if errors.Is(err, service.ErrUserNotFound) {
+		errMsg := fmt.Sprintf("Failed to assign roles to user: %v", err)
+
+		if errors.Is(err, utils.ErrNotFound) {
 			statusCode = http.StatusNotFound
-		} else if errors.Is(err, service.ErrAssignRolesFailed) || errors.Is(err, service.ErrInvalidRoleIDs) || errors.Is(err, service.ErrRoleNotFound) {
-			// ErrRoleNotFound could also come from service if it tries to validate role IDs exist
+			errMsg = err.Error()
+		} else if errors.Is(err, utils.ErrBadRequest) {
 			statusCode = http.StatusBadRequest
+			errMsg = err.Error()
+		} else if errors.Is(err, utils.ErrInternalServer) {
+			statusCode = http.StatusInternalServerError
+			errMsg = err.Error()
 		}
 		RespondWithError(c, statusCode, errMsg)
 		return
@@ -362,46 +363,34 @@ func (h *UserHandler) AssignRolesToUser(c *gin.Context) {
 	RespondWithSuccess(c, http.StatusOK, "Roles assigned successfully to user", nil)
 }
 
-// RemoveRolesFromUser handles DELETE /users/{userId}/roles - Removes specified roles from a user
+// RemoveRolesFromUser handles DELETE /users/{userId}/roles request
 func (h *UserHandler) RemoveRolesFromUser(c *gin.Context) {
 	userIDStr := c.Param("userId")
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid user ID format: %v", err))
+		RespondWithError(c, http.StatusBadRequest, "Invalid user ID format")
 		return
 	}
 
-	var req models.AssignRemoveRolesRequest // Using the same request DTO for simplicity
+	var req models.AssignRemoveRolesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
 		return
 	}
 
-	// Authorization check: Who can remove roles? (e.g., Admin only)
-	claimsValue, _ := c.Get("user")
-	claims, ok := claimsValue.(*models.Claims)
-	if !ok || !hasAdminRole(claims) { // hasAdminRole is a placeholder
-		RespondWithError(c, http.StatusForbidden, "Permission denied: Only admins can remove roles from users")
-		return
-	}
-
 	err = h.userService.RemoveRolesFromUser(c.Request.Context(), uint(userID), req.RoleIDs)
 	if err != nil {
-		statusCode := http.StatusInternalServerError // Default
+		statusCode := http.StatusInternalServerError
 		errMsg := fmt.Sprintf("Failed to remove roles from user: %v", err)
-
-		// DEBUGGING: Log the error from service layer in Handler
-		fmt.Printf("DEBUG RemoveRoles Handler: error from userService.RemoveRolesFromUser: %[1]T - %#[2]v\n", err, err)
-		if errors.Unwrap(err) != nil {
-			fmt.Printf("DEBUG RemoveRoles Handler: unwrapped error: %[1]T - %#[2]v\n", errors.Unwrap(err), errors.Unwrap(err))
-		}
-
-		if errors.Is(err, service.ErrUserNotFound) {
+		if errors.Is(err, utils.ErrNotFound) {
 			statusCode = http.StatusNotFound
-		} else if errors.Is(err, service.ErrRoleNotFound) { // THIS IS THE KEY CHECK
+			errMsg = err.Error()
+		} else if errors.Is(err, utils.ErrInternalServer) {
+			statusCode = http.StatusInternalServerError
+			errMsg = err.Error()
+		} else if errors.Is(err, utils.ErrBadRequest) {
 			statusCode = http.StatusBadRequest
-		} else if errors.Is(err, service.ErrInvalidRoleIDs) { // This was for empty roleIDs, now handled as success by service
-			statusCode = http.StatusBadRequest
+			errMsg = err.Error()
 		}
 		RespondWithError(c, statusCode, errMsg)
 		return

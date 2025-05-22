@@ -3,7 +3,9 @@ package handler
 import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/service"
-	"EffiPlat/backend/pkg/response" // Assuming you have a response package
+	"EffiPlat/backend/internal/utils" // Import apputils
+	"EffiPlat/backend/pkg/response"   // Assuming you have a response package
+	"errors"                          // Import errors
 	"net/http"
 	"strconv"
 
@@ -100,8 +102,8 @@ func (h *ResponsibilityGroupHandler) GetResponsibilityGroupByID(c *gin.Context) 
 
 	group, err := h.service.GetResponsibilityGroupByID(c.Request.Context(), uint(groupID))
 	if err != nil {
-		if err == service.ErrResponsibilityGroupNotFound {
-			h.logger.Warn("Responsibility group not found", zap.Uint("groupId", uint(groupID)))
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			h.logger.Warn("Responsibility group not found", zap.Uint("groupId", uint(groupID)), zap.Error(err))
 			response.NotFound(c, "Responsibility group not found")
 		} else {
 			h.logger.Error("Failed to get responsibility group by ID", zap.Uint("groupId", uint(groupID)), zap.Error(err))
@@ -136,12 +138,11 @@ func (h *ResponsibilityGroupHandler) UpdateResponsibilityGroup(c *gin.Context) {
 
 	updatedGroup, err := h.service.UpdateResponsibilityGroup(c.Request.Context(), uint(groupID), groupUpdate, req.ResponsibilityIDs)
 	if err != nil {
-		if err == service.ErrResponsibilityGroupNotFound {
-			h.logger.Warn("Responsibility group not found for update", zap.Uint("groupId", uint(groupID)))
-			response.NotFound(c, "Responsibility group not found")
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			h.logger.Warn("Responsibility group or associated responsibility not found for update", zap.Uint("groupId", uint(groupID)), zap.Error(err))
+			response.NotFound(c, "Responsibility group or an associated responsibility not found")
 		} else {
 			h.logger.Error("Failed to update responsibility group", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			// TODO: Map other service errors (e.g., validation, ErrResponsibilityNotFound for IDs)
 			response.InternalServerError(c, "Failed to update responsibility group: "+err.Error())
 		}
 		return
@@ -161,8 +162,8 @@ func (h *ResponsibilityGroupHandler) DeleteResponsibilityGroup(c *gin.Context) {
 
 	err = h.service.DeleteResponsibilityGroup(c.Request.Context(), uint(groupID))
 	if err != nil {
-		if err == service.ErrResponsibilityGroupNotFound {
-			h.logger.Warn("Responsibility group not found for delete", zap.Uint("groupId", uint(groupID)))
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			h.logger.Warn("Responsibility group not found for delete", zap.Uint("groupId", uint(groupID)), zap.Error(err))
 			response.NotFound(c, "Responsibility group not found")
 		} else {
 			h.logger.Error("Failed to delete responsibility group", zap.Uint("groupId", uint(groupID)), zap.Error(err))
@@ -193,10 +194,11 @@ func (h *ResponsibilityGroupHandler) AddResponsibilityToGroup(c *gin.Context) {
 
 	err = h.service.AddResponsibilityToGroup(c.Request.Context(), uint(groupID), uint(respID))
 	if err != nil {
-		if err == service.ErrResponsibilityGroupNotFound {
-			response.NotFound(c, "Responsibility group not found")
-		} else if err == service.ErrResponsibilityNotFound {
-			response.NotFound(c, "Responsibility not found")
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			// Here, ErrNotFound could mean group or responsibility was not found.
+			// The service layer's error message (e.g., "responsibility group with id X not found") will be more specific.
+			h.logger.Warn("Failed to add responsibility to group: group or responsibility not found", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
+			response.NotFound(c, err.Error()) // Use the specific error from service layer
 		} else {
 			h.logger.Error("Failed to add responsibility to group", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
 			response.InternalServerError(c, "Failed to add responsibility to group: "+err.Error())
@@ -226,12 +228,10 @@ func (h *ResponsibilityGroupHandler) RemoveResponsibilityFromGroup(c *gin.Contex
 
 	err = h.service.RemoveResponsibilityFromGroup(c.Request.Context(), uint(groupID), uint(respID))
 	if err != nil {
-		if err == service.ErrResponsibilityGroupNotFound {
-			response.NotFound(c, "Responsibility group not found")
-		} else if err == service.ErrResponsibilityNotFound {
-			response.NotFound(c, "Responsibility or association not found")
-		} else if err == service.ErrNotFound {
-			response.NotFound(c, "Association not found")
+		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
+			// ErrNotFound could mean group, responsibility, or the association itself was not found.
+			h.logger.Warn("Failed to remove responsibility from group: entity or association not found", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
+			response.NotFound(c, err.Error()) // Use the specific error from service layer
 		} else {
 			h.logger.Error("Failed to remove responsibility from group", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
 			response.InternalServerError(c, "Failed to remove responsibility from group: "+err.Error())

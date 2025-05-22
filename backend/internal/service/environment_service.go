@@ -3,8 +3,10 @@ package service
 import (
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/repository"
+	apputils "EffiPlat/backend/internal/utils"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"go.uber.org/zap"
@@ -22,13 +24,13 @@ type EnvironmentService interface {
 }
 
 // ErrEnvironmentNotFound is returned when an environment is not found.
-var ErrEnvironmentNotFound = errors.New("environment not found")
+var ErrEnvironmentNotFound = fmt.Errorf("environment not found: %w", apputils.ErrNotFound)
 
 // ErrEnvironmentSlugExists is returned when an environment with the same slug already exists.
-var ErrEnvironmentSlugExists = errors.New("environment slug already exists")
+var ErrEnvironmentSlugExists = fmt.Errorf("environment slug already exists: %w", apputils.ErrAlreadyExists)
 
 // ErrEnvironmentNameExists is returned when an environment with the same name already exists.
-var ErrEnvironmentNameExists = errors.New("environment name already exists")
+var ErrEnvironmentNameExists = fmt.Errorf("environment name already exists: %w", apputils.ErrAlreadyExists)
 
 type environmentServiceImpl struct {
 	repo   repository.EnvironmentRepository
@@ -50,7 +52,7 @@ func (s *environmentServiceImpl) CreateEnvironment(ctx context.Context, req mode
 	_, err := s.repo.GetBySlug(ctx, req.Slug)
 	if err == nil {
 		s.logger.Warn("Service: Environment with this slug already exists", zap.String("slug", req.Slug))
-		return nil, ErrEnvironmentSlugExists
+		return nil, fmt.Errorf("environment slug '%s' already exists: %w", req.Slug, apputils.ErrAlreadyExists)
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		s.logger.Error("Service: Error checking for existing slug", zap.String("slug", req.Slug), zap.Error(err))
 		return nil, err
@@ -98,7 +100,7 @@ func (s *environmentServiceImpl) GetEnvironmentByID(ctx context.Context, id uint
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Environment not found by ID", zap.Uint("id", id))
-			return nil, ErrEnvironmentNotFound
+			return nil, fmt.Errorf("environment with id %d not found: %w", id, apputils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error fetching environment by ID", zap.Uint("id", id), zap.Error(err))
 		return nil, err
@@ -113,7 +115,7 @@ func (s *environmentServiceImpl) GetEnvironmentBySlug(ctx context.Context, slug 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Environment not found by Slug", zap.String("slug", slug))
-			return nil, ErrEnvironmentNotFound
+			return nil, fmt.Errorf("environment with slug '%s' not found: %w", slug, apputils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error fetching environment by Slug", zap.String("slug", slug), zap.Error(err))
 		return nil, err
@@ -129,7 +131,7 @@ func (s *environmentServiceImpl) UpdateEnvironment(ctx context.Context, id uint,
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Environment not found for update", zap.Uint("id", id))
-			return nil, ErrEnvironmentNotFound
+			return nil, fmt.Errorf("environment with id %d not found for update: %w", id, apputils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error fetching environment for update", zap.Uint("id", id), zap.Error(err))
 		return nil, err
@@ -150,7 +152,7 @@ func (s *environmentServiceImpl) UpdateEnvironment(ctx context.Context, id uint,
 		foundBySlug, err := s.repo.GetBySlug(ctx, *req.Slug)
 		if err == nil && foundBySlug.ID != id { // Slug exists and belongs to another environment
 			s.logger.Warn("Service: New slug for update conflicts with existing environment", zap.String("newSlug", *req.Slug), zap.Uint("conflictingEnvID", foundBySlug.ID))
-			return nil, ErrEnvironmentSlugExists
+			return nil, fmt.Errorf("environment slug '%s' already exists: %w", *req.Slug, apputils.ErrAlreadyExists)
 		} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) { // Some other error occurred
 			s.logger.Error("Service: Error checking slug for update", zap.String("newSlug", *req.Slug), zap.Error(err))
 			return nil, err
@@ -171,7 +173,7 @@ func (s *environmentServiceImpl) UpdateEnvironment(ctx context.Context, id uint,
 		dbErrStr := err.Error()
 		if strings.Contains(dbErrStr, "UNIQUE constraint failed") && strings.Contains(dbErrStr, "environments.name") {
 			s.logger.Warn("Service: Environment name conflict during update", zap.Uint("id", id), zap.String("name", existingEnv.Name))
-			return nil, ErrEnvironmentNameExists
+			return nil, fmt.Errorf("environment name '%s' already exists: %w", existingEnv.Name, apputils.ErrAlreadyExists)
 		}
 		// We already check for slug conflict before calling Update
 		// if strings.Contains(dbErrStr, "UNIQUE constraint failed") && strings.Contains(dbErrStr, "environments.slug") {
@@ -192,7 +194,7 @@ func (s *environmentServiceImpl) DeleteEnvironment(ctx context.Context, id uint)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Environment not found for deletion", zap.Uint("id", id))
-			return ErrEnvironmentNotFound
+			return fmt.Errorf("environment with id %d not found for deletion: %w", id, apputils.ErrNotFound)
 		}
 		s.logger.Error("Service: Failed to delete environment", zap.Uint("id", id), zap.Error(err))
 		return err

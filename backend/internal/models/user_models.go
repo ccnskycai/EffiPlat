@@ -52,7 +52,7 @@ func (UserRole) TableName() string {
 
 // AssignRemoveRolesRequest defines the structure for assigning or removing roles for/from a user.
 type AssignRemoveRolesRequest struct {
-	RoleIDs []uint `json:"roleIds" binding:"required,dive,gte=1"` // dive ensures each uint in slice is >= 1
+	RoleIDs []uint `json:"role_ids" binding:"required,dive,gte=1"` // dive ensures each uint in slice is >= 1
 }
 
 // UserListParams defines parameters for listing users with pagination and filtering.

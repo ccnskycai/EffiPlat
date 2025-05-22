@@ -1,3 +1,12 @@
+-- Drop services table related triggers first
+DROP TRIGGER IF EXISTS trigger_services_updated_at;
+
+-- Drop indexes for services table
+DROP INDEX IF EXISTS idx_services_deleted_at;
+DROP INDEX IF EXISTS idx_services_service_type_id;
+DROP INDEX IF EXISTS idx_services_status;
+DROP INDEX IF EXISTS idx_services_name;
+
 -- Rollback V1.0 Core Tables
 
 DROP TABLE IF EXISTS bugs;

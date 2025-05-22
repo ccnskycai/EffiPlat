@@ -2,6 +2,7 @@ package repository
 
 import (
 	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/utils"
 	"context"
 	"errors"
 	"fmt"
@@ -76,7 +77,7 @@ func (r *PermissionRepositoryImpl) GetPermissionByID(ctx context.Context, id uin
 	var permission models.Permission
 	if err := r.db.WithContext(ctx).First(&permission, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("permission not found")
+			return nil, utils.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to get permission by ID: %w", err)
 	}
@@ -100,7 +101,7 @@ func (r *PermissionRepositoryImpl) UpdatePermission(ctx context.Context, id uint
 	var existing models.Permission
 	if err := r.db.WithContext(ctx).First(&existing, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("permission not found")
+			return nil, utils.ErrNotFound
 		}
 		return nil, fmt.Errorf("failed to find permission for update: %w", err)
 	}
@@ -136,7 +137,7 @@ func (r *PermissionRepositoryImpl) DeletePermission(ctx context.Context, id uint
 		return fmt.Errorf("failed to delete permission: %w", result.Error)
 	}
 	if result.RowsAffected == 0 {
-		return errors.New("permission not found") // Or a specific NotFound error
+		return utils.ErrNotFound
 	}
 
 	return nil

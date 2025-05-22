@@ -3,8 +3,10 @@ package service
 import (
 	"EffiPlat/backend/internal/models"     // Assuming models.Responsibility and models.ResponsibilityListParams exist or will be created
 	"EffiPlat/backend/internal/repository" // Assuming repository.ResponsibilityRepository will exist
+	"EffiPlat/backend/internal/utils"      // Import apputils
 	"context"
 	"errors" // Import errors package
+	"fmt"    // Import fmt for error wrapping
 
 	"go.uber.org/zap"
 	"gorm.io/gorm" // Import gorm
@@ -50,7 +52,7 @@ func (s *responsibilityServiceImpl) GetResponsibilityByID(ctx context.Context, i
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Responsibility not found by ID", zap.Uint("id", id))
-			return nil, ErrResponsibilityNotFound
+			return nil, fmt.Errorf("responsibility with id %d not found: %w", id, utils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error fetching responsibility by ID", zap.Uint("id", id), zap.Error(err))
 		return nil, err
@@ -66,7 +68,7 @@ func (s *responsibilityServiceImpl) UpdateResponsibility(ctx context.Context, id
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Warn("Service: Responsibility not found for update", zap.Uint("id", id))
-			return nil, ErrResponsibilityNotFound
+			return nil, fmt.Errorf("responsibility with id %d not found for update: %w", id, utils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error fetching responsibility for update", zap.Uint("id", id), zap.Error(err))
 		return nil, err
@@ -92,7 +94,7 @@ func (s *responsibilityServiceImpl) DeleteResponsibility(ctx context.Context, id
 			// Depending on desired behavior, deleting a non-existent item might not be an error.
 			// For now, we'll treat it as "not found" similar to GetByID.
 			s.logger.Warn("Service: Responsibility not found for deletion", zap.Uint("id", id))
-			return ErrResponsibilityNotFound
+			return fmt.Errorf("responsibility with id %d not found for deletion: %w", id, utils.ErrNotFound)
 		}
 		s.logger.Error("Service: Error deleting responsibility", zap.Uint("id", id), zap.Error(err))
 		return err
