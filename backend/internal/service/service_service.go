@@ -2,25 +2,20 @@ package service
 
 import (
 	"context"
-	"errors" // Required for custom error checking if any, or remove if not used directly
-	"fmt"    // Added for fmt.Errorf
+	"errors"
+	"fmt"
 
 	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/repository"
-	"EffiPlat/backend/internal/utils" // For ErrNotFound
 
 	"go.uber.org/zap"
-	// "gorm.io/gorm" // Not directly used in service layer, repository handles db interaction
 )
 
 // ServiceService defines the interface for business logic related to services and service types.
-// It orchestrates operations using the ServiceRepository and can include additional business rules,
-// validations, and transformations between request/response DTOs and domain models.
 type ServiceService interface {
 	// ServiceType methods
 	CreateServiceType(ctx context.Context, req models.CreateServiceTypeRequest) (*models.ServiceType, error)
 	GetServiceTypeByID(ctx context.Context, id uint) (*models.ServiceType, error)
-	GetServiceTypeByName(ctx context.Context, name string) (*models.ServiceType, error)
 	ListServiceTypes(ctx context.Context, params models.ServiceTypeListParams) ([]models.ServiceType, *models.PaginatedData, error)
 	UpdateServiceType(ctx context.Context, id uint, req models.UpdateServiceTypeRequest) (*models.ServiceType, error)
 	DeleteServiceType(ctx context.Context, id uint) error
@@ -34,33 +29,33 @@ type ServiceService interface {
 }
 
 type serviceService struct {
-	repo   repository.ServiceRepository
-	logger *zap.Logger
+	serviceRepo     repository.ServiceRepository
+	serviceTypeRepo repository.ServiceTypeRepository
+	logger          *zap.Logger
 }
 
 // NewServiceService creates a new instance of ServiceService.
-func NewServiceService(repo repository.ServiceRepository, logger *zap.Logger) ServiceService {
-	return &serviceService{repo: repo, logger: logger}
+func NewServiceService(serviceRepo repository.ServiceRepository, serviceTypeRepo repository.ServiceTypeRepository, logger *zap.Logger) ServiceService {
+	return &serviceService{
+		serviceRepo:     serviceRepo,
+		serviceTypeRepo: serviceTypeRepo,
+		logger:          logger,
+	}
 }
 
 // --- ServiceType Service Methods ---
 
-// CreateServiceType handles the business logic for creating a new service type.
 func (s *serviceService) CreateServiceType(ctx context.Context, req models.CreateServiceTypeRequest) (*models.ServiceType, error) {
-	s.logger.Info("Service layer: Creating service type", zap.String("name", req.Name))
+	s.logger.Info("Creating service type", zap.String("name", req.Name))
 
-	// Optional: Add any specific business validation here before creating
-	// For example, check for naming conventions, restricted names, etc.
-
-	// Check if a service type with the same name already exists
-	existing, err := s.repo.GetServiceTypeByName(ctx, req.Name)
-	if err != nil && !errors.Is(err, utils.ErrNotFound) {
+	existing, err := s.serviceTypeRepo.GetByName(ctx, req.Name)
+	if err != nil {
 		s.logger.Error("Error checking for existing service type by name", zap.Error(err), zap.String("name", req.Name))
-		return nil, err // Propagate repository error
+		return nil, err
 	}
 	if existing != nil {
 		s.logger.Warn("Service type with this name already exists", zap.String("name", req.Name), zap.Uint("existingID", existing.ID))
-		return nil, fmt.Errorf("service type with name '%s' already exists: %w", req.Name, utils.ErrAlreadyExists)
+		return nil, models.ErrServiceTypeNameExists
 	}
 
 	serviceType := &models.ServiceType{
@@ -68,108 +63,147 @@ func (s *serviceService) CreateServiceType(ctx context.Context, req models.Creat
 		Description: req.Description,
 	}
 
-	if err := s.repo.CreateServiceType(ctx, serviceType); err != nil {
-		// Error already logged by repository
+	if err := s.serviceTypeRepo.Create(ctx, serviceType); err != nil {
+		s.logger.Error("Failed to create service type", zap.Error(err))
 		return nil, err
 	}
-	s.logger.Info("Service layer: Service type created successfully", zap.Uint("id", serviceType.ID))
+	s.logger.Info("Service type created successfully", zap.Uint("id", serviceType.ID))
 	return serviceType, nil
 }
 
-// GetServiceTypeByID retrieves a service type by ID.
 func (s *serviceService) GetServiceTypeByID(ctx context.Context, id uint) (*models.ServiceType, error) {
-	s.logger.Debug("Service layer: Getting service type by ID", zap.Uint("id", id))
-	return s.repo.GetServiceTypeByID(ctx, id)
+	s.logger.Debug("Getting service type by ID", zap.Uint("id", id))
+	st, err := s.serviceTypeRepo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrServiceTypeNotFound) {
+			s.logger.Warn("Service type not found by ID", zap.Uint("id", id))
+		}
+		return nil, err
+	}
+	return st, nil
 }
 
-// GetServiceTypeByName retrieves a service type by name.
-func (s *serviceService) GetServiceTypeByName(ctx context.Context, name string) (*models.ServiceType, error) {
-	s.logger.Debug("Service layer: Getting service type by name", zap.String("name", name))
-	return s.repo.GetServiceTypeByName(ctx, name)
-}
-
-// ListServiceTypes retrieves a list of service types.
 func (s *serviceService) ListServiceTypes(ctx context.Context, params models.ServiceTypeListParams) ([]models.ServiceType, *models.PaginatedData, error) {
-	s.logger.Debug("Service layer: Listing service types", zap.Any("params", params))
-	// Basic validation for pagination params
+	s.logger.Debug("Listing service types", zap.Any("params", params))
 	if params.Page <= 0 {
 		params.Page = 1
 	}
-	if params.PageSize <= 0 || params.PageSize > 100 { // Max page size cap
+	if params.PageSize <= 0 {
 		params.PageSize = 10
+	} else if params.PageSize > 100 {
+		params.PageSize = 100
 	}
-	return s.repo.ListServiceTypes(ctx, params)
+
+	serviceTypes, totalCount, err := s.serviceTypeRepo.List(ctx, params)
+	if err != nil {
+		s.logger.Error("Failed to list service types", zap.Error(err))
+		return nil, nil, err
+	}
+
+	pData := &models.PaginatedData{
+		Items:    serviceTypes,
+		Total:    totalCount,
+		Page:     params.Page,
+		PageSize: params.PageSize,
+	}
+	return serviceTypes, pData, nil
 }
 
-// UpdateServiceType handles the business logic for updating a service type.
 func (s *serviceService) UpdateServiceType(ctx context.Context, id uint, req models.UpdateServiceTypeRequest) (*models.ServiceType, error) {
-	s.logger.Info("Service layer: Updating service type", zap.Uint("id", id))
+	s.logger.Info("Updating service type", zap.Uint("id", id))
 
-	serviceType, err := s.repo.GetServiceTypeByID(ctx, id)
+	serviceType, err := s.serviceTypeRepo.GetByID(ctx, id)
 	if err != nil {
-		// Error already logged by repository or utils.ErrNotFound
-		return nil, err
+		return nil, err // Handles ErrServiceTypeNotFound from repository
 	}
 
-	// Check for name conflict if name is being changed
+	updated := false
 	if req.Name != nil && *req.Name != serviceType.Name {
-		existing, err := s.repo.GetServiceTypeByName(ctx, *req.Name)
-		if err != nil && !errors.Is(err, utils.ErrNotFound) {
-			s.logger.Error("Error checking for existing service type by name during update", zap.Error(err), zap.String("newName", *req.Name))
+		existing, err := s.serviceTypeRepo.GetByName(ctx, *req.Name)
+		if err != nil {
+			s.logger.Error("Error checking for existing service type by name during update", zap.Error(err), zap.String("name", *req.Name))
 			return nil, err
 		}
 		if existing != nil && existing.ID != id {
-			s.logger.Warn("Another service type with this name already exists", zap.String("newName", *req.Name), zap.Uint("conflictingID", existing.ID))
-			return nil, fmt.Errorf("another service type with name '%s' already exists: %w", *req.Name, utils.ErrAlreadyExists)
+			s.logger.Warn("Another service type with this name already exists", zap.String("name", *req.Name), zap.Uint("conflictingID", existing.ID))
+			return nil, models.ErrServiceTypeNameExists
 		}
 		serviceType.Name = *req.Name
+		updated = true
 	}
 
-	if req.Description != nil {
+	if req.Description != nil && *req.Description != serviceType.Description {
 		serviceType.Description = *req.Description
+		updated = true
 	}
 
-	if err := s.repo.UpdateServiceType(ctx, serviceType); err != nil {
+	if !updated {
+		s.logger.Info("No changes detected for service type update", zap.Uint("id", id))
+		return serviceType, nil // No fields to update
+	}
+
+	if err := s.serviceTypeRepo.Update(ctx, serviceType); err != nil {
+		s.logger.Error("Failed to update service type", zap.Error(err))
 		return nil, err
 	}
-	s.logger.Info("Service layer: Service type updated successfully", zap.Uint("id", serviceType.ID))
+	s.logger.Info("Service type updated successfully", zap.Uint("id", serviceType.ID))
 	return serviceType, nil
 }
 
-// DeleteServiceType handles the business logic for deleting a service type.
 func (s *serviceService) DeleteServiceType(ctx context.Context, id uint) error {
-	s.logger.Info("Service layer: Deleting service type", zap.Uint("id", id))
+	s.logger.Info("Deleting service type", zap.Uint("id", id))
 
-	// Optional: Add business logic here, e.g., check if any Service entities are still using this ServiceType.
-	// If the foreign key in the `services` table has `ON DELETE RESTRICT`, the database will prevent this.
-	// However, providing a user-friendly error from the service layer is better.
-	// Example check (requires a method in repository like CountServicesByServiceTypeID):
-	// count, err := s.repo.CountServicesByServiceTypeID(ctx, id)
-	// if err != nil { return err }
-	// if count > 0 { return errors.New("cannot delete service type as it is currently in use by services") }
+	// Ensure the service type exists before attempting to delete
+	_, err := s.serviceTypeRepo.GetByID(ctx, id)
+	if err != nil {
+		return err // Handles ErrServiceTypeNotFound
+	}
 
-	return s.repo.DeleteServiceType(ctx, id)
+	// Check if the service type is in use by any services
+	count, err := s.serviceRepo.CountServicesByServiceTypeID(ctx, id)
+	if err != nil {
+		s.logger.Error("Failed to check if service type is in use", zap.Error(err), zap.Uint("id", id))
+		return err
+	}
+	if count > 0 {
+		s.logger.Warn("Attempt to delete service type that is in use", zap.Uint("id", id), zap.Int64("serviceCount", count))
+		return models.ErrServiceTypeInUse
+	}
+
+	if err := s.serviceTypeRepo.Delete(ctx, id); err != nil {
+		s.logger.Error("Failed to delete service type", zap.Error(err))
+		return err
+	}
+	s.logger.Info("Service type deleted successfully", zap.Uint("id", id))
+	return nil
 }
 
 // --- Service Service Methods ---
 
-// CreateService handles the business logic for creating a new service.
 func (s *serviceService) CreateService(ctx context.Context, req models.CreateServiceRequest) (*models.ServiceResponse, error) {
-	s.logger.Info("Service layer: Creating service", zap.String("name", req.Name))
+	s.logger.Info("Creating service", zap.String("name", req.Name))
 
 	// Validate ServiceTypeID exists
-	_, err := s.repo.GetServiceTypeByID(ctx, req.ServiceTypeID)
+	_, err := s.serviceTypeRepo.GetByID(ctx, req.ServiceTypeID)
 	if err != nil {
-		if errors.Is(err, utils.ErrNotFound) {
+		if errors.Is(err, models.ErrServiceTypeNotFound) {
 			s.logger.Warn("ServiceTypeID not found during service creation", zap.Uint("serviceTypeId", req.ServiceTypeID))
-			return nil, fmt.Errorf("invalid service_type_id %d: %w", req.ServiceTypeID, utils.ErrNotFound)
+			return nil, fmt.Errorf("invalid service_type_id %d: %w", req.ServiceTypeID, models.ErrServiceTypeNotFound)
 		}
-		s.logger.Error("Failed to validate service_type_id", zap.Error(err))
+		s.logger.Error("Failed to validate service_type_id for service creation", zap.Error(err))
 		return nil, err
 	}
 
-	// Optional: Check for existing service with the same name (if names should be unique)
-	// Implement GetServiceByName in repository if needed for this check.
+	// Check if service with the same name already exists
+	existingService, err := s.serviceRepo.GetByName(ctx, req.Name)
+	if err != nil {
+		s.logger.Error("Error checking for existing service by name", zap.Error(err), zap.String("name", req.Name))
+		return nil, err
+	}
+	if existingService != nil {
+		s.logger.Warn("Service with this name already exists", zap.String("name", req.Name), zap.Uint("existingID", existingService.ID))
+		return nil, models.ErrServiceNameExists
+	}
 
 	service := &models.Service{
 		Name:          req.Name,
@@ -179,140 +213,163 @@ func (s *serviceService) CreateService(ctx context.Context, req models.CreateSer
 		ExternalLink:  req.ExternalLink,
 		ServiceTypeID: req.ServiceTypeID,
 	}
-	// If status is not provided in request, GORM default 'unknown' will be used.
-	if req.Status == "" {
-		service.Status = models.ServiceStatusUnknown // Explicitly set if not provided
+	if service.Status == "" { // Default status if not provided
+		service.Status = models.ServiceStatusUnknown
 	}
 
-	if err := s.repo.CreateService(ctx, service); err != nil {
+	if err := s.serviceRepo.Create(ctx, service); err != nil {
+		s.logger.Error("Failed to create service", zap.Error(err))
 		return nil, err
 	}
 
-	// Retrieve the service again to get it with preloaded ServiceType for the response
-	createdService, err := s.repo.GetServiceByID(ctx, service.ID)
+	// Retrieve the created service with ServiceType preloaded for the response
+	createdService, err := s.serviceRepo.GetByID(ctx, service.ID)
 	if err != nil {
-		s.logger.Error("Failed to retrieve created service with details", zap.Uint("id", service.ID), zap.Error(err))
-		// Even if retrieval fails, the service was created. Decide on error handling.
-		// For now, return the error, but client might get a confusing state.
-		// Alternatively, return a simpler response or the initial service object (without preload).
-		return nil, err
+		s.logger.Error("Failed to retrieve created service with details after creation", zap.Uint("id", service.ID), zap.Error(err))
+		return nil, err // If retrieval fails, it's a problem, return the error.
 	}
 
 	resp := createdService.ToServiceResponse()
-	s.logger.Info("Service layer: Service created successfully", zap.Uint("id", resp.ID))
+	s.logger.Info("Service created successfully", zap.Uint("id", resp.ID))
 	return &resp, nil
 }
 
-// GetServiceByID retrieves a service by its ID and converts it to a ServiceResponse.
 func (s *serviceService) GetServiceByID(ctx context.Context, id uint) (*models.ServiceResponse, error) {
-	s.logger.Debug("Service layer: Getting service by ID", zap.Uint("id", id))
-	service, err := s.repo.GetServiceByID(ctx, id) // Repository already preloads ServiceType
+	s.logger.Debug("Getting service by ID", zap.Uint("id", id))
+	service, err := s.serviceRepo.GetByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, models.ErrServiceNotFound) {
+			s.logger.Warn("Service not found by ID", zap.Uint("id", id))
+		}
 		return nil, err
 	}
 	resp := service.ToServiceResponse()
 	return &resp, nil
 }
 
-// ListServices retrieves a list of services, converting them to ServiceResponse.
 func (s *serviceService) ListServices(ctx context.Context, params models.ServiceListParams) ([]models.ServiceResponse, *models.PaginatedData, error) {
-	s.logger.Debug("Service layer: Listing services", zap.Any("params", params))
-	// Basic validation for pagination params
+	s.logger.Debug("Listing services", zap.Any("params", params))
 	if params.Page <= 0 {
 		params.Page = 1
 	}
-	if params.PageSize <= 0 || params.PageSize > 100 {
+	if params.PageSize <= 0 {
 		params.PageSize = 10
+	} else if params.PageSize > 100 {
+		params.PageSize = 100
 	}
 
-	services, paginatedData, err := s.repo.ListServices(ctx, params)
+	services, totalCount, err := s.serviceRepo.List(ctx, params)
 	if err != nil {
+		s.logger.Error("Failed to list services", zap.Error(err))
 		return nil, nil, err
 	}
 
 	serviceResponses := make([]models.ServiceResponse, len(services))
-	for i, service := range services {
-		serviceResponses[i] = service.ToServiceResponse()
+	for i, svc := range services {
+		serviceResponses[i] = svc.ToServiceResponse()
 	}
 
-	// The Items in PaginatedData should be the list of ServiceResponses
-	paginatedData.Items = serviceResponses
-
-	return serviceResponses, paginatedData, nil
+	pData := &models.PaginatedData{
+		Items:    serviceResponses,
+		Total:    totalCount,
+		Page:     params.Page,
+		PageSize: params.PageSize,
+	}
+	return serviceResponses, pData, nil
 }
 
-// UpdateService handles the business logic for updating an existing service.
 func (s *serviceService) UpdateService(ctx context.Context, id uint, req models.UpdateServiceRequest) (*models.ServiceResponse, error) {
-	s.logger.Info("Service layer: Updating service", zap.Uint("id", id))
+	s.logger.Info("Updating service", zap.Uint("id", id))
 
-	service, err := s.repo.GetServiceByID(ctx, id) // Gets service with preloaded ServiceType
+	service, err := s.serviceRepo.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, err // Handles ErrServiceNotFound
 	}
 
+	updated := false
 	// Validate ServiceTypeID if it's being changed
-	if req.ServiceTypeID != nil {
-		// Validate new ServiceTypeID exists
-		_, err := s.repo.GetServiceTypeByID(ctx, *req.ServiceTypeID)
+	if req.ServiceTypeID != nil && *req.ServiceTypeID != service.ServiceTypeID {
+		_, err := s.serviceTypeRepo.GetByID(ctx, *req.ServiceTypeID)
 		if err != nil {
-			if errors.Is(err, utils.ErrNotFound) {
+			if errors.Is(err, models.ErrServiceTypeNotFound) {
 				s.logger.Warn("New ServiceTypeID not found during service update", zap.Uint("newServiceTypeId", *req.ServiceTypeID))
-				return nil, fmt.Errorf("invalid new service_type_id %d: %w", *req.ServiceTypeID, utils.ErrNotFound)
+				return nil, fmt.Errorf("invalid new service_type_id %d: %w", *req.ServiceTypeID, models.ErrServiceTypeNotFound)
 			}
 			s.logger.Error("Failed to validate new service_type_id for service update", zap.Error(err))
 			return nil, err
 		}
 		service.ServiceTypeID = *req.ServiceTypeID
-		service.ServiceType = nil // Important: Nullify the loaded ServiceType so GORM re-fetches or uses ID correctly on Save.
-		// Otherwise, GORM might try to update the existing preloaded ServiceType based on the new ID,
-		// or create a new one if service.ServiceType struct fields were also changed, which is not intended here.
+		service.ServiceType = nil // Nullify preloaded ServiceType to ensure GORM uses the ID
+		updated = true
 	}
 
-	if req.Name != nil {
+	if req.Name != nil && *req.Name != service.Name {
+		// Check for name conflict if name is being changed
+		existingService, err := s.serviceRepo.GetByName(ctx, *req.Name)
+		if err != nil {
+			s.logger.Error("Error checking for existing service by name during update", zap.Error(err), zap.String("name", *req.Name))
+			return nil, err
+		}
+		if existingService != nil && existingService.ID != id {
+			s.logger.Warn("Another service with this name already exists", zap.String("name", *req.Name), zap.Uint("conflictingID", existingService.ID))
+			return nil, models.ErrServiceNameExists
+		}
 		service.Name = *req.Name
+		updated = true
 	}
-	if req.Description != nil {
+	if req.Description != nil && *req.Description != service.Description {
 		service.Description = *req.Description
+		updated = true
 	}
-	if req.Version != nil {
+	if req.Version != nil && *req.Version != service.Version {
 		service.Version = *req.Version
+		updated = true
 	}
-	if req.Status != nil {
+	if req.Status != nil && *req.Status != service.Status {
 		service.Status = *req.Status
+		updated = true
 	}
-	if req.ExternalLink != nil {
+	if req.ExternalLink != nil && *req.ExternalLink != service.ExternalLink {
 		service.ExternalLink = *req.ExternalLink
+		updated = true
 	}
 
-	if err := s.repo.UpdateService(ctx, service); err != nil {
+	if !updated {
+		s.logger.Info("No changes detected for service update", zap.Uint("id", id))
+		resp := service.ToServiceResponse() // Return current state if no update
+		return &resp, nil
+	}
+
+	if err := s.serviceRepo.Update(ctx, service); err != nil {
+		s.logger.Error("Failed to update service", zap.Error(err))
 		return nil, err
 	}
 
 	// Retrieve the updated service to get the potentially updated ServiceType association correctly preloaded.
-	updatedService, err := s.repo.GetServiceByID(ctx, service.ID)
+	updatedService, err := s.serviceRepo.GetByID(ctx, service.ID)
 	if err != nil {
-		s.logger.Error("Failed to retrieve updated service with details", zap.Uint("id", service.ID), zap.Error(err))
+		s.logger.Error("Failed to retrieve updated service with details after update", zap.Uint("id", service.ID), zap.Error(err))
 		return nil, err
 	}
 
 	resp := updatedService.ToServiceResponse()
-	s.logger.Info("Service layer: Service updated successfully", zap.Uint("id", resp.ID))
+	s.logger.Info("Service updated successfully", zap.Uint("id", resp.ID))
 	return &resp, nil
 }
 
-// DeleteService handles the business logic for deleting a service.
 func (s *serviceService) DeleteService(ctx context.Context, id uint) error {
-	s.logger.Info("Service layer: Deleting service", zap.Uint("id", id))
-
-	// Optional: Add business logic, e.g., check for dependent ServiceInstances before deleting a Service.
-	// This depends on how strict the deletion policy should be and if cascading deletes are handled elsewhere.
+	s.logger.Info("Deleting service", zap.Uint("id", id))
 
 	// First, ensure the service exists before attempting to delete
-	_, err := s.repo.GetServiceByID(ctx, id)
+	_, err := s.serviceRepo.GetByID(ctx, id)
 	if err != nil {
-		// This will return utils.ErrNotFound if it doesn't exist, which is appropriate.
-		return err
+		return err // Handles ErrServiceNotFound
 	}
 
-	return s.repo.DeleteService(ctx, id)
+	if err := s.serviceRepo.Delete(ctx, id); err != nil {
+		s.logger.Error("Failed to delete service", zap.Error(err))
+		return err
+	}
+	s.logger.Info("Service deleted successfully", zap.Uint("id", id))
+	return nil
 }

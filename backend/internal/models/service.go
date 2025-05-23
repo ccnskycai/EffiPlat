@@ -86,8 +86,9 @@ type ServiceResponse struct {
 	Version      string        `json:"version,omitempty"`
 	Status       ServiceStatus `json:"status,omitempty"`
 	ExternalLink string        `json:"externalLink,omitempty"`
-	ServiceType  *ServiceType  `json:"serviceType,omitempty"` // Embed ServiceType for richer response
-	CreatedAt    time.Time     `json:"createdAt"`
+	ServiceTypeID uint          `json:"serviceTypeId"`
+	ServiceType   *ServiceType  `json:"serviceType,omitempty"` // Embed ServiceType for richer response
+	CreatedAt     time.Time     `json:"createdAt"`
 	UpdatedAt    time.Time     `json:"updatedAt"`
 }
 
@@ -100,8 +101,9 @@ func (s *Service) ToServiceResponse() ServiceResponse {
 		Description:  s.Description,
 		Version:      s.Version,
 		Status:       s.Status,
-		ExternalLink: s.ExternalLink,
-		CreatedAt:    s.CreatedAt,
+		ExternalLink:  s.ExternalLink,
+		ServiceTypeID: s.ServiceTypeID, // Populate the ServiceTypeID
+		CreatedAt:     s.CreatedAt,
 		UpdatedAt:    s.UpdatedAt,
 	}
 	if s.ServiceType != nil {
@@ -117,14 +119,17 @@ type ServiceListParams struct {
 	Name          string `form:"name" binding:"omitempty,max=255"`
 	Status        string `form:"status" binding:"omitempty"` // Allows filtering by status string
 	ServiceTypeID uint   `form:"serviceTypeId" binding:"omitempty,gt=0"`
-	// Add SortBy and Order if needed
+	OrderBy       string `form:"orderBy,default=name" binding:"omitempty,oneof=id name status version serviceTypeId createdAt updatedAt"`
+	SortOrder     string `form:"sortOrder,default=asc" binding:"omitempty,oneof=asc desc"`
 }
 
 // ServiceTypeListParams defines parameters for listing service types with pagination and filtering.
 type ServiceTypeListParams struct {
 	Page     int    `form:"page,default=1" binding:"omitempty,gt=0"`
 	PageSize int    `form:"pageSize,default=10" binding:"omitempty,gt=0,max=100"`
-	Name     string `form:"name" binding:"omitempty,max=100"` // Optional: filter by name
+	Name      string `form:"name" binding:"omitempty,max=100"` // Optional: filter by name
+	OrderBy   string `form:"orderBy,default=name" binding:"omitempty,oneof=id name createdAt updatedAt"`
+	SortOrder string `form:"sortOrder,default=asc" binding:"omitempty,oneof=asc desc"`
 }
 
 // --- Request/Response Structs for ServiceType ---

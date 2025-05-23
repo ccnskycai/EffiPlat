@@ -244,6 +244,82 @@
   -H "Content-Type: application/json"
   ```
 
+### 2.6 为用户分配角色
+
+- **POST /users/{userId}/roles**
+- **路径参数:** `userId` (integer) - 用户ID
+- **请求体：**
+  ```json
+  {
+    "role_ids": [1, 2] // 要分配给用户的角色ID列表
+  }
+  ```
+- **响应体 (成功 - HTTP 200):**
+  ```json
+  {
+    "code": 0,
+    "message": "Roles assigned successfully",
+    "data": null
+  }
+  ```
+- **响应体 (失败):**
+  - HTTP 400 (Bad Request): 如果用户ID格式无效、角色ID无效或请求体格式错误。
+    ```json
+    {
+      "code": 40000, // 示例错误码
+      "message": "Invalid role ID: 999",
+      "data": null
+    }
+    ```
+  - HTTP 404 (Not Found): 如果用户不存在。
+    ```json
+    {
+      "code": 40400, // 示例错误码
+      "message": "User not found",
+      "data": null
+    }
+    ```
+- **Curl 示例:**
+  ```bash
+  curl -X POST http://localhost:8080/api/v1/users/1/roles \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role_ids": [1, 2]
+  }'
+  ```
+
+### 2.7 从用户移除角色
+
+- **DELETE /users/{userId}/roles**
+- **路径参数:** `userId` (integer) - 用户ID
+- **请求体：**
+  ```json
+  {
+    "role_ids": [1] // 要从用户移除的角色ID列表
+  }
+  ```
+- **响应体 (成功 - HTTP 200):**
+  ```json
+  {
+    "code": 0,
+    "message": "Roles removed successfully",
+    "data": null
+  }
+  ```
+- **响应体 (失败):**
+  - HTTP 400 (Bad Request): 如果用户ID格式无效、角色ID无效或请求体格式错误。
+  - HTTP 404 (Not Found): 如果用户不存在。
+- **Curl 示例:**
+  ```bash
+  curl -X DELETE http://localhost:8080/api/v1/users/1/roles \
+  -H "Authorization: Bearer <your_jwt_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role_ids": [1]
+  }'
+  ```
+
 ## 3. 数据结构与安全方案
 
 - 密码处理：使用 bcrypt 进行密码哈希

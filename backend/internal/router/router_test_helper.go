@@ -22,6 +22,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -87,7 +88,8 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityGroupRepo := repository.NewGormResponsibilityGroupRepository(db, appLogger)
 	environmentRepo := repository.NewGormEnvironmentRepository(db, appLogger)
 	assetRepo := repository.NewGormAssetRepository(db, appLogger)
-	serviceRepo := repository.NewServiceRepository(db, appLogger) // Added ServiceRepository
+	serviceRepo := repository.NewGormServiceRepository(db)         // Updated ServiceRepository
+	serviceTypeRepo := repository.NewGormServiceTypeRepository(db) // Added ServiceTypeRepository
 
 	// Initialize services
 	jwtKey := []byte(os.Getenv("JWT_SECRET_TEST"))
@@ -102,7 +104,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityGroupService := service.NewResponsibilityGroupService(responsibilityGroupRepo, responsibilityRepo, appLogger)
 	environmentService := service.NewEnvironmentService(environmentRepo, appLogger)
 	assetService := service.NewAssetService(assetRepo, environmentRepo, appLogger)
-	serviceService := service.NewServiceService(serviceRepo, appLogger) // Added ServiceService
+	serviceService := service.NewServiceService(serviceRepo, serviceTypeRepo, appLogger) // Renamed serviceSvc to serviceService and added logger
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -217,11 +219,20 @@ func GetAdminToken(t *testing.T, components TestAppComponents) string {
 	// Ensuring a consistent admin user for these tests
 	adminEmailForToken := "admin_get_token_user@example.com" // Use a distinct email
 	adminPasswordForToken := "AdminPassSecure123!"
-	_, err := CreateTestUser(components.DB, adminEmailForToken, adminPasswordForToken)
-	// Not asserting error here to allow user to already exist, or handle error appropriately
-	if err != nil && !errors.Is(err, gorm.ErrDuplicatedKey) { // Or other relevant duplicate errors
-		t.Logf("Warning: CreateTestUser for GetAdminToken failed (non-duplicate error): %v", err)
+
+	// Attempt to find the admin user first
+	var existingAdmin models.User
+	err := components.DB.Where("email = ?", adminEmailForToken).First(&existingAdmin).Error
+
+	if errors.Is(err, gorm.ErrRecordNotFound) { // User does not exist, create it
+		_, createErr := CreateTestUser(components.DB, adminEmailForToken, adminPasswordForToken)
+		// We require successful creation if the user wasn't found. Using require for fatal error.
+		require.NoErrorf(t, createErr, "Failed to create admin user '%s' for token generation: %v", adminEmailForToken, createErr)
+	} else if err != nil { // Some other DB error occurred during find
+		// If there was an error other than not found, we should fail fast.
+		t.Fatalf("Failed to query for admin user '%s': %v", adminEmailForToken, err)
 	}
+	// If user was found or successfully created, proceed to login
 
 	loginPayload := models.LoginRequest{Email: adminEmailForToken, Password: adminPasswordForToken}
 	payloadBytes, _ := json.Marshal(loginPayload)

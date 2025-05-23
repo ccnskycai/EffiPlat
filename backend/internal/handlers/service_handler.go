@@ -50,11 +50,10 @@ func (h *ServiceHandler) CreateServiceType(c *gin.Context) {
 	serviceType, err := h.service.CreateServiceType(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to create service type", zap.Error(err), zap.String("name", req.Name))
-		// Check for specific error types from service layer if needed
-		if err.Error() == "service type with name '"+req.Name+"' already exists" { // This is a bit brittle; consider custom error types
-			utils.SendErrorResponse(c, http.StatusConflict, err.Error())
+		if errors.Is(err, models.ErrServiceTypeNameExists) {
+			utils.SendErrorResponse(c, http.StatusConflict, models.ErrServiceTypeNameExists.Error())
 		} else {
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to create service type")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to create service type: "+err.Error())
 		}
 		return
 	}
@@ -84,12 +83,11 @@ func (h *ServiceHandler) GetServiceTypeByID(c *gin.Context) {
 
 	serviceType, err := h.service.GetServiceTypeByID(c.Request.Context(), uint(id))
 	if err != nil {
-		if errors.Is(err, utils.ErrNotFound) {
-			h.logger.Warn("Service type not found by ID", zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusNotFound, "Service type not found")
+		h.logger.Error("Error in GetServiceTypeByID", zap.Error(err), zap.Uint64("id", id))
+		if errors.Is(err, models.ErrServiceTypeNotFound) {
+			utils.SendErrorResponse(c, http.StatusNotFound, models.ErrServiceTypeNotFound.Error())
 		} else {
-			h.logger.Error("Failed to get service type by ID", zap.Error(err), zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve service type")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve service type: "+err.Error())
 		}
 		return
 	}
@@ -159,20 +157,20 @@ func (h *ServiceHandler) UpdateServiceType(c *gin.Context) {
 		return
 	}
 
-	serviceType, err := h.service.UpdateServiceType(c.Request.Context(), uint(id), req)
+	updatedServiceType, err := h.service.UpdateServiceType(c.Request.Context(), uint(id), req)
 	if err != nil {
-		if errors.Is(err, utils.ErrNotFound) {
-			utils.SendErrorResponse(c, http.StatusNotFound, "Service type not found")
-		} else if err.Error() == "another service type with name '"+*req.Name+"' already exists" { // Brittle check
-			utils.SendErrorResponse(c, http.StatusConflict, err.Error())
+		h.logger.Error("Failed to update service type", zap.Error(err), zap.Uint64("id", id), zap.Any("request", req))
+		if errors.Is(err, models.ErrServiceTypeNotFound) {
+			utils.SendErrorResponse(c, http.StatusNotFound, models.ErrServiceTypeNotFound.Error())
+		} else if errors.Is(err, models.ErrServiceTypeNameExists) {
+			utils.SendErrorResponse(c, http.StatusConflict, models.ErrServiceTypeNameExists.Error())
 		} else {
-			h.logger.Error("Failed to update service type", zap.Error(err), zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to update service type")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to update service type: "+err.Error())
 		}
 		return
 	}
 
-	utils.SendSuccessResponse(c, http.StatusOK, serviceType)
+	utils.SendSuccessResponse(c, http.StatusOK, updatedServiceType)
 }
 
 // DeleteServiceType godoc
@@ -184,7 +182,7 @@ func (h *ServiceHandler) UpdateServiceType(c *gin.Context) {
 // @Success 204 "Successfully deleted service type (No Content)"
 // @Failure 400 {object} models.ErrorResponse "Invalid ID format"
 // @Failure 404 {object} models.ErrorResponse "Service type not found"
-// @Failure 409 {object} models.ErrorResponse "Service type is in use and cannot be deleted" // Example if service layer implements this check
+// @Failure 409 {object} models.ErrorResponse "Service type is in use and cannot be deleted"
 // @Failure 500 {object} models.ErrorResponse "Internal server error"
 // @Router /service-types/{id} [delete]
 func (h *ServiceHandler) DeleteServiceType(c *gin.Context) {
@@ -198,14 +196,13 @@ func (h *ServiceHandler) DeleteServiceType(c *gin.Context) {
 
 	err = h.service.DeleteServiceType(c.Request.Context(), uint(id))
 	if err != nil {
-		if errors.Is(err, utils.ErrNotFound) {
-			utils.SendErrorResponse(c, http.StatusNotFound, "Service type not found")
-			// Example: How to handle a custom "in use" error from service layer
-			// } else if errors.Is(err, service.ErrServiceTypeInUse) { // Assuming service.ErrServiceTypeInUse is defined
-			// 	 utils.SendErrorResponse(c, http.StatusConflict, "Service type is in use and cannot be deleted")
+		if errors.Is(err, models.ErrServiceTypeNotFound) {
+			utils.SendErrorResponse(c, http.StatusNotFound, models.ErrServiceTypeNotFound.Error())
+		} else if errors.Is(err, models.ErrServiceTypeInUse) {
+			utils.SendErrorResponse(c, http.StatusConflict, models.ErrServiceTypeInUse.Error())
 		} else {
 			h.logger.Error("Failed to delete service type", zap.Error(err), zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete service type")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete service type: "+err.Error())
 		}
 		return
 	}
@@ -236,12 +233,13 @@ func (h *ServiceHandler) CreateService(c *gin.Context) {
 
 	serviceResp, err := h.service.CreateService(c.Request.Context(), req)
 	if err != nil {
-		h.logger.Error("Failed to create service", zap.Error(err), zap.String("name", req.Name))
-		// Example of checking for a specific error string from the service layer for invalid service_type_id
-		if err.Error() == "invalid service_type_id: not found" { // This check is brittle.
-			utils.SendErrorResponse(c, http.StatusBadRequest, err.Error()) // Use Bad Request for invalid foreign key
+		h.logger.Error("Failed to create service", zap.Error(err), zap.String("name", req.Name), zap.Any("request", req))
+		if errors.Is(err, models.ErrServiceTypeNotFound) { // ServiceTypeID in request not found
+			utils.SendErrorResponse(c, http.StatusBadRequest, models.ErrServiceTypeNotFound.Error()+": service_type_id in request not found")
+		} else if errors.Is(err, models.ErrServiceNameExists) {
+			utils.SendErrorResponse(c, http.StatusConflict, models.ErrServiceNameExists.Error())
 		} else {
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to create service")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to create service: "+err.Error())
 		}
 		return
 	}
@@ -271,12 +269,11 @@ func (h *ServiceHandler) GetServiceByID(c *gin.Context) {
 
 	serviceResp, err := h.service.GetServiceByID(c.Request.Context(), uint(id))
 	if err != nil {
-		if errors.Is(err, utils.ErrNotFound) {
-			h.logger.Warn("Service not found by ID", zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusNotFound, "Service not found")
+		h.logger.Error("Error in GetServiceByID", zap.Error(err), zap.Uint64("id", id))
+		if errors.Is(err, models.ErrServiceNotFound) {
+			utils.SendErrorResponse(c, http.StatusNotFound, models.ErrServiceNotFound.Error())
 		} else {
-			h.logger.Error("Failed to get service by ID", zap.Error(err), zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve service")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to retrieve service: "+err.Error())
 		}
 		return
 	}
@@ -347,13 +344,15 @@ func (h *ServiceHandler) UpdateService(c *gin.Context) {
 
 	serviceResp, err := h.service.UpdateService(c.Request.Context(), uint(id), req)
 	if err != nil {
-		if errors.Is(err, utils.ErrNotFound) {
-			utils.SendErrorResponse(c, http.StatusNotFound, "Service not found")
-		} else if err.Error() == "invalid new service_type_id: not found" { // Brittle check
-			utils.SendErrorResponse(c, http.StatusBadRequest, err.Error())
+		h.logger.Error("Failed to update service", zap.Error(err), zap.Uint64("id", id), zap.Any("request", req))
+		if errors.Is(err, models.ErrServiceNotFound) { // The service itself to update is not found
+			utils.SendErrorResponse(c, http.StatusNotFound, models.ErrServiceNotFound.Error())
+		} else if errors.Is(err, models.ErrServiceTypeNotFound) { // The new ServiceTypeID in payload is not found
+			utils.SendErrorResponse(c, http.StatusBadRequest, models.ErrServiceTypeNotFound.Error()+": new service_type_id in request not found")
+		} else if errors.Is(err, models.ErrServiceNameExists) {
+			utils.SendErrorResponse(c, http.StatusConflict, models.ErrServiceNameExists.Error())
 		} else {
-			h.logger.Error("Failed to update service", zap.Error(err), zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to update service")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to update service: "+err.Error())
 		}
 		return
 	}
@@ -383,11 +382,11 @@ func (h *ServiceHandler) DeleteService(c *gin.Context) {
 
 	err = h.service.DeleteService(c.Request.Context(), uint(id))
 	if err != nil {
-		if errors.Is(err, utils.ErrNotFound) {
-			utils.SendErrorResponse(c, http.StatusNotFound, "Service not found")
+		h.logger.Error("Failed to delete service", zap.Error(err), zap.Uint64("id", id))
+		if errors.Is(err, models.ErrServiceNotFound) {
+			utils.SendErrorResponse(c, http.StatusNotFound, models.ErrServiceNotFound.Error())
 		} else {
-			h.logger.Error("Failed to delete service", zap.Error(err), zap.Uint64("id", id))
-			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete service")
+			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete service: "+err.Error())
 		}
 		return
 	}

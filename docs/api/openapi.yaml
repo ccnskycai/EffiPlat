@@ -19,6 +19,7 @@ tags:
   - name: businesses
   - name: bugs
   - name: audit-logs
+  - name: service-types
 
 paths:
   # 认证
@@ -210,6 +211,92 @@ paths:
           description: 删除成功，无响应体
         '404':
           description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{userId}/roles:
+    post:
+      tags: [users]
+      summary: 为用户分配角色
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: integer }
+          description: 用户ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_ids]
+              properties:
+                role_ids:
+                  type: array
+                  items: { type: integer }
+                  description: 要分配给用户的角色ID列表
+      responses:
+        '200':
+          description: 角色分配成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: 错误的请求 (例如，无效的用户ID格式，无效的角色ID，或格式错误的请求)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 用户未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [users]
+      summary: 从用户移除角色
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: integer }
+          description: 用户ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role_ids]
+              properties:
+                role_ids:
+                  type: array
+                  items: { type: integer }
+                  description: 要从用户移除的角色ID列表
+      responses:
+        '200':
+          description: 角色移除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: 错误的请求 (例如，无效的用户ID格式，无效的角色ID，或格式错误的请求)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 用户未找到
           content:
             application/json:
               schema:
@@ -777,6 +864,47 @@ paths:
         '204':
           description: 删除成功，无响应体
 
+  /service-types:
+    get:
+      tags: [service-types]
+      summary: 获取服务类型列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+          description: Page number for pagination.
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+          description: Number of items per page.
+        - in: query
+          name: name
+          schema: { type: string }
+          description: Filter by service type name (partial match).
+        - in: query
+          name: orderBy
+          schema: { type: string, default: name, enum: [id, name, description, createdAt, updatedAt] }
+          description: Field to sort by.
+        - in: query
+          name: sortOrder
+          schema: { type: string, default: asc, enum: [asc, desc] }
+          description: Sort order (ascending or descending).
+      responses:
+        '200':
+          description: 成功获取服务类型列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceTypeListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   # 服务管理
   /services:
     get:
@@ -797,6 +925,14 @@ paths:
         - in: query
           name: serviceTypeId
           schema: { type: integer }
+        - in: query
+          name: orderBy
+          schema: { type: string, default: name, enum: [id, name, status, version, serviceTypeId, createdAt, updatedAt] }
+          description: Field to sort by.
+        - in: query
+          name: sortOrder
+          schema: { type: string, default: asc, enum: [asc, desc] }
+          description: Sort order (ascending or descending).
       responses:
         '200':
           description: 成功
@@ -1150,6 +1286,25 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: 错误的请求
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: 未授权
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalServerError:
+      description: 服务器内部错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
     # 用户相关
     User:
@@ -1236,13 +1391,13 @@ components:
       properties:
         code: { type: integer, example: 0 }
         message: { type: string }
-        data: { type: string, nullable: true }
+        data: { type: [string, "null"] }
     ErrorResponse:
       type: object
       properties:
         code: { type: integer }
         message: { type: string }
-        data: { type: string, nullable: true }
+        data: { type: [string, "null"] }
     AuthLoginResponse:
       type: object
       properties:
@@ -1263,6 +1418,13 @@ components:
             total: { type: integer }
             page: { type: integer }
             pageSize: { type: integer }
+    RoleResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Role'
     RoleCreateRequest:
       type: object
       required: [name, description]
@@ -1361,7 +1523,7 @@ components:
         id: { type: integer }
         name: { type: string }
         slug: { type: string, description: "URL-friendly identifier for the environment" }
-        description: { type: string, nullable: true }
+        description: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     Asset:
@@ -1378,8 +1540,8 @@ components:
           type: string
           description: Status of the asset (e.g., active, inactive, maintenance, decommissioned, unknown)
           enum: [active, inactive, maintenance, decommissioned, unknown]
-        description: { type: string, nullable: true }
-        environmentId: { type: integer, nullable: true }
+        description: { type: [string, "null"] }
+        environmentId: { type: [integer, "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     Service:
@@ -1387,12 +1549,8 @@ components:
       properties:
         id: { type: integer }
         name: { type: string }
-        description: { type: string }
-        serviceType:
-          type: object
-          properties:
-            id: { type: integer }
-            name: { type: string }
+        description: { type: [string, "null"] }
+        serviceType: { $ref: '#/components/schemas/ServiceType' }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     Business:
@@ -1401,13 +1559,13 @@ components:
         id: { type: integer }
         name: { type: string }
         code: { type: string }
-        description: { type: string }
+        description: { type: [string, "null"] }
         owner:
           type: object
           properties:
             id: { type: integer }
             name: { type: string }
-        status: { type: string }
+        status: { type: [string, "null"] }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
     Bug:
@@ -1415,7 +1573,7 @@ components:
       properties:
         id: { type: integer }
         title: { type: string }
-        description: { type: string }
+        description: { type: [string, "null"] }
         status: { type: string }
         priority: { type: string }
         reporter:
@@ -1441,8 +1599,8 @@ components:
           $ref: '#/components/schemas/Business'
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-        resolvedAt: { type: string, format: date-time, nullable: true }
-        closedAt: { type: string, format: date-time, nullable: true }
+        resolvedAt: { type: [string, "null"], format: date-time }
+        closedAt: { type: [string, "null"], format: date-time }
     AuditLog:
       type: object
       properties:
@@ -1544,6 +1702,30 @@ components:
             page: { type: integer }
             pageSize: { type: integer }
 
+    ServiceType:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ServiceTypeListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ServiceType' }
+            total: { type: integer }
+            page: { type: integer }
+            pageSize: { type: integer }
+
     # Asset Schemas
     AssetCreateRequest:
       type: object
@@ -1560,26 +1742,24 @@ components:
           description: "Status of the asset"
           enum: [active, inactive, maintenance, decommissioned, unknown]
           default: "unknown"
-        description: { type: string, nullable: true, description: "Description of the asset" }
+        description: { type: [string, "null"], description: "Description of the asset" }
         environmentId: { type: integer, description: "ID of the environment this asset belongs to" }
 
     AssetUpdateRequest:
       type: object
       properties:
-        hostname: { type: string, nullable: true, description: "Hostname of the asset" }
-        ipAddress: { type: string, nullable: true, description: "IP address of the asset" }
+        hostname: { type: [string, "null"] }
+        ipAddress: { type: [string, "null"] }
         assetType:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: "Type of the asset"
-          enum: [physical_server, virtual_machine, container, network_device, other]
+          enum: [physical_server, virtual_machine, container, network_device, other, "null"]
         status:
-          type: string
-          nullable: true
+          type: [string, "null"]
           description: "Status of the asset"
-          enum: [active, inactive, maintenance, decommissioned, unknown]
-        description: { type: string, nullable: true, description: "Description of the asset" }
-        environmentId: { type: integer, nullable: true, description: "ID of the environment this asset belongs to" }
+          enum: [active, inactive, maintenance, decommissioned, unknown, "null"]
+        description: { type: [string, "null"], description: "Description of the asset" }
+        environmentId: { type: [integer, "null"], description: "ID of the environment this asset belongs to" }
 
     AssetResponse:
       type: object
@@ -1603,15 +1783,15 @@ components:
       required: [name, slug]
       properties:
         name: { type: string, minLength: 2, maxLength: 100, description: "Name of the environment" }
-        description: { type: string, nullable: true, description: "Description of the environment" }
+        description: { type: [string, "null"], description: "Description of the environment" }
         slug: { type: string, minLength: 2, maxLength: 50, pattern: "^[a-zA-Z0-9_-]+$", description: "URL-friendly slug (alphanumeric, dash, underscore)" }
 
     EnvironmentUpdateRequest:
       type: object
       properties:
-        name: { type: string, minLength: 2, maxLength: 100, nullable: true, description: "Name of the environment" }
-        description: { type: string, nullable: true, description: "Description of the environment" }
-        slug: { type: string, minLength: 2, maxLength: 50, pattern: "^[a-zA-Z0-9_-]+$", nullable: true, description: "URL-friendly slug (alphanumeric, dash, underscore)" }
+        name: { type: [string, "null"], minLength: 2, maxLength: 100, description: "Name of the environment" }
+        description: { type: [string, "null"], description: "Description of the environment" }
+        slug: { type: [string, "null"], minLength: 2, maxLength: 50, pattern: "^[a-zA-Z0-9_-]+$", description: "URL-friendly slug (alphanumeric, dash, underscore)" }
 
     EnvironmentResponse:
       type: object
@@ -1630,3 +1810,113 @@ components:
           $ref: '#/components/schemas/Environment'
 
     # Next: Check and adjust EnvironmentListResponse
+
+    ServiceCreateRequest:
+      type: object
+      required: [name, serviceTypeId]
+      properties:
+        name: { type: string }
+        description: { type: [string, "null"] }
+        serviceTypeId: { type: integer }
+
+    ServiceUpdateRequest:
+      type: object
+      properties:
+        name: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        serviceTypeId: { type: [integer, "null"] }
+
+    ServiceResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Service'
+
+    ServiceDetailsResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Service'
+
+    BusinessCreateRequest:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        description: { type: [string, "null"] }
+        ownerUserId: { type: [integer, "null"], description: "ID of the user owning this business" }
+        status: { type: [string, "null"] }
+
+    BusinessUpdateRequest:
+      type: object
+      properties:
+        name: { type: [string, "null"] }
+        code: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        ownerUserId: { type: [integer, "null"] }
+        status: { type: [string, "null"] }
+
+    BusinessResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Business'
+
+    BusinessDetailsResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Business'
+
+    BugCreateRequest:
+      type: object
+      required: [title, reporterId]
+      properties:
+        title: { type: string }
+        description: { type: [string, "null"] }
+        status: { type: [string, "null"], description: "Initial status, e.g., 'new'" }
+        priority: { type: [string, "null"], description: "e.g., 'medium'" }
+        reporterId: { type: integer, description: "ID of the user reporting the bug" }
+        assigneeGroupId: { type: [integer, "null"], description: "ID of the responsibility group assigned" }
+        environmentId: { type: [integer, "null"] }
+        serviceInstanceId: { type: [integer, "null"], description: "ID of the affected service instance" }
+        businessId: { type: [integer, "null"] }
+
+    BugUpdateRequest:
+      type: object
+      properties:
+        title: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        status: { type: [string, "null"] }
+        priority: { type: [string, "null"] }
+        assigneeGroupId: { type: [integer, "null"] }
+        environmentId: { type: [integer, "null"] }
+        serviceInstanceId: { type: [integer, "null"] }
+        businessId: { type: [integer, "null"] }
+        resolvedAt: { type: [string, "null"], format: date-time }
+        closedAt: { type: [string, "null"], format: date-time }
+
+    BugResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Bug'
+
+    BugDetailsResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          $ref: '#/components/schemas/Bug'

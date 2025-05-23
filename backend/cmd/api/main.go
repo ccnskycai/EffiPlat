@@ -100,9 +100,10 @@ func main() {
 	// TODO: Consider adding InitializeAssetHandler to wire.go for consistency
 
 	// Initialize Service components
-	serviceRepository := repository.NewServiceRepository(dbConn, appLogger)
-	serviceService := service.NewServiceService(serviceRepository, appLogger) // Assuming NewServiceService exists
-	serviceHandler := hdlrs.NewServiceHandler(serviceService, appLogger)      // Assuming NewServiceHandler exists
+	serviceRepository := repository.NewGormServiceRepository(dbConn)
+	serviceTypeRepository := repository.NewGormServiceTypeRepository(dbConn) // Added ServiceTypeRepository
+	serviceService := service.NewServiceService(serviceRepository, serviceTypeRepository, appLogger) 
+	serviceHandler := hdlrs.NewServiceHandler(serviceService, appLogger)
 	// TODO: Consider adding InitializeServiceHandler to wire.go for consistency if this becomes permanent
 
 	// 6. Setup Router
