@@ -3,6 +3,9 @@ package router
 import (
 	"EffiPlat/backend/internal/handler" // Unified import path for all handlers
 	"EffiPlat/backend/internal/middleware"           // Corrected import path
+	"EffiPlat/backend/internal/service"              // 导入service包用于审计日志服务
+	
+	"go.uber.org/zap" // 导入zap日志库
 
 	// userHandler "EffiPlat/backend/internal/user" // Removed
 	"net/http" // 引入 net/http 包
@@ -34,9 +37,11 @@ func SetupRouter(
 	environmentHandler *handler.EnvironmentHandler,
 	assetHandler *handler.AssetHandler,
 	serviceHandler *handler.ServiceHandler,
-	serviceInstanceHandler *handler.ServiceInstanceHandler, // Added ServiceInstanceHandler
-	businessHandler *handler.BusinessHandler, // Added BusinessHandler
-	bugHandler *handler.BugHandler, // Added BugHandler
+	serviceInstanceHandler *handler.ServiceInstanceHandler,
+	businessHandler *handler.BusinessHandler,
+	bugHandler *handler.BugHandler,
+	auditLogHandler *handler.AuditLogHandler, // 添加审计日志处理器
+	auditLogService service.AuditLogService, // 添加审计日志服务（用于中间件）
 	jwtKey []byte,
 ) *gin.Engine {
 	r := gin.Default()
@@ -82,7 +87,11 @@ func SetupRouter(
 
 	// Authenticated routes
 	apiV1Authenticated := r.Group("/api/v1")
-	apiV1Authenticated.Use(middleware.JWTAuthMiddleware(jwtKey))
+	jwtMiddleware := middleware.JWTAuthMiddleware(jwtKey)
+	// 创建一个简单的zap logger用于审计中间件
+	logger, _ := zap.NewProduction()
+	auditLogMiddleware := middleware.AuditLogMiddleware(auditLogService, logger)
+	apiV1Authenticated.Use(jwtMiddleware, auditLogMiddleware)
 	{
 		// Authenticated Auth routes (me, logout)
 		authAuth := apiV1Authenticated.Group("/auth")
@@ -142,6 +151,9 @@ func SetupRouter(
 
 		// Bug routes
 		bugRoutes(apiV1Authenticated.Group("/bugs"), bugHandler)
+		
+		// 审计日志路由
+		auditLogRoutes(apiV1Authenticated.Group("/audit-logs"), auditLogHandler)
 	}
 
 	// 处理404路由

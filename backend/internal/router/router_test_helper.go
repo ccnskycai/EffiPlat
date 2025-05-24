@@ -48,6 +48,8 @@ type TestAppComponents struct {
 	ServiceInstanceHandler     *handler.ServiceInstanceHandler
 	BusinessHandler            *handler.BusinessHandler
 	BugHandler                 *handler.BugHandler
+	AuditLogHandler            *handler.AuditLogHandler   // 新增审计日志处理器
+	AuditLogService            service.AuditLogService   // 新增审计日志服务
 	JWTKey                     []byte
 }
 
@@ -96,6 +98,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	serviceTypeRepo := repository.NewGormServiceTypeRepository(db)                // Added ServiceTypeRepository
 	serviceInstanceRepo := repository.NewServiceInstanceRepository(db, appLogger) // Added
 	bugRepo := repository.NewBugRepository(db, appLogger) // Added BugRepository
+	auditLogRepo := repository.NewAuditLogRepository(db, appLogger) // 审计日志存储库
 	businessRepo := repository.NewBusinessRepository(db, appLogger)               // Added
 
 	// Initialize services
@@ -114,7 +117,8 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	serviceService := service.NewServiceService(serviceRepo, serviceTypeRepo, appLogger)                                      // Renamed serviceSvc to serviceService and added logger
 	serviceInstanceService := service.NewServiceInstanceService(serviceInstanceRepo, serviceRepo, environmentRepo, appLogger) // Added
 	businessService := service.NewBusinessService(businessRepo, appLogger)                                                    // Added
-	bugService := service.NewBugService(bugRepo) // Added BugService
+	bugService := service.NewBugService(bugRepo)
+	auditLogService := service.NewAuditLogService(auditLogRepo, appLogger) // 审计日志服务
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -129,6 +133,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, appLogger) // Added
 	businessHandler := handler.NewBusinessHandler(businessService, appLogger)                      // Added
 	bugHandler := handler.NewBugHandler(bugService) // Added BugHandler
+	auditLogHandler := handler.NewAuditLogHandler(auditLogService, appLogger) // 审计日志处理器
 
 	routerInstance := SetupRouter(
 		authHandler,
@@ -143,6 +148,8 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		serviceInstanceHandler, // Pass the new handler
 		businessHandler,        // Pass the new handler
 		bugHandler,             // Pass the new handler
+		auditLogHandler,
+		auditLogService,
 		jwtKey,
 	)
 
@@ -162,6 +169,8 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		ServiceInstanceHandler:     serviceInstanceHandler, // Added
 		BusinessHandler:            businessHandler,        // Added
 		BugHandler:                 bugHandler,             // Added
+		AuditLogHandler:            auditLogHandler,
+		AuditLogService:            auditLogService,
 		JWTKey:                     jwtKey,
 	}
 }

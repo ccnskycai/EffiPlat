@@ -128,6 +128,17 @@ func main() {
 	if err != nil {
 		appLogger.Fatal("Failed to initialize bug handler", zap.Error(err))
 	}
+	
+	// Initialize Audit Log components
+	auditLogService, err := internal.InitializeAuditLogService(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize audit log service", zap.Error(err))
+	}
+	
+	auditLogHandler, err := internal.InitializeAuditLogHandler(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize audit log handler", zap.Error(err))
+	}
 
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
@@ -139,11 +150,13 @@ func main() {
 		responsibilityHandler,
 		responsibilityGroupHandler,
 		environmentHandler,
-		assetHandler,           // Added assetHandler
-		serviceHandler,         // Added serviceHandler
-		serviceInstanceHandler, // Added serviceInstanceHandler
-		businessHandler,        // Added businessHandler
-		bugHandler,             // Added bugHandler
+		assetHandler,
+		serviceHandler,
+		serviceInstanceHandler,
+		businessHandler,
+		bugHandler,
+		auditLogHandler,        // 添加审计日志处理器
+		auditLogService,        // 添加审计日志服务
 		jwtKey,
 	)
 

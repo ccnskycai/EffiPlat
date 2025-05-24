@@ -140,6 +140,21 @@ func InitializeBugHandler(db *gorm.DB, logger *zap.Logger) (*handler.BugHandler,
 	return bugHandler, nil
 }
 
+// InitializeAuditLogHandler is the injector for AuditLogHandler and its dependencies.
+func InitializeAuditLogHandler(db *gorm.DB, logger *zap.Logger) (*handler.AuditLogHandler, error) {
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	auditLogHandler := handler.NewAuditLogHandler(auditLogService, logger)
+	return auditLogHandler, nil
+}
+
+// InitializeAuditLogService is the injector for AuditLogService.
+func InitializeAuditLogService(db *gorm.DB, logger *zap.Logger) (service.AuditLogService, error) {
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	return auditLogService, nil
+}
+
 // wire.go:
 
 // ProviderSet for user components
@@ -177,3 +192,6 @@ var BusinessSet = wire.NewSet(repository.NewBusinessRepository, service.NewBusin
 
 // ProviderSet for bug management components
 var BugSet = wire.NewSet(repository.NewBugRepository, service.NewBugService, handler.NewBugHandler)
+
+// ProviderSet for audit log components
+var AuditLogSet = wire.NewSet(repository.NewAuditLogRepository, service.NewAuditLogService, handler.NewAuditLogHandler)

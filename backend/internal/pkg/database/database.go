@@ -83,12 +83,21 @@ func AutoMigrate(db *gorm.DB, logger *zap.Logger) error {
 
 	// List all models that need to be migrated
 	err := db.AutoMigrate(
-		&model.User{},           // From models/user.go
-		&model.Role{},           // From models/user.go
-		&model.UserRole{},       // From models/user.go
-		&model.Permission{},     // From models/permission_model.go
-		&model.RolePermission{}, // From models/permission_model.go
-		// Add other models here if any
+		&model.User{},                 // From models/user.go
+		&model.Role{},                 // From models/user.go
+		&model.UserRole{},             // From models/user.go
+		&model.Permission{},           // From models/permission_model.go
+		&model.RolePermission{},       // From models/permission_model.go
+		&model.AuditLog{},             // From model/audit_log_model.go
+		&model.Responsibility{},       // Responsibility model
+		&model.ResponsibilityGroup{},  // ResponsibilityGroup model
+		&model.Environment{},          // Environment model
+		&model.Asset{},                // Asset model
+		&model.ServiceType{},          // ServiceType model
+		&model.Service{},              // Service model
+		&model.ServiceInstance{},      // ServiceInstance model
+		&model.Business{},             // Business model
+		&model.Bug{},                  // Bug model - fixed missing comma
 	)
 
 	if err != nil {

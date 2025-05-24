@@ -3,6 +3,7 @@ package handler
 import (
 	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/service"
+	"EffiPlat/backend/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -54,6 +55,10 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 		return
 	}
 
+	// 设置审计日志操作类型和资源
+	c.Set("auditAction", string(utils.AuditActionCreate))
+	c.Set("auditResource", "ROLE")
+
 	// Convert handler request to service layer model/struct if necessary
 	// For now, assuming roleService.CreateRole can take something compatible with req
 	// Or, more likely, a specific model for creation, e.g., model.RoleInput
@@ -62,8 +67,6 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 		Description: req.Description,
 		// PermissionIDs might be handled by the service layer through a separate field or method
 	}
-	// If service layer needs permission IDs separately:
-	// createdRole, err := h.roleService.CreateRole(c.Request.Context(), &roleToCreate, req.PermissionIDs)
 
 	// Simpler assumption for now, service handles permission linking if needed
 	createdRole, err := h.roleService.CreateRole(c.Request.Context(), &roleToCreate, req.PermissionIDs) // Adjusted to pass PermissionIDs
@@ -76,6 +79,16 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 		}
 		return
 	}
+
+	// 设置详细的审计日志信息
+	auditDetails := utils.NewCreateAuditLog(map[string]interface{}{
+		"id":           createdRole.ID,
+		"name":         createdRole.Name,
+		"description":  createdRole.Description,
+		"permissionIds": req.PermissionIDs,
+	})
+	utils.SetAuditDetails(c, auditDetails)
+	c.Set("auditResourceID", createdRole.ID)
 
 	RespondWithSuccess(c, http.StatusCreated, "Role created successfully", createdRole)
 }
@@ -146,12 +159,15 @@ func (h *RoleHandler) GetRoleByID(c *gin.Context) {
 		return
 	}
 
-	// Assuming service returns a struct that includes UserCount and Permissions as per design
-	// e.g., model.RoleDetails
-	roleDetails, err := h.roleService.GetRoleByID(c.Request.Context(), uint(roleID))
+	// 设置审计日志操作类型和资源
+	c.Set("auditAction", string(utils.AuditActionRead))
+	c.Set("auditResource", "ROLE")
+	c.Set("auditResourceID", uint(roleID))
+
+	role, err := h.roleService.GetRoleByID(c.Request.Context(), uint(roleID))
 	if err != nil {
 		h.logger.Error("GetRoleByID: Service error", zap.Uint("roleId", uint(roleID)), zap.Error(err))
-		if err.Error() == "role not found" { // Placeholder
+		if err.Error() == "role not found" { // Placeholder for actual error check
 			RespondWithError(c, http.StatusNotFound, "Role not found")
 		} else {
 			RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve role")
@@ -159,7 +175,17 @@ func (h *RoleHandler) GetRoleByID(c *gin.Context) {
 		return
 	}
 
-	RespondWithSuccess(c, http.StatusOK, "Role retrieved successfully", roleDetails)
+	// 记录查询详情 (对于READ操作，只需记录基本信息)
+	utils.SetAuditDetails(c, map[string]interface{}{
+		"action": "READ",
+		"roleQueried": uint(roleID),
+	})
+
+	// Optional: Get related data as required by the API design
+	// e.g., user count, permissions if not already included
+	// Example: role.UserCount = h.roleService.GetUserCountForRole(roleID)
+
+	RespondWithSuccess(c, http.StatusOK, "Role retrieved successfully", role)
 }
 
 // UpdateRole godoc
@@ -184,11 +210,36 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 		return
 	}
 
+	// 设置审计日志操作类型和资源
+	c.Set("auditAction", string(utils.AuditActionUpdate))
+	c.Set("auditResource", "ROLE")
+	c.Set("auditResourceID", uint(roleID))
+
+	// 获取更新前的角色信息，用于审计日志
+	existingRole, err := h.roleService.GetRoleByID(c.Request.Context(), uint(roleID))
+	if err != nil {
+		h.logger.Error("UpdateRole: Failed to get existing role", zap.Uint("roleId", uint(roleID)), zap.Error(err))
+		if err.Error() == "role not found" { // Placeholder
+			RespondWithError(c, http.StatusNotFound, "Role not found")
+		} else {
+			RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve role")
+		}
+		return
+	}
+
 	var req UpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("UpdateRole: Failed to bind JSON", zap.Error(err))
 		RespondWithError(c, http.StatusBadRequest, "Invalid request payload: "+err.Error())
 		return
+	}
+
+	// 记录更新前的状态用于审计日志
+	beforeUpdate := map[string]interface{}{
+		"id":          existingRole.ID,
+		"name":        existingRole.Name,
+		"description": existingRole.Description,
+		// 添加其他需要审计的字段
 	}
 
 	// Assuming service layer takes a model for update, or individual fields
@@ -209,6 +260,17 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 		}
 		return
 	}
+
+	// 创建审计日志信息
+	afterUpdate := map[string]interface{}{
+		"id":           updatedRole.ID,
+		"name":         updatedRole.Name,
+		"description":  updatedRole.Description,
+		"permissionIds": req.PermissionIDs,
+	}
+
+	auditDetails := utils.NewUpdateAuditLog(beforeUpdate, afterUpdate)
+	utils.SetAuditDetails(c, auditDetails)
 
 	RespondWithSuccess(c, http.StatusOK, "Role updated successfully", updatedRole)
 }
@@ -232,6 +294,32 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 		RespondWithError(c, http.StatusBadRequest, "Invalid role ID format")
 		return
 	}
+
+	// 设置审计日志操作类型和资源
+	c.Set("auditAction", string(utils.AuditActionDelete))
+	c.Set("auditResource", "ROLE")
+	c.Set("auditResourceID", uint(roleID))
+
+	// 获取将要删除的角色信息，用于审计日志
+	existingRole, err := h.roleService.GetRoleByID(c.Request.Context(), uint(roleID))
+	if err != nil {
+		h.logger.Error("DeleteRole: Failed to get existing role", zap.Uint("roleId", uint(roleID)), zap.Error(err))
+		if err.Error() == "role not found" { // Placeholder
+			RespondWithError(c, http.StatusNotFound, "Role not found")
+		} else {
+			RespondWithError(c, http.StatusInternalServerError, "Failed to retrieve role")
+		}
+		return
+	}
+
+	// 记录被删除的角色信息用于审计日志
+	deleteDetails := map[string]interface{}{
+		"id":          existingRole.ID,
+		"name":        existingRole.Name,
+		"description": existingRole.Description,
+		// 添加其他需要审计的字段
+	}
+	utils.SetAuditDetails(c, utils.NewDeleteAuditLog(deleteDetails))
 
 	err = h.roleService.DeleteRole(c.Request.Context(), uint(roleID))
 	if err != nil {

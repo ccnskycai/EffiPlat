@@ -257,10 +257,34 @@ var BugSet = wire.NewSet(
 	handler.NewBugHandler,
 )
 
+// ProviderSet for audit log components
+var AuditLogSet = wire.NewSet(
+	repository.NewAuditLogRepository,
+	service.NewAuditLogService,
+	handler.NewAuditLogHandler,
+)
+
 // InitializeBugHandler is the injector for BugHandler and its dependencies.
 func InitializeBugHandler(db *gorm.DB, logger *zap.Logger) (*handler.BugHandler, error) {
 	wire.Build(
 		BugSet,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// InitializeAuditLogHandler is the injector for AuditLogHandler and its dependencies.
+func InitializeAuditLogHandler(db *gorm.DB, logger *zap.Logger) (*handler.AuditLogHandler, error) {
+	wire.Build(
+		AuditLogSet,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// InitializeAuditLogService is the injector for AuditLogService.
+func InitializeAuditLogService(db *gorm.DB, logger *zap.Logger) (service.AuditLogService, error) {
+	wire.Build(
+		repository.NewAuditLogRepository,
+		service.NewAuditLogService,
 	)
 	return nil, nil // Wire will replace this
 }
