@@ -14,15 +14,17 @@ import (
 
 // ResponsibilityGroupHandler handles API requests for responsibility groups.
 type ResponsibilityGroupHandler struct {
-	service service.ResponsibilityGroupService
-	logger  *zap.Logger
+	responsibilityGroupService service.ResponsibilityGroupService
+	auditService              service.AuditLogService
+	logger                    *zap.Logger
 }
 
 // NewResponsibilityGroupHandler creates a new ResponsibilityGroupHandler.
-func NewResponsibilityGroupHandler(s service.ResponsibilityGroupService, logger *zap.Logger) *ResponsibilityGroupHandler {
+func NewResponsibilityGroupHandler(rgs service.ResponsibilityGroupService, auditSvc service.AuditLogService, logger *zap.Logger) *ResponsibilityGroupHandler {
 	return &ResponsibilityGroupHandler{
-		service: s,
-		logger:  logger,
+		responsibilityGroupService: rgs,
+		auditService:              auditSvc,
+		logger:                    logger,
 	}
 }
 
@@ -54,13 +56,23 @@ func (h *ResponsibilityGroupHandler) CreateResponsibilityGroup(c *gin.Context) {
 		Description: req.Description,
 	}
 
-	createdGroup, err := h.service.CreateResponsibilityGroup(c.Request.Context(), group, req.ResponsibilityIDs)
+	createdGroup, err := h.responsibilityGroupService.CreateResponsibilityGroup(c.Request.Context(), group, req.ResponsibilityIDs)
 	if err != nil {
 		h.logger.Error("Failed to create responsibility group", zap.Error(err))
 		// TODO: Map service errors (e.g., ErrAlreadyExists, validation errors for IDs)
 		utils.InternalServerError(c, "Failed to create responsibility group: "+err.Error())
 		return
 	}
+
+	// 记录审计日志
+	details := map[string]interface{}{
+		"id":              createdGroup.ID,
+		"name":            createdGroup.Name,
+		"description":     createdGroup.Description,
+		"responsibilityIDs": req.ResponsibilityIDs,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "RESPONSIBILITY_GROUP", createdGroup.ID, details)
+
 	utils.Created(c, createdGroup)
 }
 
@@ -80,7 +92,7 @@ func (h *ResponsibilityGroupHandler) GetResponsibilityGroups(c *gin.Context) {
 		params.PageSize = 10
 	}
 
-	groups, total, err := h.service.GetResponsibilityGroups(c.Request.Context(), params)
+	groups, total, err := h.responsibilityGroupService.GetResponsibilityGroups(c.Request.Context(), params)
 	if err != nil {
 		h.logger.Error("Failed to get responsibility groups", zap.Error(err))
 		utils.InternalServerError(c, "Failed to retrieve responsibility groups: "+err.Error())
@@ -99,7 +111,7 @@ func (h *ResponsibilityGroupHandler) GetResponsibilityGroupByID(c *gin.Context) 
 		return
 	}
 
-	group, err := h.service.GetResponsibilityGroupByID(c.Request.Context(), uint(groupID))
+	group, err := h.responsibilityGroupService.GetResponsibilityGroupByID(c.Request.Context(), uint(groupID))
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility group not found", zap.Uint("groupId", uint(groupID)), zap.Error(err))
@@ -122,6 +134,13 @@ func (h *ResponsibilityGroupHandler) UpdateResponsibilityGroup(c *gin.Context) {
 		utils.BadRequest(c, "Invalid group ID format")
 		return
 	}
+	
+	// 获取原始数据用于审计日志
+	origGroup, getErr := h.responsibilityGroupService.GetResponsibilityGroupByID(c.Request.Context(), uint(groupID))
+	if getErr != nil {
+		h.logger.Warn("Could not get original responsibility group data for audit logging", 
+			zap.Uint64("id", groupID), zap.Error(getErr))
+	}
 
 	var req UpdateResponsibilityGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -135,17 +154,31 @@ func (h *ResponsibilityGroupHandler) UpdateResponsibilityGroup(c *gin.Context) {
 		Description: req.Description,
 	}
 
-	updatedGroup, err := h.service.UpdateResponsibilityGroup(c.Request.Context(), uint(groupID), groupUpdate, req.ResponsibilityIDs)
+	updatedGroup, err := h.responsibilityGroupService.UpdateResponsibilityGroup(c.Request.Context(), uint(groupID), groupUpdate, req.ResponsibilityIDs)
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility group or associated responsibility not found for update", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			utils.NotFound(c, "Responsibility group or an associated responsibility not found")
+			utils.NotFound(c, "Responsibility group or associated responsibility not found")
 		} else {
 			h.logger.Error("Failed to update responsibility group", zap.Uint("groupId", uint(groupID)), zap.Error(err))
+			// TODO: Map other service errors (e.g., validation error)
 			utils.InternalServerError(c, "Failed to update responsibility group: "+err.Error())
 		}
 		return
 	}
+
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": origGroup,
+		"after":  updatedGroup,
+		"changes": map[string]interface{}{
+			"name":        req.Name,
+			"description": req.Description,
+			"responsibilityIDs": req.ResponsibilityIDs,
+		},
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "RESPONSIBILITY_GROUP", updatedGroup.ID, details)
+
 	utils.OK(c, updatedGroup)
 }
 
@@ -158,8 +191,15 @@ func (h *ResponsibilityGroupHandler) DeleteResponsibilityGroup(c *gin.Context) {
 		utils.BadRequest(c, "Invalid group ID format")
 		return
 	}
+	
+	// 获取要删除的责任组数据用于审计日志
+	group, getErr := h.responsibilityGroupService.GetResponsibilityGroupByID(c.Request.Context(), uint(groupID))
+	if getErr != nil {
+		h.logger.Warn("Could not get responsibility group data for audit logging before deletion", 
+			zap.Uint64("id", groupID), zap.Error(getErr))
+	}
 
-	err = h.service.DeleteResponsibilityGroup(c.Request.Context(), uint(groupID))
+	err = h.responsibilityGroupService.DeleteResponsibilityGroup(c.Request.Context(), uint(groupID))
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility group not found for delete", zap.Uint("groupId", uint(groupID)), zap.Error(err))
@@ -170,6 +210,19 @@ func (h *ResponsibilityGroupHandler) DeleteResponsibilityGroup(c *gin.Context) {
 		}
 		return
 	}
+
+	// 记录审计日志
+	if group != nil {
+		details := map[string]interface{}{
+			"deletedGroup": map[string]interface{}{
+				"id":          group.ID,
+				"name":        group.Name,
+				"description": group.Description,
+			},
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "RESPONSIBILITY_GROUP", uint(groupID), details)
+	}
+
 	utils.Status(c, http.StatusNoContent)
 }
 
@@ -191,7 +244,7 @@ func (h *ResponsibilityGroupHandler) AddResponsibilityToGroup(c *gin.Context) {
 		return
 	}
 
-	err = h.service.AddResponsibilityToGroup(c.Request.Context(), uint(groupID), uint(respID))
+	err = h.responsibilityGroupService.AddResponsibilityToGroup(c.Request.Context(), uint(groupID), uint(respID))
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			// Here, ErrNotFound could mean group or responsibility was not found.
@@ -225,7 +278,7 @@ func (h *ResponsibilityGroupHandler) RemoveResponsibilityFromGroup(c *gin.Contex
 		return
 	}
 
-	err = h.service.RemoveResponsibilityFromGroup(c.Request.Context(), uint(groupID), uint(respID))
+	err = h.responsibilityGroupService.RemoveResponsibilityFromGroup(c.Request.Context(), uint(groupID), uint(respID))
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			// ErrNotFound could mean group, responsibility, or the association itself was not found.

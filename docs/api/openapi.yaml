@@ -1245,34 +1245,51 @@ paths:
   /audit-logs:
     get:
       tags: [audit-logs]
-      summary: 查询审计日志
+      summary: 获取审计日志列表
+      description: 根据条件查询审计日志记录
       security:
         - bearerAuth: []
       parameters:
         - in: query
           name: page
           schema: { type: integer, default: 1 }
+          description: 页码
         - in: query
           name: pageSize
           schema: { type: integer, default: 10 }
+          description: 每页记录数
         - in: query
           name: userId
           schema: { type: integer }
+          description: 操作用户ID
+        - in: query
+          name: resource
+          schema: { type: string }
+          description: 资源类型 (例如 USER, ROLE, PERMISSION 等)
+        - in: query
+          name: resourceId
+          schema: { type: integer }
+          description: 资源ID
         - in: query
           name: action
-          schema: { type: string }
+          schema: { type: string, enum: [CREATE, READ, UPDATE, DELETE, LOGIN, LOGOUT] }
+          description: 操作类型
         - in: query
-          name: targetType
-          schema: { type: string }
-        - in: query
-          name: targetId
-          schema: { type: integer }
-        - in: query
-          name: startDate
+          name: startTime
           schema: { type: string, format: date-time }
+          description: 开始时间
         - in: query
-          name: endDate
+          name: endTime
           schema: { type: string, format: date-time }
+          description: 结束时间
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [created_at, id, user_id, resource], default: created_at }
+          description: 排序字段
+        - in: query
+          name: sortOrder
+          schema: { type: string, enum: [asc, desc], default: desc }
+          description: 排序方向
       responses:
         '200':
           description: 成功
@@ -1280,6 +1297,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuditLogListResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+                
+  /audit-logs/{auditLogId}:
+    get:
+      tags: [audit-logs]
+      summary: 获取审计日志详情
+      description: 获取指定ID的审计日志详细信息
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: auditLogId
+          required: true
+          schema: { type: integer }
+          description: 审计日志ID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLogResponse'
+        '404':
+          description: 未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # 服务实例管理
   /service-instances:
@@ -1774,20 +1824,7 @@ components:
         updatedAt: { type: string, format: date-time }
         resolvedAt: { type: [string, "null"], format: date-time }
         closedAt: { type: [string, "null"], format: date-time }
-    AuditLog:
-      type: object
-      properties:
-        id: { type: integer }
-        user:
-          type: object
-          properties:
-            id: { type: integer }
-            name: { type: string }
-        timestamp: { type: string, format: date-time }
-        action: { type: string }
-        targetType: { type: string }
-        targetId: { type: integer }
-        details: { type: string }
+    # 审计日志相关定义已移动到后面的段落
     # 列表响应体
     EnvironmentListResponse:
       type: object
@@ -1860,20 +1897,7 @@ components:
             total: { type: integer }
             page: { type: integer }
             pageSize: { type: integer }
-    AuditLogListResponse:
-      type: object
-      properties:
-        code: { type: integer, example: 0 }
-        message: { type: string }
-        data:
-          type: object
-          properties:
-            items:
-              type: array
-              items: { $ref: '#/components/schemas/AuditLog' }
-            total: { type: integer }
-            page: { type: integer }
-            pageSize: { type: integer }
+    # 审计日志模型定义已移至文档末尾
 
     ServiceType:
       type: object
@@ -2182,3 +2206,57 @@ components:
             total: { type: integer, description: "Total number of service instances" }
             page: { type: integer, description: "Current page number" }
             pageSize: { type: integer, description: "Number of service instances per page" }
+            
+    # 审计日志相关模型
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer, readOnly: true }
+        userId: { type: integer, description: "执行操作的用户ID" }
+        username: { type: string, description: "执行操作的用户名称" }
+        resource: { type: string, description: "资源类型，如USER, ROLE, PERMISSION等" }
+        resourceId: { type: [integer, "null"], description: "资源ID" }
+        action: { 
+          type: string, 
+          description: "操作类型", 
+          enum: ["CREATE", "READ", "UPDATE", "DELETE", "LOGIN", "LOGOUT"] 
+        }
+        details: {
+          type: object,
+          description: "操作详情，包含操作前后的数据",
+          additionalProperties: true
+        }
+        ip: { type: [string, "null"], description: "用户IP地址" }
+        userAgent: { type: [string, "null"], description: "用户浏览器信息" }
+        requestPath: { type: [string, "null"], description: "请求路径" }
+        method: { type: [string, "null"], description: "HTTP方法" }
+        createdAt: { type: string, format: date-time, readOnly: true, description: "创建时间" }
+      required:
+        - userId
+        - resource
+        - action
+        - createdAt
+        
+    AuditLogResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          $ref: '#/components/schemas/AuditLog'
+          
+    AuditLogListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          type: object
+          required: [items, total, page, pageSize]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/AuditLog' }
+            total: { type: integer, description: "审计日志总数" }
+            page: { type: integer, description: "当前页码" }
+            pageSize: { type: integer, description: "每页记录数" }

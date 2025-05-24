@@ -12,14 +12,16 @@ import (
 )
 
 type RoleHandler struct {
-	roleService service.RoleService
-	logger      *zap.Logger
+	roleService  service.RoleService
+	auditService service.AuditLogService
+	logger       *zap.Logger
 }
 
-func NewRoleHandler(rs service.RoleService, logger *zap.Logger) *RoleHandler {
+func NewRoleHandler(rs service.RoleService, auditSvc service.AuditLogService, logger *zap.Logger) *RoleHandler {
 	return &RoleHandler{
-		roleService: rs,
-		logger:      logger,
+		roleService:  rs,
+		auditService: auditSvc,
+		logger:       logger,
 	}
 }
 
@@ -80,15 +82,14 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 		return
 	}
 
-	// 设置详细的审计日志信息
-	auditDetails := utils.NewCreateAuditLog(map[string]interface{}{
+	// 记录审计日志
+	details := map[string]interface{}{
 		"id":           createdRole.ID,
 		"name":         createdRole.Name,
 		"description":  createdRole.Description,
 		"permissionIds": req.PermissionIDs,
-	})
-	utils.SetAuditDetails(c, auditDetails)
-	c.Set("auditResourceID", createdRole.ID)
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "ROLE", createdRole.ID, details)
 
 	RespondWithSuccess(c, http.StatusCreated, "Role created successfully", createdRole)
 }
@@ -261,16 +262,18 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 		return
 	}
 
-	// 创建审计日志信息
-	afterUpdate := map[string]interface{}{
-		"id":           updatedRole.ID,
-		"name":         updatedRole.Name,
-		"description":  updatedRole.Description,
-		"permissionIds": req.PermissionIDs,
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": beforeUpdate,
+		"after": map[string]interface{}{
+			"id":           updatedRole.ID,
+			"name":         updatedRole.Name,
+			"description":  updatedRole.Description,
+			"permissionIds": req.PermissionIDs,
+		},
+		"changes": req,
 	}
-
-	auditDetails := utils.NewUpdateAuditLog(beforeUpdate, afterUpdate)
-	utils.SetAuditDetails(c, auditDetails)
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "ROLE", updatedRole.ID, details)
 
 	RespondWithSuccess(c, http.StatusOK, "Role updated successfully", updatedRole)
 }
@@ -312,14 +315,17 @@ func (h *RoleHandler) DeleteRole(c *gin.Context) {
 		return
 	}
 
-	// 记录被删除的角色信息用于审计日志
-	deleteDetails := map[string]interface{}{
-		"id":          existingRole.ID,
-		"name":        existingRole.Name,
-		"description": existingRole.Description,
-		// 添加其他需要审计的字段
+	// 记录审计日志
+	details := map[string]interface{}{
+		"deletedRole": map[string]interface{}{
+			"id":          existingRole.ID,
+			"name":        existingRole.Name,
+			"description": existingRole.Description,
+			// 得到角色的权限信息
+			"permissions": existingRole.Permissions,
+		},
 	}
-	utils.SetAuditDetails(c, utils.NewDeleteAuditLog(deleteDetails))
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "ROLE", existingRole.ID, details)
 
 	err = h.roleService.DeleteRole(c.Request.Context(), uint(roleID))
 	if err != nil {

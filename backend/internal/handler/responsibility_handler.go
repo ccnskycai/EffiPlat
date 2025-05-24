@@ -13,14 +13,16 @@ import (
 )
 
 type ResponsibilityHandler struct {
-	service service.ResponsibilityService
-	logger  *zap.Logger
+	responsibilityService service.ResponsibilityService
+	auditService          service.AuditLogService
+	logger                *zap.Logger
 }
 
-func NewResponsibilityHandler(service service.ResponsibilityService, logger *zap.Logger) *ResponsibilityHandler {
+func NewResponsibilityHandler(rs service.ResponsibilityService, auditSvc service.AuditLogService, logger *zap.Logger) *ResponsibilityHandler {
 	return &ResponsibilityHandler{
-		service: service,
-		logger:  logger,
+		responsibilityService: rs,
+		auditService:          auditSvc,
+		logger:                logger,
 	}
 }
 
@@ -35,13 +37,22 @@ func (h *ResponsibilityHandler) CreateResponsibility(c *gin.Context) {
 
 	// TODO: Add more specific validation if needed for req fields
 
-	createdResp, err := h.service.CreateResponsibility(c.Request.Context(), &req)
+	createdResp, err := h.responsibilityService.CreateResponsibility(c.Request.Context(), &req)
 	if err != nil {
 		h.logger.Error("Failed to create responsibility", zap.Error(err))
 		// TODO: Map service errors to appropriate HTTP responses (e.g., if already exists)
 		utils.InternalServerError(c, "Failed to create responsibility: "+err.Error())
 		return
 	}
+
+	// 记录审计日志
+	details := map[string]interface{}{
+		"id":          createdResp.ID,
+		"name":        createdResp.Name,
+		"description": createdResp.Description,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "RESPONSIBILITY", createdResp.ID, details)
+
 	utils.Created(c, createdResp)
 }
 
@@ -62,7 +73,7 @@ func (h *ResponsibilityHandler) GetResponsibilities(c *gin.Context) {
 		params.PageSize = 10 // Default page size
 	}
 
-	responsibilities, total, err := h.service.GetResponsibilities(c.Request.Context(), params)
+	responsibilities, total, err := h.responsibilityService.GetResponsibilities(c.Request.Context(), params)
 	if err != nil {
 		h.logger.Error("Failed to get responsibilities", zap.Error(err))
 		utils.InternalServerError(c, "Failed to retrieve responsibilities: "+err.Error())
@@ -82,7 +93,7 @@ func (h *ResponsibilityHandler) GetResponsibilityByID(c *gin.Context) {
 		return
 	}
 
-	resp, err := h.service.GetResponsibilityByID(c.Request.Context(), uint(id))
+	resp, err := h.responsibilityService.GetResponsibilityByID(c.Request.Context(), uint(id))
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility not found", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
@@ -113,33 +124,54 @@ func (h *ResponsibilityHandler) UpdateResponsibility(c *gin.Context) {
 		return
 	}
 
+	// 获取原始数据用于审计日志
+	origResp, getErr := h.responsibilityService.GetResponsibilityByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get original responsibility data for audit logging", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
+
 	// req.ID will be ignored by the service layer, it uses the path parameter `id`
-	updatedResp, err := h.service.UpdateResponsibility(c.Request.Context(), uint(id), &req)
+	updatedResp, err := h.responsibilityService.UpdateResponsibility(c.Request.Context(), uint(id), &req)
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility not found for update", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
 			utils.NotFound(c, "Responsibility not found")
-		} else {
-			h.logger.Error("Failed to update responsibility", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
-			// TODO: Map other service errors (e.g., validation error)
-			utils.InternalServerError(c, "Failed to update responsibility: "+err.Error())
+			return
 		}
+		h.logger.Error("Failed to update responsibility", zap.Error(err))
+		utils.InternalServerError(c, "Failed to update responsibility: "+err.Error())
 		return
 	}
+
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": origResp,
+		"after":  updatedResp,
+		"changes": req,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "RESPONSIBILITY", updatedResp.ID, details)
+
 	utils.OK(c, updatedResp)
 }
 
 // DeleteResponsibility handles deleting a responsibility.
 func (h *ResponsibilityHandler) DeleteResponsibility(c *gin.Context) {
-	idStr := c.Param("responsibilityId")
-	id, err := strconv.ParseUint(idStr, 10, 32)
+	id, err := strconv.ParseUint(c.Param("responsibilityId"), 10, 32)
 	if err != nil {
-		h.logger.Error("Invalid responsibility ID format for delete", zap.String("responsibilityId", idStr), zap.Error(err))
+		h.logger.Error("Failed to parse responsibility ID", zap.Error(err))
 		utils.BadRequest(c, "Invalid responsibility ID format")
 		return
 	}
+	
+	// 获取要删除的责任数据用于审计日志
+	resp, getErr := h.responsibilityService.GetResponsibilityByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get responsibility data for audit logging before deletion", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
 
-	err = h.service.DeleteResponsibility(c.Request.Context(), uint(id))
+	err = h.responsibilityService.DeleteResponsibility(c.Request.Context(), uint(id))
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility not found for delete", zap.Uint("responsibilityId", uint(id)), zap.Error(err))
@@ -150,5 +182,18 @@ func (h *ResponsibilityHandler) DeleteResponsibility(c *gin.Context) {
 		}
 		return
 	}
+
+	// 记录审计日志
+	if resp != nil {
+		details := map[string]interface{}{
+			"deletedResponsibility": map[string]interface{}{
+				"id":          resp.ID,
+				"name":        resp.Name,
+				"description": resp.Description,
+			},
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "RESPONSIBILITY", uint(id), details)
+	}
+
 	utils.Status(c, http.StatusNoContent)
 }

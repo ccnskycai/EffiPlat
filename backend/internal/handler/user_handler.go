@@ -12,19 +12,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
 )
 
 // UserHandler handles HTTP requests for user management.
 type UserHandler struct {
-	userService service.UserService // Changed to service.UserService
-	validate    *validator.Validate
+	userService  service.UserService     // Changed to service.UserService
+	auditService service.AuditLogService // 添加审计日志服务
+	validate     *validator.Validate
+	logger       *zap.Logger             // 添加日志记录器
 }
 
 // NewUserHandler creates a new instance of UserHandler.
-func NewUserHandler(userService service.UserService) *UserHandler { // Changed to service.UserService
+func NewUserHandler(userService service.UserService, auditService service.AuditLogService, logger *zap.Logger) *UserHandler { // 添加审计日志服务参数
 	return &UserHandler{
-		userService: userService,
-		validate:    validator.New(),
+		userService:  userService,
+		auditService: auditService,
+		validate:     validator.New(),
+		logger:       logger,
 	}
 }
 
@@ -98,10 +103,6 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// 准备审计日志信息
-	c.Set("auditAction", string(utils.AuditActionCreate))
-	c.Set("auditResource", "USER")
-
 	user, err := h.userService.CreateUser(c.Request.Context(), req.Name, req.Email, req.Password, req.Department, req.Roles)
 	if err != nil {
 		statusCode := http.StatusInternalServerError // Default
@@ -125,17 +126,15 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// 设置详细的审计日志信息 - 不包含敏感信息如密码
-	auditDetails := utils.NewCreateAuditLog(map[string]interface{}{
+	// 记录审计日志
+	details := map[string]interface{}{
 		"id":         user.ID,
 		"name":       user.Name,
 		"email":      user.Email,
 		"department": user.Department,
 		"roles":      req.Roles,
-	})
-	utils.SetAuditDetails(c, auditDetails)
-	// 设置资源ID以便中间件获取
-	c.Set("auditResourceID", user.ID)
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "USER", user.ID, details)
 
 	RespondWithSuccess(c, http.StatusCreated, "User created successfully", user)
 }
@@ -191,6 +190,13 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	if err != nil {
 		RespondWithError(c, http.StatusBadRequest, "Invalid user ID format")
 		return
+	}
+	
+	// 获取原始用户数据用于审计日志
+	origUser, getErr := h.userService.GetUserByID(c.Request.Context(), uint(userID))
+	if getErr != nil {
+		h.logger.Warn("Could not get original user data for audit logging", 
+			zap.Uint64("userID", userID), zap.Error(getErr))
 	}
 
 	var req UpdateUserRequest
@@ -274,6 +280,14 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 	auditDetails := utils.NewUpdateAuditLog(beforeUpdate, afterUpdate)
 	utils.SetAuditDetails(c, auditDetails)
 
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": origUser,
+		"after":  updatedUser,
+		"changes": req,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "USER", updatedUser.ID, details)
+
 	RespondWithSuccess(c, http.StatusOK, "User updated successfully", updatedUser)
 }
 
@@ -284,6 +298,13 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	if err != nil {
 		RespondWithError(c, http.StatusBadRequest, "Invalid user ID format")
 		return
+	}
+	
+	// 获取要删除的用户数据用于审计日志
+	user, getErr := h.userService.GetUserByID(c.Request.Context(), uint(userID))
+	if getErr != nil {
+		h.logger.Warn("Could not get user data for audit logging before deletion", 
+			zap.Uint64("userID", userID), zap.Error(getErr))
 	}
 
 	// 设置审计日志操作类型和资源
@@ -338,6 +359,14 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 
 		RespondWithError(c, statusCode, errMsg)
 		return
+	}
+
+	// 记录审计日志
+	if user != nil {
+		details := map[string]interface{}{
+			"deletedUser": user,
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "USER", uint(userID), details)
 	}
 
 	RespondWithSuccess(c, http.StatusNoContent, "User deleted successfully", nil)
@@ -412,6 +441,13 @@ func (h *UserHandler) AssignRolesToUser(c *gin.Context) {
 		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
 		return
 	}
+	
+	// 获取用户原始数据用于审计日志
+	origUser, getErr := h.userService.GetUserByID(c.Request.Context(), uint(userID))
+	if getErr != nil {
+		h.logger.Warn("Could not get original user data for audit logging", 
+			zap.Uint64("userID", userID), zap.Error(getErr))
+	}
 
 	err = h.userService.AssignRolesToUser(c.Request.Context(), uint(userID), req.RoleIDs)
 	if err != nil {
@@ -431,6 +467,18 @@ func (h *UserHandler) AssignRolesToUser(c *gin.Context) {
 		RespondWithError(c, statusCode, errMsg)
 		return
 	}
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"roleIDs": req.RoleIDs,
+	}
+	
+	// 如果有原始用户数据，添加到审计日志
+	if origUser != nil {
+		details["originalRoles"] = origUser.Roles
+	}
+	
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "USER_ROLES", uint(userID), details)
 
 	RespondWithSuccess(c, http.StatusOK, "Roles assigned successfully to user", nil)
 }
@@ -448,6 +496,13 @@ func (h *UserHandler) RemoveRolesFromUser(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
 		return
+	}
+	
+	// 获取用户原始数据用于审计日志
+	origUser, getErr := h.userService.GetUserByID(c.Request.Context(), uint(userID))
+	if getErr != nil {
+		h.logger.Warn("Could not get original user data for audit logging", 
+			zap.Uint64("userID", userID), zap.Error(getErr))
 	}
 
 	err = h.userService.RemoveRolesFromUser(c.Request.Context(), uint(userID), req.RoleIDs)
@@ -467,6 +522,18 @@ func (h *UserHandler) RemoveRolesFromUser(c *gin.Context) {
 		RespondWithError(c, statusCode, errMsg)
 		return
 	}
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"removedRoleIDs": req.RoleIDs,
+	}
+	
+	// 如果有原始用户数据，添加到审计日志
+	if origUser != nil {
+		details["originalRoles"] = origUser.Roles
+	}
+	
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "USER_ROLES", uint(userID), details)
 
 	RespondWithSuccess(c, http.StatusOK, "Roles removed successfully from user", nil)
 }

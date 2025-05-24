@@ -3,6 +3,7 @@ package handler
 import (
 	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/service"
+	"EffiPlat/backend/internal/utils"
 	"net/http"
 	"strconv"
 
@@ -12,12 +13,14 @@ import (
 
 type PermissionHandler struct {
 	permissionService service.PermissionService
+	auditService      service.AuditLogService
 	logger            *zap.Logger
 }
 
-func NewPermissionHandler(ps service.PermissionService, logger *zap.Logger) *PermissionHandler {
+func NewPermissionHandler(ps service.PermissionService, auditSvc service.AuditLogService, logger *zap.Logger) *PermissionHandler {
 	return &PermissionHandler{
 		permissionService: ps,
+		auditService:      auditSvc,
 		logger:            logger,
 	}
 }
@@ -54,6 +57,16 @@ func (h *PermissionHandler) CreatePermission(c *gin.Context) {
 		RespondWithError(c, http.StatusInternalServerError, "Failed to create permission")
 		return
 	}
+
+	// 记录审计日志
+	details := map[string]interface{}{
+		"id":          createdPermission.ID,
+		"name":        createdPermission.Name,
+		"description": createdPermission.Description,
+		"resource":    createdPermission.Resource,
+		"action":      createdPermission.Action,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "PERMISSION", createdPermission.ID, details)
 
 	RespondWithSuccess(c, http.StatusCreated, "Permission created successfully", createdPermission)
 }
@@ -161,6 +174,13 @@ func (h *PermissionHandler) UpdatePermission(c *gin.Context) {
 		RespondWithError(c, http.StatusBadRequest, "Invalid permission ID format")
 		return
 	}
+	
+	// 获取原始权限数据用于审计日志
+	origPermission, getErr := h.permissionService.GetPermissionByID(c.Request.Context(), uint(permissionID))
+	if getErr != nil {
+		h.logger.Warn("Could not get original permission data for audit logging",
+			zap.Uint64("permissionID", permissionID), zap.Error(getErr))
+	}
 
 	var req model.UpdatePermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -190,6 +210,14 @@ func (h *PermissionHandler) UpdatePermission(c *gin.Context) {
 		return
 	}
 
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": origPermission,
+		"after":  updatedPermission,
+		"changes": req,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "PERMISSION", updatedPermission.ID, details)
+
 	RespondWithSuccess(c, http.StatusOK, "Permission updated successfully", updatedPermission)
 }
 
@@ -212,12 +240,33 @@ func (h *PermissionHandler) DeletePermission(c *gin.Context) {
 		RespondWithError(c, http.StatusBadRequest, "Invalid permission ID format")
 		return
 	}
+	
+	// 获取要删除的权限数据用于审计日志
+	permission, getErr := h.permissionService.GetPermissionByID(c.Request.Context(), uint(permissionID))
+	if getErr != nil {
+		h.logger.Warn("Could not get permission data for audit logging before deletion",
+			zap.Uint64("permissionID", permissionID), zap.Error(getErr))
+	}
 
 	err = h.permissionService.DeletePermission(c.Request.Context(), uint(permissionID))
 	if err != nil {
-		h.logger.Error("DeletePermission: Service error", zap.Uint("permissionId", uint(permissionID)), zap.Error(err))
+		h.logger.Error("DeletePermission: Service error", zap.Uint("permissionID", uint(permissionID)), zap.Error(err))
 		RespondWithError(c, http.StatusInternalServerError, "Failed to delete permission")
 		return
+	}
+
+	// 记录审计日志
+	if permission != nil {
+		details := map[string]interface{}{
+			"deletedPermission": map[string]interface{}{
+				"id":          permission.ID,
+				"name":        permission.Name,
+				"description": permission.Description,
+				"resource":    permission.Resource,
+				"action":      permission.Action,
+			},
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "PERMISSION", uint(permissionID), details)
 	}
 
 	c.Status(http.StatusNoContent)
@@ -256,12 +305,29 @@ func (h *PermissionHandler) AddPermissionsToRole(c *gin.Context) {
 		return
 	}
 
+	// 获取角色原始权限数据用于审计日志
+	origPermissions, getErr := h.permissionService.GetPermissionsByRoleID(c.Request.Context(), uint(roleID))
+	if getErr != nil {
+		h.logger.Warn("Could not get original permissions for role for audit logging",
+			zap.Uint64("roleID", roleID), zap.Error(getErr))
+		origPermissions = []model.Permission{}
+	}
+
 	err = h.permissionService.AddPermissionsToRole(c.Request.Context(), uint(roleID), permissionIDs)
 	if err != nil {
 		h.logger.Error("AddPermissionsToRole: Service error", zap.Uint("roleId", uint(roleID)), zap.Any("permissionIDs", permissionIDs), zap.Error(err))
 		RespondWithError(c, http.StatusInternalServerError, "Failed to add permissions to role")
 		return
 	}
+
+	// 记录审计日志
+	details := map[string]interface{}{
+		"roleId":           roleID,
+		"addedPermissions": permissionIDs,
+		"originalPermissions": origPermissions,
+	}
+	
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "ROLE_PERMISSIONS", uint(roleID), details)
 
 	RespondWithSuccess(c, http.StatusOK, "Permissions added to role successfully", nil)
 }
@@ -299,12 +365,29 @@ func (h *PermissionHandler) RemovePermissionsFromRole(c *gin.Context) {
 		return
 	}
 
+	// 获取角色原始权限数据用于审计日志
+	origPermissions, getErr := h.permissionService.GetPermissionsByRoleID(c.Request.Context(), uint(roleID))
+	if getErr != nil {
+		h.logger.Warn("Could not get original permissions for role for audit logging",
+			zap.Uint64("roleID", roleID), zap.Error(getErr))
+		origPermissions = []model.Permission{}
+	}
+
 	err = h.permissionService.RemovePermissionsFromRole(c.Request.Context(), uint(roleID), permissionIDs)
 	if err != nil {
 		h.logger.Error("RemovePermissionsFromRole: Service error", zap.Uint("roleId", uint(roleID)), zap.Any("permissionIDs", permissionIDs), zap.Error(err))
 		RespondWithError(c, http.StatusInternalServerError, "Failed to remove permissions from role")
 		return
 	}
+
+	// 记录审计日志
+	details := map[string]interface{}{
+		"roleId":             roleID,
+		"removedPermissions": permissionIDs,
+		"originalPermissions": origPermissions,
+	}
+	
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "ROLE_PERMISSIONS", uint(roleID), details)
 
 	RespondWithSuccess(c, http.StatusOK, "Permissions removed from role successfully", nil)
 }

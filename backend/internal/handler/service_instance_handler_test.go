@@ -24,6 +24,8 @@ import (
 	"gorm.io/datatypes"
 )
 
+
+
 // setupTestRouter prepares a gin router for testing.
 func setupTestRouter() *gin.Engine {
 	gin.SetMode(gin.TestMode)
@@ -38,7 +40,13 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl)
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现代替NewMockAuditLogService
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.POST("/api/v1/service-instances", instanceHandler.CreateServiceInstance)
 
@@ -100,7 +108,13 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl) // Won't be used, but setup for consistency
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.POST("/api/v1/service-instances", instanceHandler.CreateServiceInstance)
 
@@ -121,7 +135,13 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl)
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现代替NewMockAuditLogService
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.POST("/api/v1/service-instances", instanceHandler.CreateServiceInstance)
 
@@ -147,7 +167,13 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl)
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现代替NewMockAuditLogService
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.POST("/api/v1/service-instances", instanceHandler.CreateServiceInstance)
 
@@ -173,7 +199,13 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl)
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现代替NewMockAuditLogService
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.POST("/api/v1/service-instances", instanceHandler.CreateServiceInstance)
 
@@ -203,7 +235,13 @@ func TestServiceInstanceHandler_GetServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl)
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现代替NewMockAuditLogService
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.GET("/api/v1/service-instances/:instanceId", instanceHandler.GetServiceInstance)
 
@@ -244,8 +282,14 @@ func TestServiceInstanceHandler_GetServiceInstance(t *testing.T) {
 	t.Run("Invalid instance ID format", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		mockSvc := mock_service.NewMockServiceInstanceService(ctrl) // Not used, but for consistency
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		mockSvc := mock_service.NewMockServiceInstanceService(ctrl) // Won't be used in this test, error occurs during binding
+		// 使用自定义的mockAuditLogService实现
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.GET("/api/v1/service-instances/:instanceId", instanceHandler.GetServiceInstance)
 
@@ -266,7 +310,13 @@ func TestServiceInstanceHandler_GetServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl)
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现代替NewMockAuditLogService
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.GET("/api/v1/service-instances/:instanceId", instanceHandler.GetServiceInstance)
 
@@ -289,7 +339,13 @@ func TestServiceInstanceHandler_GetServiceInstance(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		mockSvc := mock_service.NewMockServiceInstanceService(ctrl)
-		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, logger)
+		// 使用自定义的mockAuditLogService实现代替NewMockAuditLogService
+		mockAuditSvc := &mockAuditLogService{}
+		// 设置无返回的LogUserAction函数
+		mockAuditSvc.logUserActionFunc = func(c *gin.Context, action, resource string, resourceID uint, details interface{}) error {
+			return nil
+		}
+		instanceHandler := handler.NewServiceInstanceHandler(mockSvc, mockAuditSvc, logger)
 		router := setupTestRouter()
 		router.GET("/api/v1/service-instances/:instanceId", instanceHandler.GetServiceInstance)
 

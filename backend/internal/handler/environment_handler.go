@@ -14,15 +14,17 @@ import (
 
 // EnvironmentHandler handles HTTP requests related to environments.
 type EnvironmentHandler struct {
-	service service.EnvironmentService
-	logger  *zap.Logger
+	service      service.EnvironmentService
+	auditService service.AuditLogService
+	logger       *zap.Logger
 }
 
 // NewEnvironmentHandler creates a new instance of EnvironmentHandler.
-func NewEnvironmentHandler(s service.EnvironmentService, l *zap.Logger) *EnvironmentHandler {
+func NewEnvironmentHandler(s service.EnvironmentService, a service.AuditLogService, l *zap.Logger) *EnvironmentHandler {
 	return &EnvironmentHandler{
-		service: s,
-		logger:  l,
+		service:      s,
+		auditService: a,
+		logger:       l,
 	}
 }
 
@@ -65,6 +67,15 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		}
 		return
 	}
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"name":        env.Name,
+		"slug":        env.Slug,
+		"description": env.Description,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "ENVIRONMENT", env.ID, details)
+	
 	utils.Created(c, env)
 }
 
@@ -195,6 +206,14 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		return
 	}
 
+	// 先获取环境原始数据，用于审计日志
+	origEnv, getErr := h.service.GetEnvironmentByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		// 如果找不到原始环境，不阻止更新操作
+		h.logger.Warn("Could not find original environment for audit logging", 
+			zap.String("id", idStr), zap.Error(getErr))
+	}
+	
 	env, err := h.service.UpdateEnvironment(c.Request.Context(), uint(id), req)
 	if err != nil {
 		h.logger.Error("Failed to update environment", zap.String("id", idStr), zap.Error(err))
@@ -209,6 +228,14 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 		}
 		return
 	}
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": origEnv,
+		"after":  env,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "ENVIRONMENT", env.ID, details)
+	
 	utils.OK(c, env)
 }
 
@@ -234,6 +261,14 @@ func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 		return
 	}
 
+	// 先获取环境数据，用于审计日志
+	env, getErr := h.service.GetEnvironmentByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		// 如果找不到原始环境，不阻止删除操作
+		h.logger.Warn("Could not find environment for audit logging before deletion", 
+			zap.String("id", idStr), zap.Error(getErr))
+	}
+	
 	err = h.service.DeleteEnvironment(c.Request.Context(), uint(id))
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) {
@@ -244,5 +279,14 @@ func (h *EnvironmentHandler) DeleteEnvironment(c *gin.Context) {
 		}
 		return
 	}
+	
+	// 记录审计日志
+	if env != nil {
+		details := map[string]interface{}{
+			"deletedEnvironment": env,
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "ENVIRONMENT", uint(id), details)
+	}
+	
 	c.Status(http.StatusNoContent)
 }

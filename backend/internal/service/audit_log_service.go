@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+//go:generate mockgen -source=audit_log_service.go -destination=mocks/mock_audit_log_service.go -package=mocks AuditLogService
+
 // AuditLogService 定义了审计日志服务的接口
 type AuditLogService interface {
 	// CreateLog 创建一条审计日志

@@ -150,10 +150,12 @@ func SetupRouter(
 		businessRoutes(apiV1Authenticated.Group("/businesses"), businessHandler)
 
 		// Bug routes
-		bugRoutes(apiV1Authenticated.Group("/bugs"), bugHandler)
-		
-		// 审计日志路由
-		auditLogRoutes(apiV1Authenticated.Group("/audit-logs"), auditLogHandler)
+		bugRg := apiV1Authenticated.Group("/bugs")
+		bugRoutes(bugRg, bugHandler)
+
+		// Audit Log routes
+		auditLogRg := apiV1Authenticated.Group("/audit-logs")
+		auditLogRoutes(auditLogRg, auditLogHandler)
 	}
 
 	// 处理404路由

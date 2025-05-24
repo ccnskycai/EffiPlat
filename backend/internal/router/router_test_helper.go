@@ -83,6 +83,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		&pkgmodel.Service{},     // Added Service model for migration
 		&model.ServiceInstance{}, // Changed to model.ServiceInstance
 		&model.Business{},        // Changed to model.Business
+		&model.AuditLog{},        // Added AuditLog model for migration
 	)
 	assert.NoError(t, err, "AutoMigrate should not fail")
 
@@ -122,15 +123,15 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
-	userHandler := handler.NewUserHandler(userService)
-	roleHandler := handler.NewRoleHandler(roleService, appLogger)
-	permissionHandler := handler.NewPermissionHandler(permissionService, appLogger)
-	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, appLogger)
-	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, appLogger)
-	environmentHandler := handler.NewEnvironmentHandler(environmentService, appLogger)
-	assetHandler := handler.NewAssetHandler(assetService, appLogger)
-	serviceHandler := handler.NewServiceHandler(serviceService, appLogger)                     // Use handler.NewServiceHandler
-	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, appLogger) // Added
+	userHandler := handler.NewUserHandler(userService, auditLogService, appLogger)
+	roleHandler := handler.NewRoleHandler(roleService, auditLogService, appLogger)
+	permissionHandler := handler.NewPermissionHandler(permissionService, auditLogService, appLogger)
+	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, auditLogService, appLogger)
+	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, auditLogService, appLogger)
+	environmentHandler := handler.NewEnvironmentHandler(environmentService, auditLogService, appLogger)
+	assetHandler := handler.NewAssetHandler(assetService, auditLogService, appLogger)
+	serviceHandler := handler.NewServiceHandler(serviceService, auditLogService, appLogger)                     // Use handler.NewServiceHandler
+	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, auditLogService, appLogger) // Added
 	businessHandler := handler.NewBusinessHandler(businessService, appLogger)                      // Added
 	bugHandler := handler.NewBugHandler(bugService) // Added BugHandler
 	auditLogHandler := handler.NewAuditLogHandler(auditLogService, appLogger) // 审计日志处理器

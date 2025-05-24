@@ -16,13 +16,18 @@ import (
 // ServiceHandler handles HTTP requests for Service and ServiceType resources.
 // It uses the ServiceService to interact with the business logic layer.
 type ServiceHandler struct {
-	service service.ServiceService
-	logger  *zap.Logger
+	service      service.ServiceService
+	auditService service.AuditLogService
+	logger       *zap.Logger
 }
 
 // NewServiceHandler creates a new instance of ServiceHandler.
-func NewServiceHandler(svc service.ServiceService, logger *zap.Logger) *ServiceHandler {
-	return &ServiceHandler{service: svc, logger: logger}
+func NewServiceHandler(svc service.ServiceService, auditSvc service.AuditLogService, logger *zap.Logger) *ServiceHandler {
+	return &ServiceHandler{
+		service:      svc,
+		auditService: auditSvc,
+		logger:       logger,
+	}
 }
 
 // --- ServiceType Handlers ---
@@ -63,7 +68,14 @@ func (h *ServiceHandler) CreateServiceType(c *gin.Context) {
 		}
 		return
 	}
-
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"name":        serviceType.Name,
+		"description": serviceType.Description,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "SERVICE_TYPE", serviceType.ID, details)
+	
 	utils.SendSuccessResponse(c, http.StatusCreated, serviceType)
 }
 
@@ -163,9 +175,16 @@ func (h *ServiceHandler) UpdateServiceType(c *gin.Context) {
 		return
 	}
 
-	updatedServiceType, err := h.service.UpdateServiceType(c.Request.Context(), uint(id), req)
+	// 获取更新前的服务类型数据，用于审计日志
+	origServiceType, getErr := h.service.GetServiceTypeByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get original service type for audit logging", 
+			zap.Error(getErr), zap.Uint64("id", id))
+	}
+	
+	serviceType, err := h.service.UpdateServiceType(c.Request.Context(), uint(id), req)
 	if err != nil {
-		h.logger.Error("Failed to update service type", zap.Error(err), zap.Uint64("id", id), zap.Any("request", req))
+		h.logger.Error("Failed to update service type", zap.Error(err), zap.Uint64("id", id))
 		if errors.Is(err, model.ErrServiceTypeNotFound) {
 			utils.SendErrorResponse(c, http.StatusNotFound, model.ErrServiceTypeNotFound.Error())
 		} else if errors.Is(err, model.ErrServiceTypeNameExists) {
@@ -175,8 +194,16 @@ func (h *ServiceHandler) UpdateServiceType(c *gin.Context) {
 		}
 		return
 	}
-
-	utils.SendSuccessResponse(c, http.StatusOK, updatedServiceType)
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": origServiceType,
+		"after":  serviceType,
+		"changes": req,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "SERVICE_TYPE", serviceType.ID, details)
+	
+	utils.SendSuccessResponse(c, http.StatusOK, serviceType)
 }
 
 // DeleteServiceType godoc
@@ -200,19 +227,34 @@ func (h *ServiceHandler) DeleteServiceType(c *gin.Context) {
 		return
 	}
 
+	// 获取要删除的服务类型数据，用于审计日志
+	serviceType, getErr := h.service.GetServiceTypeByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get service type for audit logging before deletion", 
+			zap.Error(getErr), zap.Uint64("id", id))
+	}
+	
 	err = h.service.DeleteServiceType(c.Request.Context(), uint(id))
 	if err != nil {
+		h.logger.Error("Failed to delete service type", zap.Error(err), zap.Uint64("id", id))
 		if errors.Is(err, model.ErrServiceTypeNotFound) {
 			utils.SendErrorResponse(c, http.StatusNotFound, model.ErrServiceTypeNotFound.Error())
 		} else if errors.Is(err, model.ErrServiceTypeInUse) {
 			utils.SendErrorResponse(c, http.StatusConflict, model.ErrServiceTypeInUse.Error())
 		} else {
-			h.logger.Error("Failed to delete service type", zap.Error(err), zap.Uint64("id", id))
 			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete service type: "+err.Error())
 		}
 		return
 	}
-
+	
+	// 记录审计日志
+	if serviceType != nil {
+		details := map[string]interface{}{
+			"deletedServiceType": serviceType,
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "SERVICE_TYPE", uint(id), details)
+	}
+	
 	c.Status(http.StatusNoContent)
 }
 
@@ -274,7 +316,7 @@ func (h *ServiceHandler) CreateService(c *gin.Context) {
 
 	serviceResp, err := h.service.CreateService(c.Request.Context(), req)
 	if err != nil {
-		h.logger.Error("Failed to create service", zap.Error(err), zap.String("name", req.Name), zap.Any("request", req))
+		h.logger.Error("Failed to create service", zap.Error(err), zap.Any("request", req))
 		if errors.Is(err, model.ErrServiceTypeNotFound) { // ServiceTypeID in request not found
 			utils.SendErrorResponse(c, http.StatusBadRequest, model.ErrServiceTypeNotFound.Error()+": service_type_id in request not found")
 		} else if errors.Is(err, model.ErrServiceNameExists) {
@@ -284,7 +326,19 @@ func (h *ServiceHandler) CreateService(c *gin.Context) {
 		}
 		return
 	}
-
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"name":          serviceResp.Name,
+		"description":   serviceResp.Description,
+		"version":       serviceResp.Version,
+		"serviceTypeId": serviceResp.ServiceTypeID,
+		"serviceType":   serviceResp.ServiceType,
+		"status":        serviceResp.Status,
+		"externalLink":  serviceResp.ExternalLink,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "SERVICE", serviceResp.ID, details)
+	
 	utils.SendSuccessResponse(c, http.StatusCreated, serviceResp)
 }
 
@@ -375,6 +429,13 @@ func (h *ServiceHandler) UpdateService(c *gin.Context) {
 		utils.SendErrorResponse(c, http.StatusBadRequest, "Invalid ID format")
 		return
 	}
+	
+	// 获取原始服务数据用于审计日志
+	origService, getErr := h.service.GetServiceByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get original service for audit logging", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
 
 	var req model.UpdateServiceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -426,6 +487,14 @@ func (h *ServiceHandler) UpdateService(c *gin.Context) {
 		}
 		return
 	}
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before":  origService,
+		"after":   serviceResp,
+		"changes": req,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "SERVICE", serviceResp.ID, details)
 
 	utils.SendSuccessResponse(c, http.StatusOK, serviceResp)
 }
@@ -450,6 +519,13 @@ func (h *ServiceHandler) DeleteService(c *gin.Context) {
 		return
 	}
 
+	// 获取要删除的服务数据用于审计日志
+	service, getErr := h.service.GetServiceByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get service for audit logging before deletion", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
+	
 	err = h.service.DeleteService(c.Request.Context(), uint(id))
 	if err != nil {
 		h.logger.Error("Failed to delete service", zap.Error(err), zap.Uint64("id", id))
@@ -459,6 +535,14 @@ func (h *ServiceHandler) DeleteService(c *gin.Context) {
 			utils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete service: "+err.Error())
 		}
 		return
+	}
+	
+	// 记录审计日志
+	if service != nil {
+		details := map[string]interface{}{
+			"deletedService": service,
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "SERVICE", uint(id), details)
 	}
 
 	c.Status(http.StatusNoContent)

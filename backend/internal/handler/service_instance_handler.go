@@ -16,13 +16,18 @@ import (
 
 // ServiceInstanceHandler handles HTTP requests for service instances.
 type ServiceInstanceHandler struct {
-	svc    service.ServiceInstanceService
-	logger *zap.Logger
+	svc          service.ServiceInstanceService
+	auditService service.AuditLogService
+	logger       *zap.Logger
 }
 
 // NewServiceInstanceHandler creates a new ServiceInstanceHandler.
-func NewServiceInstanceHandler(svc service.ServiceInstanceService, logger *zap.Logger) *ServiceInstanceHandler {
-	return &ServiceInstanceHandler{svc: svc, logger: logger}
+func NewServiceInstanceHandler(svc service.ServiceInstanceService, auditSvc service.AuditLogService, logger *zap.Logger) *ServiceInstanceHandler {
+	return &ServiceInstanceHandler{
+		svc:          svc,
+		auditService: auditSvc,
+		logger:       logger,
+	}
 }
 
 // CreateServiceInstance handles the creation of a new service instance.
@@ -47,6 +52,18 @@ func (h *ServiceInstanceHandler) CreateServiceInstance(c *gin.Context) {
 		}
 		return
 	}
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"serviceId":     createdInstance.ServiceID,
+		"environmentId": createdInstance.EnvironmentID,
+		"version":       createdInstance.Version,
+		"status":        createdInstance.Status,
+		"hostname":      createdInstance.Hostname,
+		"port":          createdInstance.Port,
+		"config":        createdInstance.Config,
+	}
+	_ = h.auditService.LogUserAction(c, string(apputils.AuditActionCreate), "SERVICE_INSTANCE", createdInstance.ID, details)
 
 	apputils.SendSuccessResponse(c, http.StatusCreated, createdInstance)
 }
@@ -117,6 +134,13 @@ func (h *ServiceInstanceHandler) UpdateServiceInstance(c *gin.Context) {
 		apputils.SendErrorResponse(c, http.StatusBadRequest, "Invalid instance ID format")
 		return
 	}
+	
+	// 获取原始服务实例数据用于审计日志
+	origInstance, getErr := h.svc.GetServiceInstanceByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get original service instance for audit logging", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
 
 	var input service.ServiceInstanceInputDTO
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -139,6 +163,14 @@ func (h *ServiceInstanceHandler) UpdateServiceInstance(c *gin.Context) {
 		}
 		return
 	}
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before":  origInstance,
+		"after":   updatedInstance,
+		"changes": input,
+	}
+	_ = h.auditService.LogUserAction(c, string(apputils.AuditActionUpdate), "SERVICE_INSTANCE", updatedInstance.ID, details)
 
 	apputils.SendSuccessResponse(c, http.StatusOK, updatedInstance)
 }
@@ -153,6 +185,13 @@ func (h *ServiceInstanceHandler) DeleteServiceInstance(c *gin.Context) {
 		apputils.SendErrorResponse(c, http.StatusBadRequest, "Invalid instance ID format")
 		return
 	}
+	
+	// 获取要删除的服务实例数据用于审计日志
+	instance, getErr := h.svc.GetServiceInstanceByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		h.logger.Warn("Could not get service instance for audit logging before deletion", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
 
 	err = h.svc.DeleteServiceInstance(c.Request.Context(), uint(id))
 	if err != nil {
@@ -163,6 +202,14 @@ func (h *ServiceInstanceHandler) DeleteServiceInstance(c *gin.Context) {
 			apputils.SendErrorResponse(c, http.StatusInternalServerError, "Failed to delete service instance")
 		}
 		return
+	}
+	
+	// 记录审计日志
+	if instance != nil {
+		details := map[string]interface{}{
+			"deletedServiceInstance": instance,
+		}
+		_ = h.auditService.LogUserAction(c, string(apputils.AuditActionDelete), "SERVICE_INSTANCE", uint(id), details)
 	}
 
 	apputils.SendSuccessResponse(c, http.StatusNoContent, nil) // 204 No Content for successful deletion

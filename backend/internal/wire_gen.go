@@ -24,7 +24,9 @@ func InitializeUserHandler(db *gorm.DB, logger *zap.Logger) (*handler.UserHandle
 	userRepository := repository.NewUserRepository(db, logger)
 	roleRepositoryImpl := repository.NewRoleRepository(db, logger)
 	userService := service.NewUserService(userRepository, roleRepositoryImpl, logger)
-	userHandler := handler.NewUserHandler(userService)
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	userHandler := handler.NewUserHandler(userService, auditLogService, logger)
 	return userHandler, nil
 }
 
@@ -32,7 +34,9 @@ func InitializeUserHandler(db *gorm.DB, logger *zap.Logger) (*handler.UserHandle
 func InitializeRoleHandler(db *gorm.DB, logger *zap.Logger) (*handler.RoleHandler, error) {
 	roleRepositoryImpl := repository.NewRoleRepository(db, logger)
 	roleServiceImpl := service.NewRoleService(roleRepositoryImpl, logger)
-	roleHandler := handler.NewRoleHandler(roleServiceImpl, logger)
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	roleHandler := handler.NewRoleHandler(roleServiceImpl, auditLogService, logger)
 	return roleHandler, nil
 }
 
@@ -51,16 +55,20 @@ func InitializeAuthHandler(db *gorm.DB, jwtKey []byte, logger *zap.Logger) (*han
 func InitializePermissionHandler(db *gorm.DB, logger *zap.Logger) (*handler.PermissionHandler, error) {
 	permissionRepositoryImpl := repository.NewPermissionRepository(db, logger)
 	roleRepositoryImpl := repository.NewRoleRepository(db, logger)
+	auditLogRepositoryImpl := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepositoryImpl, logger)
 	permissionService := service.NewPermissionService(permissionRepositoryImpl, roleRepositoryImpl, logger)
-	permissionHandler := handler.NewPermissionHandler(permissionService, logger)
+	permissionHandler := handler.NewPermissionHandler(permissionService, auditLogService, logger)
 	return permissionHandler, nil
 }
 
 // InitializeResponsibilityHandler is the injector for ResponsibilityHandler and its dependencies.
 func InitializeResponsibilityHandler(db *gorm.DB, logger *zap.Logger) (*handler.ResponsibilityHandler, error) {
 	responsibilityRepository := repository.NewGormResponsibilityRepository(db, logger)
+	auditLogRepositoryImpl := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepositoryImpl, logger)
 	responsibilityService := service.NewResponsibilityService(responsibilityRepository, logger)
-	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, logger)
+	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, auditLogService, logger)
 	return responsibilityHandler, nil
 }
 
@@ -68,8 +76,10 @@ func InitializeResponsibilityHandler(db *gorm.DB, logger *zap.Logger) (*handler.
 func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*handler.ResponsibilityGroupHandler, error) {
 	responsibilityGroupRepository := repository.NewGormResponsibilityGroupRepository(db, logger)
 	responsibilityRepository := repository.NewGormResponsibilityRepository(db, logger)
+	auditLogRepositoryImpl := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepositoryImpl, logger)
 	responsibilityGroupService := service.NewResponsibilityGroupService(responsibilityGroupRepository, responsibilityRepository, logger)
-	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, logger)
+	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, auditLogService, logger)
 	return responsibilityGroupHandler, nil
 }
 
@@ -77,7 +87,12 @@ func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*han
 func InitializeEnvironmentHandler(db *gorm.DB, logger *zap.Logger) (*handler.EnvironmentHandler, error) {
 	environmentRepository := repository.NewGormEnvironmentRepository(db, logger)
 	environmentService := service.NewEnvironmentService(environmentRepository, logger)
-	environmentHandler := handler.NewEnvironmentHandler(environmentService, logger)
+	
+	// 添加审计日志服务
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	
+	environmentHandler := handler.NewEnvironmentHandler(environmentService, auditLogService, logger)
 	return environmentHandler, nil
 }
 
@@ -91,7 +106,12 @@ func InitializeEnvironmentRepository(db *gorm.DB, logger *zap.Logger) (repositor
 func InitializeAssetHandler(db *gorm.DB, logger *zap.Logger, envRepo repository.EnvironmentRepository) (*handler.AssetHandler, error) {
 	assetRepository := repository.NewGormAssetRepository(db, logger)
 	assetService := service.NewAssetService(assetRepository, envRepo, logger)
-	assetHandler := handler.NewAssetHandler(assetService, logger)
+	
+	// 添加审计日志服务
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	
+	assetHandler := handler.NewAssetHandler(assetService, auditLogService, logger)
 	return assetHandler, nil
 }
 
@@ -100,7 +120,12 @@ func InitializeServiceHandler(db *gorm.DB, logger *zap.Logger) (*handler.Service
 	serviceRepository := repository.NewGormServiceRepository(db)
 	serviceTypeRepository := repository.NewGormServiceTypeRepository(db)
 	serviceService := service.NewServiceService(serviceRepository, serviceTypeRepository, logger)
-	serviceHandler := handler.NewServiceHandler(serviceService, logger)
+	
+	// 添加审计日志服务
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	
+	serviceHandler := handler.NewServiceHandler(serviceService, auditLogService, logger)
 	return serviceHandler, nil
 }
 
@@ -120,7 +145,9 @@ func InitializeServiceTypeRepository(db *gorm.DB) (repository.ServiceTypeReposit
 func InitializeServiceInstanceHandler(db *gorm.DB, logger *zap.Logger, serviceRepo repository.ServiceRepository, envRepo repository.EnvironmentRepository) (*handler.ServiceInstanceHandler, error) {
 	serviceInstanceRepository := repository.NewServiceInstanceRepository(db, logger)
 	serviceInstanceService := service.NewServiceInstanceService(serviceInstanceRepository, serviceRepo, envRepo, logger)
-	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, logger)
+	auditLogRepository := repository.NewAuditLogRepository(db, logger)
+	auditLogService := service.NewAuditLogService(auditLogRepository, logger)
+	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, auditLogService, logger)
 	return serviceInstanceHandler, nil
 }
 

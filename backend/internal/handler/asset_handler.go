@@ -14,13 +14,14 @@ import (
 
 // AssetHandler handles HTTP requests related to assets.
 type AssetHandler struct {
-	service service.AssetService
-	logger  *zap.Logger
+	service      service.AssetService
+	auditService service.AuditLogService
+	logger       *zap.Logger
 }
 
 // NewAssetHandler creates a new instance of AssetHandler.
-func NewAssetHandler(s service.AssetService, l *zap.Logger) *AssetHandler {
-	return &AssetHandler{service: s, logger: l}
+func NewAssetHandler(s service.AssetService, a service.AuditLogService, l *zap.Logger) *AssetHandler {
+	return &AssetHandler{service: s, auditService: a, logger: l}
 }
 
 // CreateAsset godoc
@@ -66,7 +67,18 @@ func (h *AssetHandler) CreateAsset(c *gin.Context) {
 		utils.InternalServerError(c, "Failed to create asset: "+err.Error())
 		return
 	}
-
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"hostname":      asset.Hostname,
+		"ipAddress":     asset.IPAddress,
+		"assetType":     asset.AssetType,
+		"status":        asset.Status,
+		"environmentID": asset.EnvironmentID,
+		"description":   asset.Description,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionCreate), "ASSET", asset.ID, details)
+	
 	utils.Created(c, asset)
 }
 
@@ -180,6 +192,14 @@ func (h *AssetHandler) UpdateAsset(c *gin.Context) {
 		return
 	}
 
+	// 先获取资产原始数据，用于审计日志
+	origAsset, getErr := h.service.GetAssetByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		// 如果找不到原始资产，不阻止更新操作
+		h.logger.Warn("Could not find original asset for audit logging", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
+	
 	asset, err := h.service.UpdateAsset(c.Request.Context(), uint(id), req)
 	if err != nil {
 		h.logger.Error("Failed to update asset in service", zap.Error(err), zap.Uint64("id", id), zap.Any("request", req))
@@ -190,7 +210,15 @@ func (h *AssetHandler) UpdateAsset(c *gin.Context) {
 		utils.InternalServerError(c, "Failed to update asset: "+err.Error())
 		return
 	}
-
+	
+	// 记录审计日志
+	details := map[string]interface{}{
+		"before": origAsset,
+		"after":  asset,
+		"changes": req,
+	}
+	_ = h.auditService.LogUserAction(c, string(utils.AuditActionUpdate), "ASSET", asset.ID, details)
+	
 	utils.OK(c, asset)
 }
 
@@ -215,6 +243,14 @@ func (h *AssetHandler) DeleteAsset(c *gin.Context) {
 		return
 	}
 
+	// 先获取资产数据，用于审计日志
+	asset, getErr := h.service.GetAssetByID(c.Request.Context(), uint(id))
+	if getErr != nil {
+		// 如果找不到资产，不阻止删除操作
+		h.logger.Warn("Could not find asset for audit logging before deletion", 
+			zap.Uint64("id", id), zap.Error(getErr))
+	}
+	
 	err = h.service.DeleteAsset(c.Request.Context(), uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -226,6 +262,14 @@ func (h *AssetHandler) DeleteAsset(c *gin.Context) {
 		utils.InternalServerError(c, "Failed to delete asset: "+err.Error())
 		return
 	}
-
+	
+	// 记录审计日志
+	if asset != nil {
+		details := map[string]interface{}{
+			"deletedAsset": asset,
+		}
+		_ = h.auditService.LogUserAction(c, string(utils.AuditActionDelete), "ASSET", uint(id), details)
+	}
+	
 	utils.OK(c, gin.H{"message": "Asset deleted successfully"})
 }
