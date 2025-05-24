@@ -28,17 +28,17 @@ func (Environment) TableName() string {
 
 // CreateEnvironmentRequest defines the structure for creating a new environment.
 type CreateEnvironmentRequest struct {
-	Name        string `json:"name" binding:"required,min=2,max=100"`
-	Description string `json:"description" binding:"omitempty"`                   // Description is optional
-	Slug        string `json:"slug" binding:"required,min=2,max=50,alphanumdash"` // Slug should be URL-friendly
+	Name        string `json:"name" validate:"required,min=2,max=100"`
+	Description string `json:"description" validate:"omitempty"`                   // Description is optional
+	Slug        string `json:"slug" validate:"required,min=2,max=50,alphanumdash"` // Slug should be URL-friendly
 }
 
 // UpdateEnvironmentRequest defines the structure for updating an existing environment.
 // All fields are optional, so pointers are used for distinguishing between empty and not provided.
 type UpdateEnvironmentRequest struct {
-	Name        *string `json:"name" binding:"omitempty,min=2,max=100"`
-	Description *string `json:"description" binding:"omitempty"`
-	Slug        *string `json:"slug" binding:"omitempty,min=2,max=50,alphanumdash"`
+	Name        *string `json:"name" validate:"omitempty,min=2,max=100"`
+	Description *string `json:"description" validate:"omitempty"`
+	Slug        *string `json:"slug" validate:"omitempty,min=2,max=50,alphanumdash"`
 }
 
 // EnvironmentResponse defines a standard way to return environment data.

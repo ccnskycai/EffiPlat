@@ -216,10 +216,14 @@ CREATE TABLE businesses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Use appropriate timestamp type
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- REMOVED ON UPDATE for SQLite compatibility
+    owner TEXT,
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP
 );
 CREATE INDEX idx_businesses_name ON businesses(name);
+CREATE INDEX idx_businesses_deleted_at ON businesses(deleted_at);
 
 -- client_types table
 CREATE TABLE client_types (

@@ -59,6 +59,8 @@ func (h *EnvironmentHandler) CreateEnvironment(c *gin.Context) {
 		h.logger.Error("Failed to create environment", zap.Error(err))
 		if errors.Is(err, utils.ErrAlreadyExists) {
 			response.Error(c, http.StatusConflict, err.Error())
+		} else if errors.Is(err, utils.ErrBadRequest) {
+			response.Error(c, http.StatusBadRequest, err.Error())
 		} else {
 			response.Error(c, http.StatusInternalServerError, "Failed to create environment: "+err.Error())
 		}
@@ -201,6 +203,8 @@ func (h *EnvironmentHandler) UpdateEnvironment(c *gin.Context) {
 			response.Error(c, http.StatusNotFound, err.Error())
 		} else if errors.Is(err, utils.ErrAlreadyExists) {
 			response.Error(c, http.StatusConflict, err.Error())
+		} else if errors.Is(err, utils.ErrBadRequest) {
+			response.Error(c, http.StatusBadRequest, err.Error())
 		} else {
 			response.Error(c, http.StatusInternalServerError, "Failed to update environment: "+err.Error())
 		}

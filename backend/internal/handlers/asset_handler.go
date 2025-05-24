@@ -45,6 +45,17 @@ func (h *AssetHandler) CreateAsset(c *gin.Context) {
 		return
 	}
 
+	// Explicit validation for required fields
+	if req.Hostname == "" {
+		response.BadRequest(c, "Hostname is required")
+		return
+	}
+
+	if req.EnvironmentID == 0 {
+		response.BadRequest(c, "EnvironmentID is required")
+		return
+	}
+
 	asset, err := h.service.CreateAsset(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to create asset in service", zap.Error(err), zap.Any("request", req))

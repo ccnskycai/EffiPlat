@@ -3,7 +3,9 @@ package router
 import (
 	"EffiPlat/backend/internal/handler"
 	envhandlers "EffiPlat/backend/internal/handlers" // Added for EnvironmentHandler
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/models"
+	pkgmodels "EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/pkg/config"
 	pkgdb "EffiPlat/backend/internal/pkg/database"
 	"EffiPlat/backend/internal/pkg/logger"
@@ -45,6 +47,8 @@ type TestAppComponents struct {
 	EnvironmentHandler         *envhandlers.EnvironmentHandler
 	AssetHandler               *envhandlers.AssetHandler
 	ServiceHandler             *envhandlers.ServiceHandler
+	ServiceInstanceHandler     *handler.ServiceInstanceHandler
+	BusinessHandler            *handler.BusinessHandler
 	JWTKey                     []byte
 }
 
@@ -67,16 +71,17 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	// err = pkgdb.AutoMigrate(db, appLogger) // Ensure all tables including new ones are migrated
 	// Directly migrate all necessary models for tests, including new ones
 	err = db.AutoMigrate(
-		&models.User{},
-		&models.Role{},
-		&models.Permission{},
-		&models.Responsibility{},
-		&models.ResponsibilityGroup{},
-		&models.Environment{},
-		&models.Asset{},
-		&models.ServiceType{}, // Added ServiceType model for migration
-		&models.Service{},     // Added Service model for migration
-		// Add any other models that are usually migrated by pkgdb.AutoMigrate
+		&pkgmodels.User{},
+		&pkgmodels.Role{},
+		&pkgmodels.Permission{},
+		&pkgmodels.Responsibility{},
+		&pkgmodels.ResponsibilityGroup{},
+		&pkgmodels.Environment{},
+		&pkgmodels.Asset{},
+		&pkgmodels.ServiceType{}, // Added ServiceType model for migration
+		&pkgmodels.Service{},     // Added Service model for migration
+		&model.ServiceInstance{}, // Changed to model.ServiceInstance
+		&model.Business{},        // Changed to model.Business
 	)
 	assert.NoError(t, err, "AutoMigrate should not fail")
 
@@ -88,8 +93,10 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityGroupRepo := repository.NewGormResponsibilityGroupRepository(db, appLogger)
 	environmentRepo := repository.NewGormEnvironmentRepository(db, appLogger)
 	assetRepo := repository.NewGormAssetRepository(db, appLogger)
-	serviceRepo := repository.NewGormServiceRepository(db)         // Updated ServiceRepository
-	serviceTypeRepo := repository.NewGormServiceTypeRepository(db) // Added ServiceTypeRepository
+	serviceRepo := repository.NewGormServiceRepository(db)                        // Updated ServiceRepository
+	serviceTypeRepo := repository.NewGormServiceTypeRepository(db)                // Added ServiceTypeRepository
+	serviceInstanceRepo := repository.NewServiceInstanceRepository(db, appLogger) // Added
+	businessRepo := repository.NewBusinessRepository(db, appLogger)               // Added
 
 	// Initialize services
 	jwtKey := []byte(os.Getenv("JWT_SECRET_TEST"))
@@ -104,7 +111,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityGroupService := service.NewResponsibilityGroupService(responsibilityGroupRepo, responsibilityRepo, appLogger)
 	environmentService := service.NewEnvironmentService(environmentRepo, appLogger)
 	assetService := service.NewAssetService(assetRepo, environmentRepo, appLogger)
-	serviceService := service.NewServiceService(serviceRepo, serviceTypeRepo, appLogger) // Renamed serviceSvc to serviceService and added logger
+	serviceService := service.NewServiceService(serviceRepo, serviceTypeRepo, appLogger)                                      // Renamed serviceSvc to serviceService and added logger
+	serviceInstanceService := service.NewServiceInstanceService(serviceInstanceRepo, serviceRepo, environmentRepo, appLogger) // Added
+	businessService := service.NewBusinessService(businessRepo, appLogger)                                                    // Added
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -115,7 +124,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, appLogger)
 	environmentHandler := envhandlers.NewEnvironmentHandler(environmentService, appLogger)
 	assetHandler := envhandlers.NewAssetHandler(assetService, appLogger)
-	serviceHandler := envhandlers.NewServiceHandler(serviceService, appLogger) // Corrected: Use envhandlers.NewServiceHandler
+	serviceHandler := envhandlers.NewServiceHandler(serviceService, appLogger)                     // Corrected: Use envhandlers.NewServiceHandler
+	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, appLogger) // Added
+	businessHandler := handler.NewBusinessHandler(businessService, appLogger)                      // Added
 
 	routerInstance := SetupRouter(
 		authHandler,
@@ -126,8 +137,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		responsibilityGroupHandler,
 		environmentHandler,
 		assetHandler,
-		serviceHandler, // Added ServiceHandler
-		nil,            // serviceInstanceHandler - passing nil for now
+		serviceHandler,
+		serviceInstanceHandler, // Pass the new handler
+		businessHandler,        // Pass the new handler
 		jwtKey,
 	)
 
@@ -143,7 +155,9 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		ResponsibilityGroupHandler: responsibilityGroupHandler,
 		EnvironmentHandler:         environmentHandler,
 		AssetHandler:               assetHandler,
-		ServiceHandler:             serviceHandler, // Added ServiceHandler
+		ServiceHandler:             serviceHandler,
+		ServiceInstanceHandler:     serviceInstanceHandler, // Added
+		BusinessHandler:            businessHandler,        // Added
 		JWTKey:                     jwtKey,
 	}
 }

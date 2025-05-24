@@ -48,6 +48,12 @@ func NewEnvironmentService(repo repository.EnvironmentRepository, logger *zap.Lo
 func (s *environmentServiceImpl) CreateEnvironment(ctx context.Context, req models.CreateEnvironmentRequest) (*models.EnvironmentResponse, error) {
 	s.logger.Info("Service: Creating new environment", zap.String("name", req.Name), zap.String("slug", req.Slug))
 
+	// Validate the incoming request DTO first
+	if err := apputils.GetValidator().Struct(req); err != nil {
+		s.logger.Warn("Service: CreateEnvironment validation failed for request DTO", zap.Error(err))
+		return nil, fmt.Errorf("%w: %s", apputils.ErrBadRequest, apputils.FormatValidationError(err))
+	}
+
 	// Check for existing slug
 	_, err := s.repo.GetBySlug(ctx, req.Slug)
 	if err == nil {
@@ -125,7 +131,15 @@ func (s *environmentServiceImpl) GetEnvironmentBySlug(ctx context.Context, slug 
 }
 
 func (s *environmentServiceImpl) UpdateEnvironment(ctx context.Context, id uint, req models.UpdateEnvironmentRequest) (*models.EnvironmentResponse, error) {
-	s.logger.Info("Service: Updating environment", zap.Uint("id", id))
+	s.logger.Info("Service: Updating environment", zap.Uint("id", id), zap.Any("request", req))
+
+	// Validate the incoming request DTO first
+	validationErr := apputils.GetValidator().Struct(req)
+	s.logger.Info("Service: UpdateEnvironment DTO validation result", zap.Error(validationErr), zap.Any("req_payload_for_validation", req))
+	if validationErr != nil {
+		s.logger.Warn("Service: UpdateEnvironment validation failed for request DTO", zap.Error(validationErr))
+		return nil, fmt.Errorf("%w: %s", apputils.ErrBadRequest, apputils.FormatValidationError(validationErr))
+	}
 
 	existingEnv, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -138,27 +152,37 @@ func (s *environmentServiceImpl) UpdateEnvironment(ctx context.Context, id uint,
 	}
 
 	updated := false
-	if req.Name != nil && *req.Name != existingEnv.Name {
-		// Optional: Check if new name conflicts with another existing environment's name
-		existingEnv.Name = *req.Name
-		updated = true
+	if req.Name != nil { // Name is provided in the request
+		if *req.Name != existingEnv.Name { // And it's different from the current name
+			// Name validation (e.g. length) is handled by GetValidator().Struct(req) above.
+			// DB unique constraint for name will be checked by repo.Update or a pre-check.
+			existingEnv.Name = *req.Name
+			updated = true
+		}
 	}
-	if req.Description != nil && *req.Description != existingEnv.Description {
-		existingEnv.Description = *req.Description
-		updated = true
+
+	if req.Description != nil {
+		if *req.Description != existingEnv.Description {
+			existingEnv.Description = *req.Description
+			updated = true
+		}
 	}
-	if req.Slug != nil && *req.Slug != existingEnv.Slug {
-		// Check if new slug conflicts with another existing environment's slug
-		foundBySlug, err := s.repo.GetBySlug(ctx, *req.Slug)
-		if err == nil && foundBySlug.ID != id { // Slug exists and belongs to another environment
-			s.logger.Warn("Service: New slug for update conflicts with existing environment", zap.String("newSlug", *req.Slug), zap.Uint("conflictingEnvID", foundBySlug.ID))
-			return nil, fmt.Errorf("environment slug '%s' already exists: %w", *req.Slug, apputils.ErrAlreadyExists)
-		} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) { // Some other error occurred
-			s.logger.Error("Service: Error checking slug for update", zap.String("newSlug", *req.Slug), zap.Error(err))
-			return nil, err
-		} // If gorm.ErrRecordNotFound, slug is available or it's the same env, proceed.
-		existingEnv.Slug = *req.Slug
-		updated = true
+
+	if req.Slug != nil {
+		if *req.Slug != existingEnv.Slug {
+			// Slug validation (e.g. length, alphanumdash) is handled by GetValidator().Struct(req) above.
+			// Check if new slug conflicts with another existing environment's slug
+			foundBySlug, errDbSlug := s.repo.GetBySlug(ctx, *req.Slug)
+			if errDbSlug == nil && foundBySlug.ID != id { // Slug exists and belongs to another environment
+				s.logger.Warn("Service: New slug for update conflicts with existing environment", zap.String("newSlug", *req.Slug), zap.Uint("conflictingEnvID", foundBySlug.ID))
+				return nil, fmt.Errorf("environment slug '%s' already exists: %w", *req.Slug, apputils.ErrAlreadyExists)
+			} else if errDbSlug != nil && !errors.Is(errDbSlug, gorm.ErrRecordNotFound) { // Some other error occurred
+				s.logger.Error("Service: Error checking slug for update", zap.String("newSlug", *req.Slug), zap.Error(errDbSlug))
+				return nil, errDbSlug
+			} // If gorm.ErrRecordNotFound, slug is available or it's the same env, proceed.
+			existingEnv.Slug = *req.Slug
+			updated = true
+		}
 	}
 
 	if !updated {

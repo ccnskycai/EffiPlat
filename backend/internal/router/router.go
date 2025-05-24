@@ -36,6 +36,7 @@ func SetupRouter(
 	assetHandler *envhandlers.AssetHandler,
 	serviceHandler *envhandlers.ServiceHandler,
 	serviceInstanceHandler *handler.ServiceInstanceHandler, // Added ServiceInstanceHandler
+	businessHandler *handler.BusinessHandler, // Added BusinessHandler
 	jwtKey []byte,
 ) *gin.Engine {
 	r := gin.Default()
@@ -135,6 +136,9 @@ func SetupRouter(
 			serviceInstanceGroup.PUT("/:instanceId", serviceInstanceHandler.UpdateServiceInstance)
 			serviceInstanceGroup.DELETE("/:instanceId", serviceInstanceHandler.DeleteServiceInstance)
 		}
+
+		// Business routes
+		businessRoutes(apiV1Authenticated.Group("/businesses"), businessHandler)
 	}
 
 	// 处理404路由
@@ -275,6 +279,17 @@ func serviceRoutes(rg *gin.RouterGroup, hdlr *envhandlers.ServiceHandler) {
 		rg.GET("/:id", hdlr.GetServiceByID)   // GET /api/v1/services/{id}
 		rg.PUT("/:id", hdlr.UpdateService)    // PUT /api/v1/services/{id}
 		rg.DELETE("/:id", hdlr.DeleteService) // DELETE /api/v1/services/{id}
+	}
+}
+
+// businessRoutes 注册业务管理相关的路由
+func businessRoutes(rg *gin.RouterGroup, businessHdlr *handler.BusinessHandler) {
+	{
+		rg.POST("", businessHdlr.CreateBusiness)               // POST /api/v1/businesses
+		rg.GET("", businessHdlr.ListBusinesses)                // GET /api/v1/businesses
+		rg.GET("/:businessId", businessHdlr.GetBusinessByID)   // GET /api/v1/businesses/{businessId}
+		rg.PUT("/:businessId", businessHdlr.UpdateBusiness)    // PUT /api/v1/businesses/{businessId}
+		rg.DELETE("/:businessId", businessHdlr.DeleteBusiness) // DELETE /api/v1/businesses/{businessId}
 	}
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"EffiPlat/backend/internal"                // Added for NewUserHandler and AuthHandler type
+	"EffiPlat/backend/internal/handler"        // Import for BusinessHandler
 	hdlrs "EffiPlat/backend/internal/handlers" // Use alias hdlrs
 	"EffiPlat/backend/internal/pkg/config"
 	pkgdb "EffiPlat/backend/internal/pkg/database"
@@ -112,6 +113,11 @@ func main() {
 		appLogger.Fatal("Failed to initialize service instance handler", zap.Error(err))
 	}
 
+	// Initialize Business components
+	businessRepository := repository.NewBusinessRepository(dbConn, appLogger)
+	businessService := service.NewBusinessService(businessRepository, appLogger)
+	businessHandler := handler.NewBusinessHandler(businessService, appLogger)
+
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
 	r := router.SetupRouter(
@@ -125,6 +131,7 @@ func main() {
 		assetHandler,           // Added assetHandler
 		serviceHandler,         // Added serviceHandler
 		serviceInstanceHandler, // Added serviceInstanceHandler
+		businessHandler,        // Added businessHandler
 		jwtKey,
 	)
 

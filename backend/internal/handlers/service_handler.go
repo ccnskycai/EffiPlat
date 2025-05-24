@@ -47,6 +47,12 @@ func (h *ServiceHandler) CreateServiceType(c *gin.Context) {
 		return
 	}
 
+	// Explicit validation for required fields
+	if req.Name == "" {
+		utils.SendErrorResponse(c, http.StatusBadRequest, "Name is required")
+		return
+	}
+
 	serviceType, err := h.service.CreateServiceType(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to create service type", zap.Error(err), zap.String("name", req.Name))
@@ -231,6 +237,41 @@ func (h *ServiceHandler) CreateService(c *gin.Context) {
 		return
 	}
 
+	// Explicit validation for required fields
+	if req.Name == "" {
+		utils.SendErrorResponse(c, http.StatusBadRequest, "Name is required")
+		return
+	}
+
+	if req.ServiceTypeID == 0 {
+		utils.SendErrorResponse(c, http.StatusBadRequest, "ServiceTypeID is required")
+		return
+	}
+
+	// Validate status if provided
+	if req.Status != "" {
+		valid := false
+		validStatuses := []models.ServiceStatus{
+			models.ServiceStatusActive,
+			models.ServiceStatusInactive,
+			models.ServiceStatusDevelopment,
+			models.ServiceStatusMaintenance,
+			models.ServiceStatusDeprecated,
+			models.ServiceStatusExperimental,
+			models.ServiceStatusUnknown,
+		}
+		for _, s := range validStatuses {
+			if req.Status == s {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			utils.SendErrorResponse(c, http.StatusBadRequest, "Invalid status value")
+			return
+		}
+	}
+
 	serviceResp, err := h.service.CreateService(c.Request.Context(), req)
 	if err != nil {
 		h.logger.Error("Failed to create service", zap.Error(err), zap.String("name", req.Name), zap.Any("request", req))
@@ -340,6 +381,35 @@ func (h *ServiceHandler) UpdateService(c *gin.Context) {
 		h.logger.Error("Failed to bind JSON for UpdateService", zap.Error(err))
 		utils.SendErrorResponse(c, http.StatusBadRequest, "Invalid request payload: "+err.Error())
 		return
+	}
+
+	// Validate fields if provided
+	if req.Name != nil && *req.Name == "" {
+		utils.SendErrorResponse(c, http.StatusBadRequest, "Name cannot be empty")
+		return
+	}
+
+	if req.Status != nil {
+		valid := false
+		validStatuses := []models.ServiceStatus{
+			models.ServiceStatusActive,
+			models.ServiceStatusInactive,
+			models.ServiceStatusDevelopment,
+			models.ServiceStatusMaintenance,
+			models.ServiceStatusDeprecated,
+			models.ServiceStatusExperimental,
+			models.ServiceStatusUnknown,
+		}
+		for _, s := range validStatuses {
+			if *req.Status == s {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			utils.SendErrorResponse(c, http.StatusBadRequest, "Invalid status value")
+			return
+		}
 	}
 
 	serviceResp, err := h.service.UpdateService(c.Request.Context(), uint(id), req)
