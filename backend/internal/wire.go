@@ -136,3 +136,33 @@ func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*han
 	)
 	return nil, nil // Wire will replace this
 }
+
+// ProviderSet for Service, ServiceType, Environment, Asset components
+// These seem to be handled by a different handler package structure (envhandlers)
+// For now, we will assume their repositories are provided to the new injector if needed.
+
+// ProviderSet for service instance components
+var ServiceInstanceSet = wire.NewSet(
+	repository.NewServiceInstanceRepository,
+	service.NewServiceInstanceService,
+	handler.NewServiceInstanceHandler,
+	// We need ServiceRepository and EnvironmentRepository for NewServiceInstanceService
+	// Assuming they are provided directly to the injector or via other sets.
+)
+
+// InitializeServiceInstanceHandler is the injector for ServiceInstanceHandler.
+func InitializeServiceInstanceHandler(
+	db *gorm.DB,
+	logger *zap.Logger,
+	serviceRepo repository.ServiceRepository,
+	envRepo repository.EnvironmentRepository,
+) (*handler.ServiceInstanceHandler, error) {
+	wire.Build(
+		ServiceInstanceSet,
+		// Provide serviceRepo and envRepo directly to this build context
+		// wire.Value(serviceRepo), // This is incorrect for interfaces; they should be parameters or bound.
+		// wire.Value(envRepo),
+		// db and logger are already parameters to the injector func, so Wire can use them.
+	)
+	return nil, nil // Wire will replace this
+}

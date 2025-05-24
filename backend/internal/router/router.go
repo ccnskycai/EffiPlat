@@ -30,25 +30,24 @@ func SetupRouter(
 	userHandler *handler.UserHandler,
 	roleHandler *handler.RoleHandler,
 	permissionHandler *handler.PermissionHandler,
-	responsibilityHandler *handler.ResponsibilityHandler, // Added
-	responsibilityGroupHandler *handler.ResponsibilityGroupHandler, // Added
-	environmentHandler *envhandlers.EnvironmentHandler, // Changed to envhandlers
-	assetHandler *envhandlers.AssetHandler, // Added AssetHandler
-	serviceHandler *envhandlers.ServiceHandler, // Added ServiceHandler
-	jwtKey []byte, /*, etc. */
+	responsibilityHandler *handler.ResponsibilityHandler,
+	responsibilityGroupHandler *handler.ResponsibilityGroupHandler,
+	environmentHandler *envhandlers.EnvironmentHandler,
+	assetHandler *envhandlers.AssetHandler,
+	serviceHandler *envhandlers.ServiceHandler,
+	serviceInstanceHandler *handler.ServiceInstanceHandler, // Added ServiceInstanceHandler
+	jwtKey []byte,
 ) *gin.Engine {
 	r := gin.Default()
 
 	// Register custom validators
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
-		// It's good practice to log this or handle the error appropriately
-		// For now, we'll ignore the error for brevity, but in production, it should be handled.
 		_ = v.RegisterValidation("alphanumdash", validateAlphanumDash)
 	}
 
 	// CORS Middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080"}, // Adjust for your frontend
+		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -82,7 +81,7 @@ func SetupRouter(
 
 	// Authenticated routes
 	apiV1Authenticated := r.Group("/api/v1")
-	apiV1Authenticated.Use(middleware.JWTAuthMiddleware(jwtKey)) // Apply auth middleware to this group
+	apiV1Authenticated.Use(middleware.JWTAuthMiddleware(jwtKey))
 	{
 		// Authenticated Auth routes (me, logout)
 		authAuth := apiV1Authenticated.Group("/auth")
@@ -126,6 +125,16 @@ func SetupRouter(
 		// ServiceType and Service routes
 		serviceTypeRoutes(apiV1Authenticated.Group("/service-types"), serviceHandler)
 		serviceRoutes(apiV1Authenticated.Group("/services"), serviceHandler)
+
+		// Service Instance routes
+		serviceInstanceGroup := apiV1Authenticated.Group("/service-instances")
+		{
+			serviceInstanceGroup.POST("", serviceInstanceHandler.CreateServiceInstance)
+			serviceInstanceGroup.GET("", serviceInstanceHandler.ListServiceInstances)
+			serviceInstanceGroup.GET("/:instanceId", serviceInstanceHandler.GetServiceInstance)
+			serviceInstanceGroup.PUT("/:instanceId", serviceInstanceHandler.UpdateServiceInstance)
+			serviceInstanceGroup.DELETE("/:instanceId", serviceInstanceHandler.DeleteServiceInstance)
+		}
 	}
 
 	// 处理404路由
@@ -225,7 +234,7 @@ func responsibilityGroupRoutes(rg *gin.RouterGroup, hdlr *handler.Responsibility
 }
 
 // environmentRoutes 注册环境管理相关的路由
-func environmentRoutes(rg *gin.RouterGroup, hdlr *envhandlers.EnvironmentHandler) { // Changed to envhandlers
+func environmentRoutes(rg *gin.RouterGroup, hdlr *envhandlers.EnvironmentHandler) {
 	{
 		rg.POST("", hdlr.CreateEnvironment)              // POST /api/v1/environments
 		rg.GET("", hdlr.GetEnvironments)                 // GET /api/v1/environments

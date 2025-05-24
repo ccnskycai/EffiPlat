@@ -73,6 +73,14 @@ func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*han
 	return responsibilityGroupHandler, nil
 }
 
+// InitializeServiceInstanceHandler is the injector for ServiceInstanceHandler.
+func InitializeServiceInstanceHandler(db *gorm.DB, logger *zap.Logger, serviceRepo repository.ServiceRepository, envRepo repository.EnvironmentRepository) (*handler.ServiceInstanceHandler, error) {
+	serviceInstanceRepository := repository.NewServiceInstanceRepository(db, logger)
+	serviceInstanceService := service.NewServiceInstanceService(serviceInstanceRepository, serviceRepo, envRepo, logger)
+	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, logger)
+	return serviceInstanceHandler, nil
+}
+
 // wire.go:
 
 // ProviderSet for user components
@@ -92,3 +100,6 @@ var ResponsibilitySet = wire.NewSet(repository.NewGormResponsibilityRepository, 
 
 // ProviderSet for responsibility group components
 var ResponsibilityGroupSet = wire.NewSet(repository.NewGormResponsibilityGroupRepository, repository.NewGormResponsibilityRepository, service.NewResponsibilityGroupService, handler.NewResponsibilityGroupHandler)
+
+// ProviderSet for service instance components
+var ServiceInstanceSet = wire.NewSet(repository.NewServiceInstanceRepository, service.NewServiceInstanceService, handler.NewServiceInstanceHandler)

@@ -20,6 +20,7 @@ tags:
   - name: bugs
   - name: audit-logs
   - name: service-types
+  - name: service-instances
 
 paths:
   # 认证
@@ -1280,6 +1281,178 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLogListResponse'
 
+  # 服务实例管理
+  /service-instances:
+    get:
+      tags: [service-instances]
+      summary: 获取服务实例列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+          description: 页码
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 10 }
+          description: 每页数量
+        - in: query
+          name: serviceId
+          schema: { type: integer }
+          description: 按服务ID过滤
+        - in: query
+          name: environmentId
+          schema: { type: integer }
+          description: 按环境ID过滤
+        - in: query
+          name: status
+          schema: { type: string, enum: [running, stopped, deploying, error, unknown] }
+          description: 按状态过滤
+        - in: query
+          name: hostname
+          schema: { type: string }
+          description: 按主机名过滤 (部分匹配)
+        - in: query
+          name: version
+          schema: { type: string }
+          description: 按版本过滤
+        - in: query
+          name: sortBy
+          schema: { type: string, default: createdAt, enum: [id, serviceId, environmentId, version, status, hostname, deployedAt, createdAt, updatedAt] }
+          description: 排序字段
+        - in: query
+          name: order
+          schema: { type: string, default: desc, enum: [asc, desc] }
+          description: 排序顺序
+      responses:
+        '200':
+          description: 成功获取服务实例列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInstanceListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [service-instances]
+      summary: 创建服务实例
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceInstanceCreateRequest'
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInstanceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /service-instances/{instanceId}:
+    get:
+      tags: [service-instances]
+      summary: 获取服务实例详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          required: true
+          schema: { type: integer }
+          description: 服务实例ID
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInstanceResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: 服务实例未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    put:
+      tags: [service-instances]
+      summary: 更新服务实例
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          required: true
+          schema: { type: integer }
+          description: 服务实例ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceInstanceUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInstanceResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: 服务实例未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    delete:
+      tags: [service-instances]
+      summary: 删除服务实例
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: instanceId
+          required: true
+          schema: { type: integer }
+          description: 服务实例ID
+      responses:
+        '204':
+          description: 删除成功，无响应体
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: 服务实例未找到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -1920,3 +2093,92 @@ components:
         message: { type: string }
         data:
           $ref: '#/components/schemas/Bug'
+
+    # Service Instance Schemas
+    ServiceInstance:
+      type: object
+      properties:
+        id: { type: integer, readOnly: true, description: "服务实例的唯一标识符" }
+        serviceId: { type: integer, description: "关联的服务ID" }
+        environmentId: { type: integer, description: "关联的环境ID" }
+        version: { type: string, description: "服务实例的版本" }
+        status:
+          type: string
+          description: "服务实例的状态 (e.g., running, stopped, deploying, error, unknown)"
+          enum: [running, stopped, deploying, error, unknown]
+        hostname: { type: [string, "null"], description: "服务实例运行的主机名或IP地址" }
+        port: { type: [integer, "null"], description: "服务实例监听的端口号" }
+        config:
+          type: [object, "null"]
+          description: "服务实例的特定配置 (JSON 对象)"
+          additionalProperties: true
+        deployedAt: { type: [string, "null"], format: date-time, description: "服务实例部署时间" }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+      required:
+        - serviceId
+        - environmentId
+        - version
+        - status
+
+    ServiceInstanceCreateRequest:
+      type: object
+      required: [serviceId, environmentId, version]
+      properties:
+        serviceId: { type: integer, description: "关联的服务ID" }
+        environmentId: { type: integer, description: "关联的环境ID" }
+        version: { type: string, description: "服务实例的版本" }
+        status:
+          type: string
+          description: "服务实例的初始状态"
+          enum: [running, stopped, deploying, error, unknown]
+          default: "unknown"
+        hostname: { type: [string, "null"], description: "服务实例运行的主机名或IP地址" }
+        port: { type: [integer, "null"], description: "服务实例监听的端口号" }
+        config:
+          type: [object, "null"]
+          description: "服务实例的特定配置 (JSON 对象)"
+          additionalProperties: true
+        deployedAt: { type: [string, "null"], format: date-time, description: "服务实例部署时间" }
+
+    ServiceInstanceUpdateRequest:
+      type: object
+      properties:
+        serviceId: { type: integer, description: "关联的服务ID (通常不在此处更新，但允许以备特殊情况)" }
+        environmentId: { type: integer, description: "关联的环境ID (通常不在此处更新)" }
+        version: { type: string, description: "服务实例的新版本" }
+        status:
+          type: string
+          description: "服务实例的新状态"
+          enum: [running, stopped, deploying, error, unknown, "null"]
+        hostname: { type: [string, "null"], description: "服务实例运行的主机名或IP地址" }
+        port: { type: [integer, "null"], description: "服务实例监听的端口号" }
+        config:
+          type: [object, "null"]
+          description: "服务实例的特定配置 (JSON 对象), 设置为 null 表示清空"
+          additionalProperties: true
+        deployedAt: { type: [string, "null"], format: date-time, description: "服务实例部署时间" }
+
+    ServiceInstanceResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          $ref: '#/components/schemas/ServiceInstance'
+
+    ServiceInstanceListResponse:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string, example: "Success" }
+        data:
+          type: object
+          required: [items, total, page, pageSize]
+          properties:
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ServiceInstance' }
+            total: { type: integer, description: "Total number of service instances" }
+            page: { type: integer, description: "Current page number" }
+            pageSize: { type: integer, description: "Number of service instances per page" }

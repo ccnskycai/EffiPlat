@@ -2,20 +2,23 @@ package service_test
 
 import (
 	"EffiPlat/backend/internal/models"
-	"EffiPlat/backend/internal/repository/mocks" // Assuming you'll use mocks for the repository
+	"EffiPlat/backend/internal/repository/mocks"
 	"EffiPlat/backend/internal/service"
 	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // Example of a test function for CreateEnvironment
 func TestEnvironmentServiceImpl_CreateEnvironment(t *testing.T) {
-	mockRepo := new(mocks.MockEnvironmentRepository)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockEnvironmentRepository(ctrl)
 	logger := zap.NewNop() // Use a Nop logger for tests or a test-specific logger
 	s := service.NewEnvironmentService(mockRepo, logger)
 
@@ -27,7 +30,7 @@ func TestEnvironmentServiceImpl_CreateEnvironment(t *testing.T) {
 	}
 
 	// Mock successful GetBySlug (slug does not exist)
-	mockRepo.On("GetBySlug", ctx, createReq.Slug).Return(nil, gorm.ErrRecordNotFound).Once()
+	mockRepo.EXPECT().GetBySlug(gomock.Eq(ctx), gomock.Eq(createReq.Slug)).Return(nil, gorm.ErrRecordNotFound).Times(1)
 
 	// Mock successful Create
 	expectedEnv := &models.Environment{
@@ -36,7 +39,7 @@ func TestEnvironmentServiceImpl_CreateEnvironment(t *testing.T) {
 		Description: createReq.Description,
 		Slug:        createReq.Slug,
 	}
-	mockRepo.On("Create", ctx, mock.AnythingOfType("*models.Environment")).Return(expectedEnv, nil).Once()
+	mockRepo.EXPECT().Create(gomock.Eq(ctx), gomock.AssignableToTypeOf(&models.Environment{})).Return(expectedEnv, nil).Times(1)
 
 	resp, err := s.CreateEnvironment(ctx, createReq)
 
@@ -45,13 +48,14 @@ func TestEnvironmentServiceImpl_CreateEnvironment(t *testing.T) {
 	assert.Equal(t, expectedEnv.Name, resp.Name)
 	assert.Equal(t, expectedEnv.Slug, resp.Slug)
 	assert.Equal(t, expectedEnv.ID, resp.ID)
-
-	mockRepo.AssertExpectations(t)
 }
 
 // Example of a test function for CreateEnvironment when slug already exists
 func TestEnvironmentServiceImpl_CreateEnvironment_SlugExists(t *testing.T) {
-	mockRepo := new(mocks.MockEnvironmentRepository)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockEnvironmentRepository(ctrl)
 	logger := zap.NewNop()
 	s := service.NewEnvironmentService(mockRepo, logger)
 
@@ -68,15 +72,13 @@ func TestEnvironmentServiceImpl_CreateEnvironment_SlugExists(t *testing.T) {
 		Name: "Some Other Env",
 		Slug: "duplicate-slug",
 	}
-	mockRepo.On("GetBySlug", ctx, createReq.Slug).Return(existingEnv, nil).Once()
+	mockRepo.EXPECT().GetBySlug(gomock.Eq(ctx), gomock.Eq(createReq.Slug)).Return(existingEnv, nil).Times(1)
 
 	resp, err := s.CreateEnvironment(ctx, createReq)
 
 	assert.Error(t, err)
 	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "environment slug 'duplicate-slug' already exists")
-
-	mockRepo.AssertExpectations(t)
 }
 
 // You would continue to add more test functions for other methods like:
@@ -92,65 +94,5 @@ func TestEnvironmentServiceImpl_CreateEnvironment_SlugExists(t *testing.T) {
 // - TestEnvironmentServiceImpl_DeleteEnvironment
 // - TestEnvironmentServiceImpl_DeleteEnvironment_NotFound
 
-// Remember to create mock implementations for your repository dependencies.
-// For example, if you are using testify/mock, you might have a file like:
-// /Users/skyccn/EffiPlat/backend/internal/repository/mocks/mock_environment_repository.go
-// with content similar to:
-/*
-package mocks
-
-import (
-	"EffiPlat/backend/internal/models"
-	"context"
-	"github.com/stretchr/testify/mock"
-)
-
-type MockEnvironmentRepository struct {
-	mock.Mock
-}
-
-func (m *MockEnvironmentRepository) Create(ctx context.Context, environment *models.Environment) (*models.Environment, error) {
-	args := m.Called(ctx, environment)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.Environment), args.Error(1)
-}
-
-func (m *MockEnvironmentRepository) List(ctx context.Context, params models.EnvironmentListParams) ([]models.Environment, int64, error) {
-	args := m.Called(ctx, params)
-	if args.Get(0) == nil {
-		return nil, args.Get(1).(int64), args.Error(2)
-	}
-	return args.Get(0).([]models.Environment), args.Get(1).(int64), args.Error(2)
-}
-
-func (m *MockEnvironmentRepository) GetByID(ctx context.Context, id uint) (*models.Environment, error) {
-	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.Environment), args.Error(1)
-}
-
-func (m *MockEnvironmentRepository) GetBySlug(ctx context.Context, slug string) (*models.Environment, error) {
-	args := m.Called(ctx, slug)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.Environment), args.Error(1)
-}
-
-func (m *MockEnvironmentRepository) Update(ctx context.Context, environment *models.Environment) (*models.Environment, error) {
-	args := m.Called(ctx, environment)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*models.Environment), args.Error(1)
-}
-
-func (m *MockEnvironmentRepository) Delete(ctx context.Context, id uint) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-*/
+// Comment block with testify/mock example was here, assuming it's been manually removed or will be.
+// If not, it should be deleted as part of standardizing on gomock.

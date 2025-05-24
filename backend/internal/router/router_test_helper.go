@@ -127,6 +127,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		environmentHandler,
 		assetHandler,
 		serviceHandler, // Added ServiceHandler
+		nil,            // serviceInstanceHandler - passing nil for now
 		jwtKey,
 	)
 

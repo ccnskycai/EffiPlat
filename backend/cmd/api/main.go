@@ -102,9 +102,15 @@ func main() {
 	// Initialize Service components
 	serviceRepository := repository.NewGormServiceRepository(dbConn)
 	serviceTypeRepository := repository.NewGormServiceTypeRepository(dbConn) // Added ServiceTypeRepository
-	serviceService := service.NewServiceService(serviceRepository, serviceTypeRepository, appLogger) 
+	serviceService := service.NewServiceService(serviceRepository, serviceTypeRepository, appLogger)
 	serviceHandler := hdlrs.NewServiceHandler(serviceService, appLogger)
 	// TODO: Consider adding InitializeServiceHandler to wire.go for consistency if this becomes permanent
+
+	// Initialize ServiceInstance components using Wire
+	serviceInstanceHandler, err := internal.InitializeServiceInstanceHandler(dbConn, appLogger, serviceRepository, environmentRepository)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize service instance handler", zap.Error(err))
+	}
 
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
@@ -116,8 +122,9 @@ func main() {
 		responsibilityHandler,
 		responsibilityGroupHandler,
 		environmentHandler,
-		assetHandler,   // Added assetHandler
-		serviceHandler, // Added serviceHandler
+		assetHandler,           // Added assetHandler
+		serviceHandler,         // Added serviceHandler
+		serviceInstanceHandler, // Added serviceInstanceHandler
 		jwtKey,
 	)
 
