@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"EffiPlat/backend/internal/models"
-	"EffiPlat/backend/pkg/utils"
+	"EffiPlat/backend/internal/model"
+	"EffiPlat/backend/internal/utils"
 	"context"
 	"errors"
 
@@ -19,13 +19,13 @@ var (
 
 // UserRepository defines the interface for user data operations.
 type UserRepository interface {
-	FindByEmail(ctx context.Context, email string) (*models.User, error)
-	FindAll(ctx context.Context, params models.UserListParams) (*utils.PaginatedResult[models.User], error)
-	FindByID(ctx context.Context, id uint) (*models.User, error)
-	Create(ctx context.Context, user *models.User, roleIDs []uint) (*models.User, error)
-	Update(ctx context.Context, userID uint, updates map[string]interface{}, roleIDs *[]uint) (*models.User, error)
+	FindByEmail(ctx context.Context, email string) (*model.User, error)
+	FindAll(ctx context.Context, params model.UserListParams) (*utils.PaginatedResult[model.User], error)
+	FindByID(ctx context.Context, id uint) (*model.User, error)
+	Create(ctx context.Context, user *model.User, roleIDs []uint) (*model.User, error)
+	Update(ctx context.Context, userID uint, updates map[string]interface{}, roleIDs *[]uint) (*model.User, error)
 	Delete(ctx context.Context, id uint) error
-	FindRoleByID(ctx context.Context, id uint) (*models.Role, error)
+	FindRoleByID(ctx context.Context, id uint) (*model.Role, error)
 	AssignRolesToUser(ctx context.Context, userID uint, roleIDs []uint) error
 	RemoveRolesFromUser(ctx context.Context, userID uint, roleIDs []uint) error
 }
@@ -43,8 +43,8 @@ func NewUserRepository(db *gorm.DB, logger *zap.Logger) UserRepository {
 }
 
 // FindByEmail retrieves a user by their email.
-func (r *UserRepositoryImpl) FindByEmail(ctx context.Context, email string) (*models.User, error) {
-	var user models.User
+func (r *UserRepositoryImpl) FindByEmail(ctx context.Context, email string) (*model.User, error) {
+	var user model.User
 	if err := r.db.WithContext(ctx).Where("email = ?", email).Preload("Roles").First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			r.logger.Warn("User not found by email", zap.String("email", email))
@@ -58,13 +58,13 @@ func (r *UserRepositoryImpl) FindByEmail(ctx context.Context, email string) (*mo
 
 // FindAll retrieves a paginated list of users based on filters.
 // Note: The original FindAll took params map[string]string, page, pageSize.
-// For consistency with other ListParams, it's better to use a struct like models.UserListParams.
-// I'll assume models.UserListParams exists or will be created.
-func (r *UserRepositoryImpl) FindAll(ctx context.Context, params models.UserListParams) (*utils.PaginatedResult[models.User], error) {
-	var users []models.User
+// For consistency with other ListParams, it's better to use a struct like model.UserListParams.
+// I'll assume model.UserListParams exists or will be created.
+func (r *UserRepositoryImpl) FindAll(ctx context.Context, params model.UserListParams) (*utils.PaginatedResult[model.User], error) {
+	var users []model.User
 	var total int64
 
-	query := r.db.WithContext(ctx).Model(&models.User{})
+	query := r.db.WithContext(ctx).Model(&model.User{})
 
 	if params.Name != "" {
 		query = query.Where("name LIKE ?", "%"+params.Name+"%")
@@ -97,7 +97,7 @@ func (r *UserRepositoryImpl) FindAll(ctx context.Context, params models.UserList
 		return nil, err
 	}
 
-	return &utils.PaginatedResult[models.User]{
+	return &utils.PaginatedResult[model.User]{
 		Items:    users,
 		Total:    total,
 		Page:     params.Page,
@@ -106,8 +106,8 @@ func (r *UserRepositoryImpl) FindAll(ctx context.Context, params models.UserList
 }
 
 // FindByID retrieves a user by their ID, including associated roles.
-func (r *UserRepositoryImpl) FindByID(ctx context.Context, id uint) (*models.User, error) {
-	var user models.User
+func (r *UserRepositoryImpl) FindByID(ctx context.Context, id uint) (*model.User, error) {
+	var user model.User
 	err := r.db.WithContext(ctx).Preload("Roles").First(&user, id).Error
 	if err != nil {
 		return nil, err
@@ -117,13 +117,13 @@ func (r *UserRepositoryImpl) FindByID(ctx context.Context, id uint) (*models.Use
 
 // Create inserts a new user record into the database.
 // It handles assigning roles within a transaction.
-func (r *UserRepositoryImpl) Create(ctx context.Context, user *models.User, roleIDs []uint) (*models.User, error) {
+func (r *UserRepositoryImpl) Create(ctx context.Context, user *model.User, roleIDs []uint) (*model.User, error) {
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(user).Error; err != nil {
 			return err
 		}
 		if len(roleIDs) > 0 {
-			var roles []models.Role
+			var roles []model.Role
 			if err := tx.Where("id IN ?", roleIDs).Find(&roles).Error; err != nil {
 				return err
 			}
@@ -144,10 +144,10 @@ func (r *UserRepositoryImpl) Create(ctx context.Context, user *models.User, role
 
 // Update modifies an existing user record.
 // It handles updating role associations within a transaction.
-// The 'updates' map should contain fields of models.User to be updated.
+// The 'updates' map should contain fields of model.User to be updated.
 // If 'roleIDs' is not nil, user's roles will be replaced with the new set.
-func (r *UserRepositoryImpl) Update(ctx context.Context, userID uint, updates map[string]interface{}, roleIDs *[]uint) (*models.User, error) {
-	var user models.User
+func (r *UserRepositoryImpl) Update(ctx context.Context, userID uint, updates map[string]interface{}, roleIDs *[]uint) (*model.User, error) {
+	var user model.User
 	user.ID = userID
 
 	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -165,7 +165,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, userID uint, updates ma
 		}
 
 		if roleIDs != nil {
-			var rolesToAssign []models.Role
+			var rolesToAssign []model.Role
 			if len(*roleIDs) > 0 {
 				if err := tx.Where("id IN ?", *roleIDs).Find(&rolesToAssign).Error; err != nil {
 					return err
@@ -190,7 +190,7 @@ func (r *UserRepositoryImpl) Update(ctx context.Context, userID uint, updates ma
 // It also clears associations in a transaction.
 func (r *UserRepositoryImpl) Delete(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		var user models.User
+		var user model.User
 		if err := tx.Preload("Roles").First(&user, id).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return ErrRepoUserNotFound // Use defined error
@@ -202,7 +202,7 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uint) error {
 			return err
 		}
 
-		result := tx.Unscoped().Delete(&models.User{}, id)
+		result := tx.Unscoped().Delete(&model.User{}, id)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -215,8 +215,8 @@ func (r *UserRepositoryImpl) Delete(ctx context.Context, id uint) error {
 
 // FindRoleByID checks if a role exists by ID.
 // This method might be more appropriately placed in RoleRepository.
-func (r *UserRepositoryImpl) FindRoleByID(ctx context.Context, id uint) (*models.Role, error) {
-	var role models.Role
+func (r *UserRepositoryImpl) FindRoleByID(ctx context.Context, id uint) (*model.Role, error) {
+	var role model.Role
 	err := r.db.WithContext(ctx).First(&role, id).Error
 	if err != nil {
 		return nil, err
@@ -227,7 +227,7 @@ func (r *UserRepositoryImpl) FindRoleByID(ctx context.Context, id uint) (*models
 // AssignRolesToUser replaces all roles for a user with the given roleIDs.
 func (r *UserRepositoryImpl) AssignRolesToUser(ctx context.Context, userID uint, roleIDs []uint) error {
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		user := models.User{ID: userID}
+		user := model.User{ID: userID}
 		// First, check if the user exists.
 		if err := tx.First(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -239,7 +239,7 @@ func (r *UserRepositoryImpl) AssignRolesToUser(ctx context.Context, userID uint,
 		}
 
 		// Validate all the roles exist - this is a secondary check after service layer validation
-		var roles []models.Role
+		var roles []model.Role
 		if len(roleIDs) > 0 { // Important check; if roleIDs is empty, Find would get all roles
 			if err := tx.Where("id IN ?", roleIDs).Find(&roles).Error; err != nil {
 				r.logger.Error("Failed to query roles for assignment", zap.Any("roleIDs", roleIDs), zap.Error(err))
@@ -301,7 +301,7 @@ func (r *UserRepositoryImpl) RemoveRolesFromUser(ctx context.Context, userID uin
 	// For now, we assume roleIDs is not empty due to service layer validation.
 
 	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		user := models.User{ID: userID}
+		user := model.User{ID: userID}
 		// First, check if the user exists.
 		if err := tx.First(&user).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -314,7 +314,7 @@ func (r *UserRepositoryImpl) RemoveRolesFromUser(ctx context.Context, userID uin
 
 		// 验证所有要移除的角色ID是否实际存在于数据库中
 		// 这可以防止尝试移除不存在的角色
-		var rolesToRemove []models.Role
+		var rolesToRemove []model.Role
 		if len(roleIDs) > 0 { // 这个检查很重要；如果roleIDs为空，Find将获取所有角色
 			if err := tx.Where("id IN ?", roleIDs).Find(&rolesToRemove).Error; err != nil {
 				r.logger.Error("Failed to query roles for removal", zap.Any("roleIDs", roleIDs), zap.Error(err))

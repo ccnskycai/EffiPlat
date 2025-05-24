@@ -1,7 +1,7 @@
 package service_test
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository/mocks"
 	"EffiPlat/backend/internal/service"
 	"context"
@@ -23,7 +23,7 @@ func TestEnvironmentServiceImpl_CreateEnvironment(t *testing.T) {
 	s := service.NewEnvironmentService(mockRepo, logger)
 
 	ctx := context.Background()
-	createReq := models.CreateEnvironmentRequest{
+	createReq := model.CreateEnvironmentRequest{
 		Name:        "Test Env",
 		Description: "Test Description",
 		Slug:        "test-env-slug",
@@ -33,13 +33,13 @@ func TestEnvironmentServiceImpl_CreateEnvironment(t *testing.T) {
 	mockRepo.EXPECT().GetBySlug(gomock.Eq(ctx), gomock.Eq(createReq.Slug)).Return(nil, gorm.ErrRecordNotFound).Times(1)
 
 	// Mock successful Create
-	expectedEnv := &models.Environment{
+	expectedEnv := &model.Environment{
 		ID:          1,
 		Name:        createReq.Name,
 		Description: createReq.Description,
 		Slug:        createReq.Slug,
 	}
-	mockRepo.EXPECT().Create(gomock.Eq(ctx), gomock.AssignableToTypeOf(&models.Environment{})).Return(expectedEnv, nil).Times(1)
+	mockRepo.EXPECT().Create(gomock.Eq(ctx), gomock.AssignableToTypeOf(&model.Environment{})).Return(expectedEnv, nil).Times(1)
 
 	resp, err := s.CreateEnvironment(ctx, createReq)
 
@@ -60,14 +60,14 @@ func TestEnvironmentServiceImpl_CreateEnvironment_SlugExists(t *testing.T) {
 	s := service.NewEnvironmentService(mockRepo, logger)
 
 	ctx := context.Background()
-	createReq := models.CreateEnvironmentRequest{
+	createReq := model.CreateEnvironmentRequest{
 		Name:        "Test Env Duplicate Slug",
 		Description: "Test Description",
 		Slug:        "duplicate-slug",
 	}
 
 	// Mock GetBySlug finding an existing environment
-	existingEnv := &models.Environment{
+	existingEnv := &model.Environment{
 		ID:   2,
 		Name: "Some Other Env",
 		Slug: "duplicate-slug",

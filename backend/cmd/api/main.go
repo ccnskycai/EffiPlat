@@ -1,18 +1,12 @@
 package main
 
 import (
-	"EffiPlat/backend/internal"                // Added for NewUserHandler and AuthHandler type
-	"EffiPlat/backend/internal/handler"        // Import for BusinessHandler
-	hdlrs "EffiPlat/backend/internal/handlers" // Use alias hdlrs
+	"EffiPlat/backend/internal"                // Wire生成的依赖注入初始化函数
 	"EffiPlat/backend/internal/pkg/config"
 	pkgdb "EffiPlat/backend/internal/pkg/database"
 	"EffiPlat/backend/internal/pkg/logger"
-	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/router"
-	"EffiPlat/backend/internal/service"
 
-	// Added for NewUserService
-	// user "EffiPlat/backend/internal/user" // Removed, types now in handler & service
 	"fmt"
 	"log"
 	"os"
@@ -88,24 +82,34 @@ func main() {
 	}
 
 	// Initialize Environment components
-	environmentRepository := repository.NewGormEnvironmentRepository(dbConn, appLogger)
-	environmentService := service.NewEnvironmentService(environmentRepository, appLogger)
-	environmentHandler := hdlrs.NewEnvironmentHandler(environmentService, appLogger) // Use alias
-	// TODO: Consider adding InitializeEnvironmentHandler to wire.go for consistency if this becomes permanent
+	environmentHandler, err := internal.InitializeEnvironmentHandler(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize environment handler", zap.Error(err))
+	}
+
+	// 获取环境仓库以供其他组件使用
+	environmentRepository, err := internal.InitializeEnvironmentRepository(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize environment repository", zap.Error(err))
+	}
 
 	// Initialize Asset components
-	assetRepository := repository.NewGormAssetRepository(dbConn, appLogger)
-	// AssetService needs EnvironmentRepository to validate EnvironmentID
-	assetService := service.NewAssetService(assetRepository, environmentRepository, appLogger)
-	assetHandler := hdlrs.NewAssetHandler(assetService, appLogger)
-	// TODO: Consider adding InitializeAssetHandler to wire.go for consistency
+	assetHandler, err := internal.InitializeAssetHandler(dbConn, appLogger, environmentRepository)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize asset handler", zap.Error(err))
+	}
 
 	// Initialize Service components
-	serviceRepository := repository.NewGormServiceRepository(dbConn)
-	serviceTypeRepository := repository.NewGormServiceTypeRepository(dbConn) // Added ServiceTypeRepository
-	serviceService := service.NewServiceService(serviceRepository, serviceTypeRepository, appLogger)
-	serviceHandler := hdlrs.NewServiceHandler(serviceService, appLogger)
-	// TODO: Consider adding InitializeServiceHandler to wire.go for consistency if this becomes permanent
+	serviceHandler, err := internal.InitializeServiceHandler(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize service handler", zap.Error(err))
+	}
+
+	// 获取服务仓库以供其他组件使用
+	serviceRepository, err := internal.InitializeServiceRepository(dbConn)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize service repository", zap.Error(err))
+	}
 
 	// Initialize ServiceInstance components using Wire
 	serviceInstanceHandler, err := internal.InitializeServiceInstanceHandler(dbConn, appLogger, serviceRepository, environmentRepository)
@@ -114,9 +118,16 @@ func main() {
 	}
 
 	// Initialize Business components
-	businessRepository := repository.NewBusinessRepository(dbConn, appLogger)
-	businessService := service.NewBusinessService(businessRepository, appLogger)
-	businessHandler := handler.NewBusinessHandler(businessService, appLogger)
+	businessHandler, err := internal.InitializeBusinessHandler(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize business handler", zap.Error(err))
+	}
+
+	// Initialize Bug components
+	bugHandler, err := internal.InitializeBugHandler(dbConn, appLogger)
+	if err != nil {
+		appLogger.Fatal("Failed to initialize bug handler", zap.Error(err))
+	}
 
 	// 6. Setup Router
 	// SetupRouter expects *handler.AuthHandler and *handler.UserHandler (after UserHandler moves)
@@ -132,6 +143,7 @@ func main() {
 		serviceHandler,         // Added serviceHandler
 		serviceInstanceHandler, // Added serviceInstanceHandler
 		businessHandler,        // Added businessHandler
+		bugHandler,             // Added bugHandler
 		jwtKey,
 	)
 

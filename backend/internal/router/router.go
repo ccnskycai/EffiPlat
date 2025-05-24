@@ -1,8 +1,7 @@
 package router
 
 import (
-	"EffiPlat/backend/internal/handler"              // Corrected import path for existing handlers
-	envhandlers "EffiPlat/backend/internal/handlers" // Import for EnvironmentHandler AND AssetHandler
+	"EffiPlat/backend/internal/handler" // Unified import path for all handlers
 	"EffiPlat/backend/internal/middleware"           // Corrected import path
 
 	// userHandler "EffiPlat/backend/internal/user" // Removed
@@ -32,11 +31,12 @@ func SetupRouter(
 	permissionHandler *handler.PermissionHandler,
 	responsibilityHandler *handler.ResponsibilityHandler,
 	responsibilityGroupHandler *handler.ResponsibilityGroupHandler,
-	environmentHandler *envhandlers.EnvironmentHandler,
-	assetHandler *envhandlers.AssetHandler,
-	serviceHandler *envhandlers.ServiceHandler,
+	environmentHandler *handler.EnvironmentHandler,
+	assetHandler *handler.AssetHandler,
+	serviceHandler *handler.ServiceHandler,
 	serviceInstanceHandler *handler.ServiceInstanceHandler, // Added ServiceInstanceHandler
 	businessHandler *handler.BusinessHandler, // Added BusinessHandler
+	bugHandler *handler.BugHandler, // Added BugHandler
 	jwtKey []byte,
 ) *gin.Engine {
 	r := gin.Default()
@@ -139,6 +139,9 @@ func SetupRouter(
 
 		// Business routes
 		businessRoutes(apiV1Authenticated.Group("/businesses"), businessHandler)
+
+		// Bug routes
+		bugRoutes(apiV1Authenticated.Group("/bugs"), bugHandler)
 	}
 
 	// 处理404路由
@@ -238,7 +241,7 @@ func responsibilityGroupRoutes(rg *gin.RouterGroup, hdlr *handler.Responsibility
 }
 
 // environmentRoutes 注册环境管理相关的路由
-func environmentRoutes(rg *gin.RouterGroup, hdlr *envhandlers.EnvironmentHandler) {
+func environmentRoutes(rg *gin.RouterGroup, hdlr *handler.EnvironmentHandler) {
 	{
 		rg.POST("", hdlr.CreateEnvironment)              // POST /api/v1/environments
 		rg.GET("", hdlr.GetEnvironments)                 // GET /api/v1/environments
@@ -250,7 +253,7 @@ func environmentRoutes(rg *gin.RouterGroup, hdlr *envhandlers.EnvironmentHandler
 }
 
 // assetRoutes 注册资产管理相关的路由
-func assetRoutes(rg *gin.RouterGroup, hdlr *envhandlers.AssetHandler) {
+func assetRoutes(rg *gin.RouterGroup, hdlr *handler.AssetHandler) {
 	{
 		rg.POST("", hdlr.CreateAsset)       // POST /api/v1/assets
 		rg.GET("", hdlr.ListAssets)         // GET /api/v1/assets
@@ -261,7 +264,7 @@ func assetRoutes(rg *gin.RouterGroup, hdlr *envhandlers.AssetHandler) {
 }
 
 // serviceTypeRoutes 注册服务类型管理相关的路由
-func serviceTypeRoutes(rg *gin.RouterGroup, hdlr *envhandlers.ServiceHandler) {
+func serviceTypeRoutes(rg *gin.RouterGroup, hdlr *handler.ServiceHandler) {
 	{
 		rg.POST("", hdlr.CreateServiceType)       // POST /api/v1/service-types
 		rg.GET("", hdlr.ListServiceTypes)         // GET /api/v1/service-types
@@ -272,7 +275,7 @@ func serviceTypeRoutes(rg *gin.RouterGroup, hdlr *envhandlers.ServiceHandler) {
 }
 
 // serviceRoutes 注册服务管理相关的路由
-func serviceRoutes(rg *gin.RouterGroup, hdlr *envhandlers.ServiceHandler) {
+func serviceRoutes(rg *gin.RouterGroup, hdlr *handler.ServiceHandler) {
 	{
 		rg.POST("", hdlr.CreateService)       // POST /api/v1/services
 		rg.GET("", hdlr.ListServices)         // GET /api/v1/services
@@ -290,6 +293,17 @@ func businessRoutes(rg *gin.RouterGroup, businessHdlr *handler.BusinessHandler) 
 		rg.GET("/:businessId", businessHdlr.GetBusinessByID)   // GET /api/v1/businesses/{businessId}
 		rg.PUT("/:businessId", businessHdlr.UpdateBusiness)    // PUT /api/v1/businesses/{businessId}
 		rg.DELETE("/:businessId", businessHdlr.DeleteBusiness) // DELETE /api/v1/businesses/{businessId}
+	}
+}
+
+// bugRoutes 注册bug管理相关的路由
+func bugRoutes(rg *gin.RouterGroup, bugHdlr *handler.BugHandler) {
+	{
+		rg.POST("", bugHdlr.CreateBug)       // POST /api/v1/bugs
+		rg.GET("", bugHdlr.ListBugs)         // GET /api/v1/bugs
+		rg.GET("/:id", bugHdlr.GetBugByID)   // GET /api/v1/bugs/{id}
+		rg.PUT("/:id", bugHdlr.UpdateBug)    // PUT /api/v1/bugs/{id}
+		rg.DELETE("/:id", bugHdlr.DeleteBug) // DELETE /api/v1/bugs/{id}
 	}
 }
 

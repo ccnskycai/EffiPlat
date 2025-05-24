@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository"
 
 	"go.uber.org/zap"
@@ -14,17 +14,17 @@ import (
 // ServiceService defines the interface for business logic related to services and service types.
 type ServiceService interface {
 	// ServiceType methods
-	CreateServiceType(ctx context.Context, req models.CreateServiceTypeRequest) (*models.ServiceType, error)
-	GetServiceTypeByID(ctx context.Context, id uint) (*models.ServiceType, error)
-	ListServiceTypes(ctx context.Context, params models.ServiceTypeListParams) ([]models.ServiceType, *models.PaginatedData, error)
-	UpdateServiceType(ctx context.Context, id uint, req models.UpdateServiceTypeRequest) (*models.ServiceType, error)
+	CreateServiceType(ctx context.Context, req model.CreateServiceTypeRequest) (*model.ServiceType, error)
+	GetServiceTypeByID(ctx context.Context, id uint) (*model.ServiceType, error)
+	ListServiceTypes(ctx context.Context, params model.ServiceTypeListParams) ([]model.ServiceType, *model.PaginatedData, error)
+	UpdateServiceType(ctx context.Context, id uint, req model.UpdateServiceTypeRequest) (*model.ServiceType, error)
 	DeleteServiceType(ctx context.Context, id uint) error
 
 	// Service methods
-	CreateService(ctx context.Context, req models.CreateServiceRequest) (*models.ServiceResponse, error)
-	GetServiceByID(ctx context.Context, id uint) (*models.ServiceResponse, error)
-	ListServices(ctx context.Context, params models.ServiceListParams) ([]models.ServiceResponse, *models.PaginatedData, error)
-	UpdateService(ctx context.Context, id uint, req models.UpdateServiceRequest) (*models.ServiceResponse, error)
+	CreateService(ctx context.Context, req model.CreateServiceRequest) (*model.ServiceResponse, error)
+	GetServiceByID(ctx context.Context, id uint) (*model.ServiceResponse, error)
+	ListServices(ctx context.Context, params model.ServiceListParams) ([]model.ServiceResponse, *model.PaginatedData, error)
+	UpdateService(ctx context.Context, id uint, req model.UpdateServiceRequest) (*model.ServiceResponse, error)
 	DeleteService(ctx context.Context, id uint) error
 }
 
@@ -45,7 +45,7 @@ func NewServiceService(serviceRepo repository.ServiceRepository, serviceTypeRepo
 
 // --- ServiceType Service Methods ---
 
-func (s *serviceService) CreateServiceType(ctx context.Context, req models.CreateServiceTypeRequest) (*models.ServiceType, error) {
+func (s *serviceService) CreateServiceType(ctx context.Context, req model.CreateServiceTypeRequest) (*model.ServiceType, error) {
 	s.logger.Info("Creating service type", zap.String("name", req.Name))
 
 	existing, err := s.serviceTypeRepo.GetByName(ctx, req.Name)
@@ -55,10 +55,10 @@ func (s *serviceService) CreateServiceType(ctx context.Context, req models.Creat
 	}
 	if existing != nil {
 		s.logger.Warn("Service type with this name already exists", zap.String("name", req.Name), zap.Uint("existingID", existing.ID))
-		return nil, models.ErrServiceTypeNameExists
+		return nil, model.ErrServiceTypeNameExists
 	}
 
-	serviceType := &models.ServiceType{
+	serviceType := &model.ServiceType{
 		Name:        req.Name,
 		Description: req.Description,
 	}
@@ -71,11 +71,11 @@ func (s *serviceService) CreateServiceType(ctx context.Context, req models.Creat
 	return serviceType, nil
 }
 
-func (s *serviceService) GetServiceTypeByID(ctx context.Context, id uint) (*models.ServiceType, error) {
+func (s *serviceService) GetServiceTypeByID(ctx context.Context, id uint) (*model.ServiceType, error) {
 	s.logger.Debug("Getting service type by ID", zap.Uint("id", id))
 	st, err := s.serviceTypeRepo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, models.ErrServiceTypeNotFound) {
+		if errors.Is(err, model.ErrServiceTypeNotFound) {
 			s.logger.Warn("Service type not found by ID", zap.Uint("id", id))
 		}
 		return nil, err
@@ -83,7 +83,7 @@ func (s *serviceService) GetServiceTypeByID(ctx context.Context, id uint) (*mode
 	return st, nil
 }
 
-func (s *serviceService) ListServiceTypes(ctx context.Context, params models.ServiceTypeListParams) ([]models.ServiceType, *models.PaginatedData, error) {
+func (s *serviceService) ListServiceTypes(ctx context.Context, params model.ServiceTypeListParams) ([]model.ServiceType, *model.PaginatedData, error) {
 	s.logger.Debug("Listing service types", zap.Any("params", params))
 	if params.Page <= 0 {
 		params.Page = 1
@@ -100,7 +100,7 @@ func (s *serviceService) ListServiceTypes(ctx context.Context, params models.Ser
 		return nil, nil, err
 	}
 
-	pData := &models.PaginatedData{
+	pData := &model.PaginatedData{
 		Items:    serviceTypes,
 		Total:    totalCount,
 		Page:     params.Page,
@@ -109,7 +109,7 @@ func (s *serviceService) ListServiceTypes(ctx context.Context, params models.Ser
 	return serviceTypes, pData, nil
 }
 
-func (s *serviceService) UpdateServiceType(ctx context.Context, id uint, req models.UpdateServiceTypeRequest) (*models.ServiceType, error) {
+func (s *serviceService) UpdateServiceType(ctx context.Context, id uint, req model.UpdateServiceTypeRequest) (*model.ServiceType, error) {
 	s.logger.Info("Updating service type", zap.Uint("id", id))
 
 	serviceType, err := s.serviceTypeRepo.GetByID(ctx, id)
@@ -126,7 +126,7 @@ func (s *serviceService) UpdateServiceType(ctx context.Context, id uint, req mod
 		}
 		if existing != nil && existing.ID != id {
 			s.logger.Warn("Another service type with this name already exists", zap.String("name", *req.Name), zap.Uint("conflictingID", existing.ID))
-			return nil, models.ErrServiceTypeNameExists
+			return nil, model.ErrServiceTypeNameExists
 		}
 		serviceType.Name = *req.Name
 		updated = true
@@ -167,7 +167,7 @@ func (s *serviceService) DeleteServiceType(ctx context.Context, id uint) error {
 	}
 	if count > 0 {
 		s.logger.Warn("Attempt to delete service type that is in use", zap.Uint("id", id), zap.Int64("serviceCount", count))
-		return models.ErrServiceTypeInUse
+		return model.ErrServiceTypeInUse
 	}
 
 	if err := s.serviceTypeRepo.Delete(ctx, id); err != nil {
@@ -180,15 +180,15 @@ func (s *serviceService) DeleteServiceType(ctx context.Context, id uint) error {
 
 // --- Service Service Methods ---
 
-func (s *serviceService) CreateService(ctx context.Context, req models.CreateServiceRequest) (*models.ServiceResponse, error) {
+func (s *serviceService) CreateService(ctx context.Context, req model.CreateServiceRequest) (*model.ServiceResponse, error) {
 	s.logger.Info("Creating service", zap.String("name", req.Name))
 
 	// Validate ServiceTypeID exists
 	_, err := s.serviceTypeRepo.GetByID(ctx, req.ServiceTypeID)
 	if err != nil {
-		if errors.Is(err, models.ErrServiceTypeNotFound) {
+		if errors.Is(err, model.ErrServiceTypeNotFound) {
 			s.logger.Warn("ServiceTypeID not found during service creation", zap.Uint("serviceTypeId", req.ServiceTypeID))
-			return nil, fmt.Errorf("invalid service_type_id %d: %w", req.ServiceTypeID, models.ErrServiceTypeNotFound)
+			return nil, fmt.Errorf("invalid service_type_id %d: %w", req.ServiceTypeID, model.ErrServiceTypeNotFound)
 		}
 		s.logger.Error("Failed to validate service_type_id for service creation", zap.Error(err))
 		return nil, err
@@ -202,10 +202,10 @@ func (s *serviceService) CreateService(ctx context.Context, req models.CreateSer
 	}
 	if existingService != nil {
 		s.logger.Warn("Service with this name already exists", zap.String("name", req.Name), zap.Uint("existingID", existingService.ID))
-		return nil, models.ErrServiceNameExists
+		return nil, model.ErrServiceNameExists
 	}
 
-	service := &models.Service{
+	service := &model.Service{
 		Name:          req.Name,
 		Description:   req.Description,
 		Version:       req.Version,
@@ -214,7 +214,7 @@ func (s *serviceService) CreateService(ctx context.Context, req models.CreateSer
 		ServiceTypeID: req.ServiceTypeID,
 	}
 	if service.Status == "" { // Default status if not provided
-		service.Status = models.ServiceStatusUnknown
+		service.Status = model.ServiceStatusUnknown
 	}
 
 	if err := s.serviceRepo.Create(ctx, service); err != nil {
@@ -234,11 +234,11 @@ func (s *serviceService) CreateService(ctx context.Context, req models.CreateSer
 	return &resp, nil
 }
 
-func (s *serviceService) GetServiceByID(ctx context.Context, id uint) (*models.ServiceResponse, error) {
+func (s *serviceService) GetServiceByID(ctx context.Context, id uint) (*model.ServiceResponse, error) {
 	s.logger.Debug("Getting service by ID", zap.Uint("id", id))
 	service, err := s.serviceRepo.GetByID(ctx, id)
 	if err != nil {
-		if errors.Is(err, models.ErrServiceNotFound) {
+		if errors.Is(err, model.ErrServiceNotFound) {
 			s.logger.Warn("Service not found by ID", zap.Uint("id", id))
 		}
 		return nil, err
@@ -247,7 +247,7 @@ func (s *serviceService) GetServiceByID(ctx context.Context, id uint) (*models.S
 	return &resp, nil
 }
 
-func (s *serviceService) ListServices(ctx context.Context, params models.ServiceListParams) ([]models.ServiceResponse, *models.PaginatedData, error) {
+func (s *serviceService) ListServices(ctx context.Context, params model.ServiceListParams) ([]model.ServiceResponse, *model.PaginatedData, error) {
 	s.logger.Debug("Listing services", zap.Any("params", params))
 	if params.Page <= 0 {
 		params.Page = 1
@@ -264,12 +264,12 @@ func (s *serviceService) ListServices(ctx context.Context, params models.Service
 		return nil, nil, err
 	}
 
-	serviceResponses := make([]models.ServiceResponse, len(services))
+	serviceResponses := make([]model.ServiceResponse, len(services))
 	for i, svc := range services {
 		serviceResponses[i] = svc.ToServiceResponse()
 	}
 
-	pData := &models.PaginatedData{
+	pData := &model.PaginatedData{
 		Items:    serviceResponses,
 		Total:    totalCount,
 		Page:     params.Page,
@@ -278,7 +278,7 @@ func (s *serviceService) ListServices(ctx context.Context, params models.Service
 	return serviceResponses, pData, nil
 }
 
-func (s *serviceService) UpdateService(ctx context.Context, id uint, req models.UpdateServiceRequest) (*models.ServiceResponse, error) {
+func (s *serviceService) UpdateService(ctx context.Context, id uint, req model.UpdateServiceRequest) (*model.ServiceResponse, error) {
 	s.logger.Info("Updating service", zap.Uint("id", id))
 
 	service, err := s.serviceRepo.GetByID(ctx, id)
@@ -291,9 +291,9 @@ func (s *serviceService) UpdateService(ctx context.Context, id uint, req models.
 	if req.ServiceTypeID != nil && *req.ServiceTypeID != service.ServiceTypeID {
 		_, err := s.serviceTypeRepo.GetByID(ctx, *req.ServiceTypeID)
 		if err != nil {
-			if errors.Is(err, models.ErrServiceTypeNotFound) {
+			if errors.Is(err, model.ErrServiceTypeNotFound) {
 				s.logger.Warn("New ServiceTypeID not found during service update", zap.Uint("newServiceTypeId", *req.ServiceTypeID))
-				return nil, fmt.Errorf("invalid new service_type_id %d: %w", *req.ServiceTypeID, models.ErrServiceTypeNotFound)
+				return nil, fmt.Errorf("invalid new service_type_id %d: %w", *req.ServiceTypeID, model.ErrServiceTypeNotFound)
 			}
 			s.logger.Error("Failed to validate new service_type_id for service update", zap.Error(err))
 			return nil, err
@@ -312,7 +312,7 @@ func (s *serviceService) UpdateService(ctx context.Context, id uint, req models.
 		}
 		if existingService != nil && existingService.ID != id {
 			s.logger.Warn("Another service with this name already exists", zap.String("name", *req.Name), zap.Uint("conflictingID", existingService.ID))
-			return nil, models.ErrServiceNameExists
+			return nil, model.ErrServiceNameExists
 		}
 		service.Name = *req.Name
 		updated = true

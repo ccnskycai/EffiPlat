@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/service"
 	"net/http"
 	"strconv"
@@ -42,7 +42,7 @@ type UpdateRoleRequest struct {
 // @Accept  json
 // @Produce  json
 // @Param   role body CreateRoleRequest true "Role object"
-// @Success 201 {object} models.Role "Actually returns a unified response: {code, message, data: models.Role}"
+// @Success 201 {object} model.Role "Actually returns a unified response: {code, message, data: model.Role}"
 // @Failure 400 {object} map[string]interface{} "Bad Request (e.g. validation error, name exists)"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
 // @Router /roles [post]
@@ -56,8 +56,8 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 
 	// Convert handler request to service layer model/struct if necessary
 	// For now, assuming roleService.CreateRole can take something compatible with req
-	// Or, more likely, a specific model for creation, e.g., models.RoleInput
-	roleToCreate := models.Role{ // This is an assumption, adjust based on your actual models.Role
+	// Or, more likely, a specific model for creation, e.g., model.RoleInput
+	roleToCreate := model.Role{ // This is an assumption, adjust based on your actual model.Role
 		Name:        req.Name,
 		Description: req.Description,
 		// PermissionIDs might be handled by the service layer through a separate field or method
@@ -88,7 +88,7 @@ func (h *RoleHandler) CreateRole(c *gin.Context) {
 // @Param page query int false "Page number (default: 1)"
 // @Param pageSize query int false "Number of items per page (default: 10)"
 // @Param name query string false "Search by role name (fuzzy)"
-// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: {items: []models.Role, total: int, page: int, pageSize: int}}"
+// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: {items: []model.Role, total: int, page: int, pageSize: int}}"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
 // @Router /roles [get]
 func (h *RoleHandler) GetRoles(c *gin.Context) {
@@ -105,7 +105,7 @@ func (h *RoleHandler) GetRoles(c *gin.Context) {
 		pageSize = 10 // Default to 10 if invalid
 	}
 
-	params := models.RoleListParams{ // Assuming this struct exists in models
+	params := model.RoleListParams{ // Assuming this struct exists in models
 		Page:     page,
 		PageSize: pageSize,
 		Name:     nameQuery,
@@ -132,7 +132,7 @@ func (h *RoleHandler) GetRoles(c *gin.Context) {
 // @Tags roles
 // @Produce  json
 // @Param   roleId path int true "Role ID"
-// @Success 200 {object} models.Role "Actually returns a unified response: {code, message, data: models.RoleDetails (with userCount, permissions)}"
+// @Success 200 {object} model.Role "Actually returns a unified response: {code, message, data: model.RoleDetails (with userCount, permissions)}"
 // @Failure 400 {object} map[string]interface{} "Bad Request (Invalid ID)"
 // @Failure 404 {object} map[string]interface{} "Not Found (Role not found 40402)"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
@@ -147,7 +147,7 @@ func (h *RoleHandler) GetRoleByID(c *gin.Context) {
 	}
 
 	// Assuming service returns a struct that includes UserCount and Permissions as per design
-	// e.g., models.RoleDetails
+	// e.g., model.RoleDetails
 	roleDetails, err := h.roleService.GetRoleByID(c.Request.Context(), uint(roleID))
 	if err != nil {
 		h.logger.Error("GetRoleByID: Service error", zap.Uint("roleId", uint(roleID)), zap.Error(err))
@@ -170,7 +170,7 @@ func (h *RoleHandler) GetRoleByID(c *gin.Context) {
 // @Produce  json
 // @Param   roleId path int true "Role ID"
 // @Param   role body UpdateRoleRequest true "Role object with updated fields"
-// @Success 200 {object} models.Role "Actually returns a unified response: {code, message, data: models.Role}"
+// @Success 200 {object} model.Role "Actually returns a unified response: {code, message, data: model.Role}"
 // @Failure 400 {object} map[string]interface{} "Bad Request (Invalid ID, validation error, name exists 40002)"
 // @Failure 404 {object} map[string]interface{} "Not Found (Role not found 40402)"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
@@ -192,7 +192,7 @@ func (h *RoleHandler) UpdateRole(c *gin.Context) {
 	}
 
 	// Assuming service layer takes a model for update, or individual fields
-	roleToUpdate := models.Role{ // This is an assumption
+	roleToUpdate := model.Role{ // This is an assumption
 		Name:        req.Name,
 		Description: req.Description,
 	}

@@ -1,7 +1,7 @@
 package factories
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"fmt"
 	"math/rand"
 	"time"
@@ -17,7 +17,7 @@ type UserFactory struct {
 	Department *string
 	Password   string // Plain password, will be hashed
 	Status     string
-	Roles      []models.Role // Added roles field
+	Roles      []model.Role // Added roles field
 }
 
 // NewUserFactory creates a UserFactory with default values.
@@ -30,7 +30,7 @@ func NewUserFactory() *UserFactory {
 		Department: nil,
 		Password:   "password",
 		Status:     "active",
-		Roles:      []models.Role{}, // Initialize empty roles slice
+		Roles:      []model.Role{}, // Initialize empty roles slice
 	}
 }
 
@@ -65,19 +65,19 @@ func (f *UserFactory) WithStatus(status string) *UserFactory {
 }
 
 // WithRoles sets roles for the user.
-func (f *UserFactory) WithRoles(roles []models.Role) *UserFactory {
+func (f *UserFactory) WithRoles(roles []model.Role) *UserFactory {
 	f.Roles = roles
 	return f
 }
 
 // Create builds and saves the User model to the database.
-func (f *UserFactory) Create(db *gorm.DB) (*models.User, error) {
+func (f *UserFactory) Create(db *gorm.DB) (*model.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(f.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	user := &models.User{
+	user := &model.User{
 		Name:     f.Name,
 		Email:    f.Email,
 		Password: string(hashedPassword),
@@ -110,7 +110,7 @@ func (f *UserFactory) Create(db *gorm.DB) (*models.User, error) {
 // CreateUser is a helper function to quickly create and save a user.
 // It takes a user model (Password field should be plain text, it will be hashed).
 // Roles defined in user.Roles will be associated.
-func CreateUser(db *gorm.DB, userDetails *models.User) (*models.User, error) {
+func CreateUser(db *gorm.DB, userDetails *model.User) (*model.User, error) {
 	factory := NewUserFactory().
 		WithName(userDetails.Name).
 		WithEmail(userDetails.Email).

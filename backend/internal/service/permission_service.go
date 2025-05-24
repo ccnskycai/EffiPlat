@@ -4,21 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository"
 
 	"go.uber.org/zap"
 )
 
 type PermissionService interface {
-	CreatePermission(ctx context.Context, permission *models.Permission) (*models.Permission, error)
-	GetPermissions(ctx context.Context, params models.PermissionListParams) ([]models.Permission, int64, error)
-	GetPermissionByID(ctx context.Context, id uint) (*models.Permission, error)
-	UpdatePermission(ctx context.Context, id uint, permission *models.Permission) (*models.Permission, error)
+	CreatePermission(ctx context.Context, permission *model.Permission) (*model.Permission, error)
+	GetPermissions(ctx context.Context, params model.PermissionListParams) ([]model.Permission, int64, error)
+	GetPermissionByID(ctx context.Context, id uint) (*model.Permission, error)
+	UpdatePermission(ctx context.Context, id uint, permission *model.Permission) (*model.Permission, error)
 	DeletePermission(ctx context.Context, id uint) error
 	AddPermissionsToRole(ctx context.Context, roleID uint, permissionIDs []uint) error
 	RemovePermissionsFromRole(ctx context.Context, roleID uint, permissionIDs []uint) error
-	GetPermissionsByRoleID(ctx context.Context, roleID uint) ([]models.Permission, error)
+	GetPermissionsByRoleID(ctx context.Context, roleID uint) ([]model.Permission, error)
 }
 
 type PermissionServiceImpl struct {
@@ -38,23 +38,23 @@ func NewPermissionService(permissionRepo repository.PermissionRepository, roleRe
 
 // --- Permission CRUD Methods ---
 
-func (s *PermissionServiceImpl) CreatePermission(ctx context.Context, permission *models.Permission) (*models.Permission, error) {
+func (s *PermissionServiceImpl) CreatePermission(ctx context.Context, permission *model.Permission) (*model.Permission, error) {
 	s.logger.Info("PermissionService: CreatePermission called")
 	// TODO: Add validation (e.g., check for existing name/resource/action combination)
 	return s.permissionRepo.CreatePermission(ctx, permission)
 }
 
-func (s *PermissionServiceImpl) GetPermissions(ctx context.Context, params models.PermissionListParams) ([]models.Permission, int64, error) {
+func (s *PermissionServiceImpl) GetPermissions(ctx context.Context, params model.PermissionListParams) ([]model.Permission, int64, error) {
 	s.logger.Info("PermissionService: GetPermissions called", zap.Any("params", params))
 	return s.permissionRepo.ListPermissions(ctx, params)
 }
 
-func (s *PermissionServiceImpl) GetPermissionByID(ctx context.Context, id uint) (*models.Permission, error) {
+func (s *PermissionServiceImpl) GetPermissionByID(ctx context.Context, id uint) (*model.Permission, error) {
 	s.logger.Info("PermissionService: GetPermissionByID called", zap.Uint("id", id))
 	return s.permissionRepo.GetPermissionByID(ctx, id)
 }
 
-func (s *PermissionServiceImpl) UpdatePermission(ctx context.Context, id uint, permission *models.Permission) (*models.Permission, error) {
+func (s *PermissionServiceImpl) UpdatePermission(ctx context.Context, id uint, permission *model.Permission) (*model.Permission, error) {
 	s.logger.Info("PermissionService: UpdatePermission called", zap.Uint("id", id))
 	// TODO: Add validation (e.g., check for existing name/resource/action combination if changed)
 	return s.permissionRepo.UpdatePermission(ctx, id, permission)
@@ -144,7 +144,7 @@ func (s *PermissionServiceImpl) RemovePermissionsFromRole(ctx context.Context, r
 }
 
 // GetPermissionsByRoleID gets all permissions associated with a role.
-func (s *PermissionServiceImpl) GetPermissionsByRoleID(ctx context.Context, roleID uint) ([]models.Permission, error) {
+func (s *PermissionServiceImpl) GetPermissionsByRoleID(ctx context.Context, roleID uint) ([]model.Permission, error) {
 	s.logger.Info("PermissionService: GetPermissionsByRoleID called", zap.Uint("roleID", roleID))
 
 	// Get the role with permissions preloaded using the RoleRepository method

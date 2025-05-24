@@ -73,12 +73,71 @@ func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*han
 	return responsibilityGroupHandler, nil
 }
 
+// InitializeEnvironmentHandler is the injector for EnvironmentHandler and its dependencies.
+func InitializeEnvironmentHandler(db *gorm.DB, logger *zap.Logger) (*handler.EnvironmentHandler, error) {
+	environmentRepository := repository.NewGormEnvironmentRepository(db, logger)
+	environmentService := service.NewEnvironmentService(environmentRepository, logger)
+	environmentHandler := handler.NewEnvironmentHandler(environmentService, logger)
+	return environmentHandler, nil
+}
+
+// InitializeEnvironmentRepository is the injector for EnvironmentRepository.
+func InitializeEnvironmentRepository(db *gorm.DB, logger *zap.Logger) (repository.EnvironmentRepository, error) {
+	environmentRepository := repository.NewGormEnvironmentRepository(db, logger)
+	return environmentRepository, nil
+}
+
+// InitializeAssetHandler is the injector for AssetHandler and its dependencies.
+func InitializeAssetHandler(db *gorm.DB, logger *zap.Logger, envRepo repository.EnvironmentRepository) (*handler.AssetHandler, error) {
+	assetRepository := repository.NewGormAssetRepository(db, logger)
+	assetService := service.NewAssetService(assetRepository, envRepo, logger)
+	assetHandler := handler.NewAssetHandler(assetService, logger)
+	return assetHandler, nil
+}
+
+// InitializeServiceHandler is the injector for ServiceHandler and its dependencies.
+func InitializeServiceHandler(db *gorm.DB, logger *zap.Logger) (*handler.ServiceHandler, error) {
+	serviceRepository := repository.NewGormServiceRepository(db)
+	serviceTypeRepository := repository.NewGormServiceTypeRepository(db)
+	serviceService := service.NewServiceService(serviceRepository, serviceTypeRepository, logger)
+	serviceHandler := handler.NewServiceHandler(serviceService, logger)
+	return serviceHandler, nil
+}
+
+// InitializeServiceRepository is the injector for ServiceRepository.
+func InitializeServiceRepository(db *gorm.DB) (repository.ServiceRepository, error) {
+	serviceRepository := repository.NewGormServiceRepository(db)
+	return serviceRepository, nil
+}
+
+// InitializeServiceTypeRepository is the injector for ServiceTypeRepository.
+func InitializeServiceTypeRepository(db *gorm.DB) (repository.ServiceTypeRepository, error) {
+	serviceTypeRepository := repository.NewGormServiceTypeRepository(db)
+	return serviceTypeRepository, nil
+}
+
 // InitializeServiceInstanceHandler is the injector for ServiceInstanceHandler.
 func InitializeServiceInstanceHandler(db *gorm.DB, logger *zap.Logger, serviceRepo repository.ServiceRepository, envRepo repository.EnvironmentRepository) (*handler.ServiceInstanceHandler, error) {
 	serviceInstanceRepository := repository.NewServiceInstanceRepository(db, logger)
 	serviceInstanceService := service.NewServiceInstanceService(serviceInstanceRepository, serviceRepo, envRepo, logger)
 	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, logger)
 	return serviceInstanceHandler, nil
+}
+
+// InitializeBusinessHandler is the injector for BusinessHandler and its dependencies.
+func InitializeBusinessHandler(db *gorm.DB, logger *zap.Logger) (*handler.BusinessHandler, error) {
+	businessRepository := repository.NewBusinessRepository(db, logger)
+	businessService := service.NewBusinessService(businessRepository, logger)
+	businessHandler := handler.NewBusinessHandler(businessService, logger)
+	return businessHandler, nil
+}
+
+// InitializeBugHandler is the injector for BugHandler and its dependencies.
+func InitializeBugHandler(db *gorm.DB, logger *zap.Logger) (*handler.BugHandler, error) {
+	bugRepository := repository.NewBugRepository(db, logger)
+	bugService := service.NewBugService(bugRepository)
+	bugHandler := handler.NewBugHandler(bugService)
+	return bugHandler, nil
 }
 
 // wire.go:
@@ -101,5 +160,20 @@ var ResponsibilitySet = wire.NewSet(repository.NewGormResponsibilityRepository, 
 // ProviderSet for responsibility group components
 var ResponsibilityGroupSet = wire.NewSet(repository.NewGormResponsibilityGroupRepository, repository.NewGormResponsibilityRepository, service.NewResponsibilityGroupService, handler.NewResponsibilityGroupHandler)
 
+// ProviderSet for Environment components
+var EnvironmentSet = wire.NewSet(repository.NewGormEnvironmentRepository, service.NewEnvironmentService, handler.NewEnvironmentHandler)
+
+// ProviderSet for Asset components
+var AssetSet = wire.NewSet(repository.NewGormAssetRepository, service.NewAssetService, handler.NewAssetHandler)
+
+// ProviderSet for Service components
+var ServiceSet = wire.NewSet(repository.NewGormServiceRepository, repository.NewGormServiceTypeRepository, service.NewServiceService, handler.NewServiceHandler)
+
 // ProviderSet for service instance components
 var ServiceInstanceSet = wire.NewSet(repository.NewServiceInstanceRepository, service.NewServiceInstanceService, handler.NewServiceInstanceHandler)
+
+// ProviderSet for business components
+var BusinessSet = wire.NewSet(repository.NewBusinessRepository, service.NewBusinessService, handler.NewBusinessHandler)
+
+// ProviderSet for bug management components
+var BugSet = wire.NewSet(repository.NewBugRepository, service.NewBugService, handler.NewBugHandler)

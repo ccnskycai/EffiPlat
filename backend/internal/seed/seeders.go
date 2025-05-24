@@ -2,7 +2,7 @@ package seed
 
 import (
 	"EffiPlat/backend/internal/factories"
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -12,14 +12,14 @@ import (
 func SeedRoles(db *gorm.DB) error {
 	fmt.Println("Seeding roles...")
 
-	roles := []models.Role{
+	roles := []model.Role{
 		{Name: "admin", Description: "System administrator with full access"},
 		{Name: "user", Description: "Regular user with limited access"},
 		{Name: "manager", Description: "Team manager with elevated access"},
 	}
 
 	for _, role := range roles {
-		if err := db.FirstOrCreate(&role, models.Role{Name: role.Name}).Error; err != nil {
+		if err := db.FirstOrCreate(&role, model.Role{Name: role.Name}).Error; err != nil {
 			return fmt.Errorf("failed to seed role %s: %w", role.Name, err)
 		}
 	}
@@ -38,7 +38,7 @@ func SeedUsers(db *gorm.DB) error {
 	}
 
 	// Get the admin role
-	var adminRole models.Role
+	var adminRole model.Role
 	if err := db.Where("name = ?", "admin").First(&adminRole).Error; err != nil {
 		return fmt.Errorf("failed to find admin role: %w", err)
 	}
@@ -48,14 +48,14 @@ func SeedUsers(db *gorm.DB) error {
 		WithName("Admin User").
 		WithEmail("admin@effiplat.local").
 		WithPassword("password"). // Use a strong password in real scenarios
-		WithRoles([]models.Role{adminRole}).
+		WithRoles([]model.Role{adminRole}).
 		Create(db)
 	if err != nil {
 		return fmt.Errorf("failed to seed admin user: %w", err)
 	}
 
 	// Get the regular user role
-	var userRole models.Role
+	var userRole model.Role
 	if err := db.Where("name = ?", "user").First(&userRole).Error; err != nil {
 		return fmt.Errorf("failed to find user role: %w", err)
 	}
@@ -65,7 +65,7 @@ func SeedUsers(db *gorm.DB) error {
 		_, err := factories.NewUserFactory().
 			WithName(fmt.Sprintf("Test User %d", i+1)).
 			WithEmail(fmt.Sprintf("testuser%d@example.com", i+1)).
-			WithRoles([]models.Role{userRole}).
+			WithRoles([]model.Role{userRole}).
 			Create(db)
 		if err != nil {
 			return fmt.Errorf("failed to seed test user %d: %w", i+1, err)

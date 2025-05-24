@@ -1,7 +1,7 @@
 package service
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/utils" // Import apputils
 	"context"
@@ -14,10 +14,10 @@ import (
 
 // ResponsibilityGroupService defines the interface for responsibility group operations.
 type ResponsibilityGroupService interface {
-	CreateResponsibilityGroup(ctx context.Context, group *models.ResponsibilityGroup, responsibilityIDs []uint) (*models.ResponsibilityGroup, error)
-	GetResponsibilityGroups(ctx context.Context, params models.ResponsibilityGroupListParams) ([]models.ResponsibilityGroup, int64, error)
-	GetResponsibilityGroupByID(ctx context.Context, id uint) (*models.ResponsibilityGroup, error) // Changed to return *models.ResponsibilityGroup as repo preloads
-	UpdateResponsibilityGroup(ctx context.Context, id uint, groupUpdate *models.ResponsibilityGroup, responsibilityIDs *[]uint) (*models.ResponsibilityGroup, error)
+	CreateResponsibilityGroup(ctx context.Context, group *model.ResponsibilityGroup, responsibilityIDs []uint) (*model.ResponsibilityGroup, error)
+	GetResponsibilityGroups(ctx context.Context, params model.ResponsibilityGroupListParams) ([]model.ResponsibilityGroup, int64, error)
+	GetResponsibilityGroupByID(ctx context.Context, id uint) (*model.ResponsibilityGroup, error) // Changed to return *model.ResponsibilityGroup as repo preloads
+	UpdateResponsibilityGroup(ctx context.Context, id uint, groupUpdate *model.ResponsibilityGroup, responsibilityIDs *[]uint) (*model.ResponsibilityGroup, error)
 	DeleteResponsibilityGroup(ctx context.Context, id uint) error
 	AddResponsibilityToGroup(ctx context.Context, groupID uint, responsibilityID uint) error
 	RemoveResponsibilityFromGroup(ctx context.Context, groupID uint, responsibilityID uint) error
@@ -38,7 +38,7 @@ func NewResponsibilityGroupService(groupRepo repository.ResponsibilityGroupRepos
 	}
 }
 
-func (s *responsibilityGroupServiceImpl) CreateResponsibilityGroup(ctx context.Context, group *models.ResponsibilityGroup, responsibilityIDs []uint) (*models.ResponsibilityGroup, error) {
+func (s *responsibilityGroupServiceImpl) CreateResponsibilityGroup(ctx context.Context, group *model.ResponsibilityGroup, responsibilityIDs []uint) (*model.ResponsibilityGroup, error) {
 	s.logger.Info("Service: Creating new responsibility group", zap.String("name", group.Name), zap.Uints("responsibilityIDs", responsibilityIDs))
 	// Optional: Validate that responsibilityIDs exist using s.responsibilityRepo.GetByIDs if implemented
 	// For now, assuming repository Create handles this or relies on DB constraints.
@@ -51,12 +51,12 @@ func (s *responsibilityGroupServiceImpl) CreateResponsibilityGroup(ctx context.C
 	return createdGroup, nil
 }
 
-func (s *responsibilityGroupServiceImpl) GetResponsibilityGroups(ctx context.Context, params models.ResponsibilityGroupListParams) ([]models.ResponsibilityGroup, int64, error) {
+func (s *responsibilityGroupServiceImpl) GetResponsibilityGroups(ctx context.Context, params model.ResponsibilityGroupListParams) ([]model.ResponsibilityGroup, int64, error) {
 	s.logger.Info("Service: Fetching responsibility groups", zap.Any("params", params))
 	return s.groupRepo.List(ctx, params)
 }
 
-func (s *responsibilityGroupServiceImpl) GetResponsibilityGroupByID(ctx context.Context, id uint) (*models.ResponsibilityGroup, error) {
+func (s *responsibilityGroupServiceImpl) GetResponsibilityGroupByID(ctx context.Context, id uint) (*model.ResponsibilityGroup, error) {
 	s.logger.Info("Service: Fetching responsibility group by ID", zap.Uint("id", id))
 	group, err := s.groupRepo.GetByID(ctx, id) // Repo's GetByID preloads Responsibilities
 	if err != nil {
@@ -70,7 +70,7 @@ func (s *responsibilityGroupServiceImpl) GetResponsibilityGroupByID(ctx context.
 	return group, nil
 }
 
-func (s *responsibilityGroupServiceImpl) UpdateResponsibilityGroup(ctx context.Context, id uint, groupUpdate *models.ResponsibilityGroup, responsibilityIDs *[]uint) (*models.ResponsibilityGroup, error) {
+func (s *responsibilityGroupServiceImpl) UpdateResponsibilityGroup(ctx context.Context, id uint, groupUpdate *model.ResponsibilityGroup, responsibilityIDs *[]uint) (*model.ResponsibilityGroup, error) {
 	s.logger.Info("Service: Updating responsibility group", zap.Uint("id", id), zap.Any("responsibilityIDs_ptr", responsibilityIDs != nil))
 
 	groupUpdate.ID = id // Ensure ID is set for the update in the repo layer

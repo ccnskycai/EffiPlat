@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/pkg/config" // Use correct module path
 
 	"go.uber.org/zap"
@@ -68,7 +68,7 @@ func NewConnection(cfg config.DBConfig, appLogger *zap.Logger) (*gorm.DB, error)
 	// sqlDB.SetConnMaxLifetime(cfg.Pool.ConnMaxLifetime)
 
 	// Optional: Auto-migrate schema (useful for development, be careful in production)
-	// err = db.AutoMigrate(&models.User{}, &models.Role{}, ...) // Add your models here
+	// err = db.AutoMigrate(&model.User{}, &model.Role{}, ...) // Add your models here
 	// if err != nil {
 	// 	 return nil, fmt.Errorf("failed to auto migrate database schema: %w", err)
 	// }
@@ -77,17 +77,17 @@ func NewConnection(cfg config.DBConfig, appLogger *zap.Logger) (*gorm.DB, error)
 	return db, nil
 }
 
-// AutoMigrate runs GORM auto-migration for all necessary models.
+// AutoMigrate runs GORM auto-migration for all necessary model.
 func AutoMigrate(db *gorm.DB, logger *zap.Logger) error {
 	logger.Info("Starting database auto-migration...")
 
 	// List all models that need to be migrated
 	err := db.AutoMigrate(
-		&models.User{},           // From models/user.go
-		&models.Role{},           // From models/user.go
-		&models.UserRole{},       // From models/user.go
-		&models.Permission{},     // From models/permission_models.go
-		&models.RolePermission{}, // From models/permission_models.go
+		&model.User{},           // From models/user.go
+		&model.Role{},           // From models/user.go
+		&model.UserRole{},       // From models/user.go
+		&model.Permission{},     // From models/permission_model.go
+		&model.RolePermission{}, // From models/permission_model.go
 		// Add other models here if any
 	)
 

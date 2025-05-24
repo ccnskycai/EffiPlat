@@ -10,7 +10,7 @@
 package mocks
 
 import (
-	models "EffiPlat/backend/internal/models"
+	model "EffiPlat/backend/internal/model"
 	context "context"
 	reflect "reflect"
 
@@ -57,7 +57,7 @@ func (mr *MockServiceRepositoryMockRecorder) CountServicesByServiceTypeID(ctx, s
 }
 
 // Create mocks base method.
-func (m *MockServiceRepository) Create(ctx context.Context, service *models.Service) error {
+func (m *MockServiceRepository) Create(ctx context.Context, service *model.Service) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, service)
 	ret0, _ := ret[0].(error)
@@ -85,10 +85,10 @@ func (mr *MockServiceRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call {
 }
 
 // GetByID mocks base method.
-func (m *MockServiceRepository) GetByID(ctx context.Context, id uint) (*models.Service, error) {
+func (m *MockServiceRepository) GetByID(ctx context.Context, id uint) (*model.Service, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByID", ctx, id)
-	ret0, _ := ret[0].(*models.Service)
+	ret0, _ := ret[0].(*model.Service)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -100,10 +100,10 @@ func (mr *MockServiceRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Call {
 }
 
 // GetByName mocks base method.
-func (m *MockServiceRepository) GetByName(ctx context.Context, name string) (*models.Service, error) {
+func (m *MockServiceRepository) GetByName(ctx context.Context, name string) (*model.Service, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByName", ctx, name)
-	ret0, _ := ret[0].(*models.Service)
+	ret0, _ := ret[0].(*model.Service)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -115,10 +115,10 @@ func (mr *MockServiceRepositoryMockRecorder) GetByName(ctx, name any) *gomock.Ca
 }
 
 // List mocks base method.
-func (m *MockServiceRepository) List(ctx context.Context, params models.ServiceListParams) ([]models.Service, int64, error) {
+func (m *MockServiceRepository) List(ctx context.Context, params model.ServiceListParams) ([]model.Service, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, params)
-	ret0, _ := ret[0].([]models.Service)
+	ret0, _ := ret[0].([]model.Service)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -131,7 +131,7 @@ func (mr *MockServiceRepositoryMockRecorder) List(ctx, params any) *gomock.Call 
 }
 
 // Update mocks base method.
-func (m *MockServiceRepository) Update(ctx context.Context, service *models.Service) error {
+func (m *MockServiceRepository) Update(ctx context.Context, service *model.Service) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, service)
 	ret0, _ := ret[0].(error)

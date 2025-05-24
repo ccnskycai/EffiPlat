@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/service"
 	"net/http"
 	"strconv"
@@ -28,20 +28,20 @@ func NewPermissionHandler(ps service.PermissionService, logger *zap.Logger) *Per
 // @Tags permissions
 // @Accept  json
 // @Produce  json
-// @Param   permission body models.CreatePermissionRequest true "Permission object"
-// @Success 201 {object} map[string]interface{} "Unified response: {code, message, data: models.Permission}"
+// @Param   permission body model.CreatePermissionRequest true "Permission object"
+// @Success 201 {object} map[string]interface{} "Unified response: {code, message, data: model.Permission}"
 // @Failure 400 {object} map[string]interface{} "Bad Request (e.g. validation error)"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
 // @Router /permissions [post]
 func (h *PermissionHandler) CreatePermission(c *gin.Context) {
-	var req models.CreatePermissionRequest
+	var req model.CreatePermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("CreatePermission: Failed to bind JSON", zap.Error(err))
 		RespondWithError(c, http.StatusBadRequest, "Invalid request payload: "+err.Error())
 		return
 	}
 
-	permissionToCreate := models.Permission{
+	permissionToCreate := model.Permission{
 		Name:        req.Name,
 		Description: req.Description,
 		Resource:    req.Resource,
@@ -68,7 +68,7 @@ func (h *PermissionHandler) CreatePermission(c *gin.Context) {
 // @Param name query string false "Search by permission name (fuzzy)"
 // @Param resource query string false "Filter by resource"
 // @Param action query string false "Filter by action"
-// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: {items: []models.Permission, total: int, page: int, pageSize: int}}"
+// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: {items: []model.Permission, total: int, page: int, pageSize: int}}"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
 // @Router /permissions [get]
 func (h *PermissionHandler) GetPermissions(c *gin.Context) {
@@ -87,7 +87,7 @@ func (h *PermissionHandler) GetPermissions(c *gin.Context) {
 		pageSize = 10
 	}
 
-	params := models.PermissionListParams{
+	params := model.PermissionListParams{
 		Page:     page,
 		PageSize: pageSize,
 		Name:     nameQuery,
@@ -116,7 +116,7 @@ func (h *PermissionHandler) GetPermissions(c *gin.Context) {
 // @Tags permissions
 // @Produce  json
 // @Param   permissionId path int true "Permission ID"
-// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: models.Permission}"
+// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: model.Permission}"
 // @Failure 400 {object} map[string]interface{} "Bad Request (Invalid ID)"
 // @Failure 404 {object} map[string]interface{} "Not Found (Permission not found)"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
@@ -147,8 +147,8 @@ func (h *PermissionHandler) GetPermissionByID(c *gin.Context) {
 // @Accept  json
 // @Produce  json
 // @Param   permissionId path int true "Permission ID"
-// @Param   permission body models.UpdatePermissionRequest true "Permission object with updated fields"
-// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: models.Permission}"
+// @Param   permission body model.UpdatePermissionRequest true "Permission object with updated fields"
+// @Success 200 {object} map[string]interface{} "Unified response: {code, message, data: model.Permission}"
 // @Failure 400 {object} map[string]interface{} "Bad Request (Invalid ID, validation error)"
 // @Failure 404 {object} map[string]interface{} "Not Found (Permission not found)"
 // @Failure 500 {object} map[string]interface{} "Internal Server Error"
@@ -162,14 +162,14 @@ func (h *PermissionHandler) UpdatePermission(c *gin.Context) {
 		return
 	}
 
-	var req models.UpdatePermissionRequest
+	var req model.UpdatePermissionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("UpdatePermission: Failed to bind JSON", zap.Error(err))
 		RespondWithError(c, http.StatusBadRequest, "Invalid request payload: "+err.Error())
 		return
 	}
 
-	permissionToUpdate := models.Permission{}
+	permissionToUpdate := model.Permission{}
 	if req.Name != nil {
 		permissionToUpdate.Name = *req.Name
 	}

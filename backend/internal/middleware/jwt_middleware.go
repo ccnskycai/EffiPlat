@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"net/http"
 	"strings"
 
@@ -17,14 +17,14 @@ func JWTAuthMiddleware(jwtKey []byte) gin.HandlerFunc {
 			return
 		}
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		token, err := jwt.ParseWithClaims(tokenStr, &models.Claims{}, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenStr, &model.Claims{}, func(token *jwt.Token) (interface{}, error) {
 			return jwtKey, nil
 		})
 		if err != nil || !token.Valid {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			return
 		}
-		if claims, ok := token.Claims.(*models.Claims); ok {
+		if claims, ok := token.Claims.(*model.Claims); ok {
 			c.Set("user", claims)
 		}
 		c.Next()

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -46,9 +46,9 @@ type UpdateUserRequest struct {
 
 // UserResponse is a generic user response, omitting sensitive data like password.
 // Roles are included as per the API design.
-// The actual `models.User` structure is already suitable if GORM tags don't interfere
+// The actual `model.User` structure is already suitable if GORM tags don't interfere
 // and password is correctly omitted (`json:"-"` tag in model).
-// We can directly use models.User or define a specific DTO if more transformation is needed.
+// We can directly use model.User or define a specific DTO if more transformation is needed.
 // type UserResponse struct {
 // 	ID         uint          `json:"id"`
 // 	Name       string        `json:"name"`
@@ -57,12 +57,12 @@ type UpdateUserRequest struct {
 // 	Status     string        `json:"status"`
 // 	CreatedAt  time.Time     `json:"createdAt"`
 // 	UpdatedAt  time.Time     `json:"updatedAt"`
-// 	Roles      []models.Role `json:"roles,omitempty"`
+// 	Roles      []model.Role `json:"roles,omitempty"`
 // }
 
 // GetUsers handles GET /users request
 func (h *UserHandler) GetUsers(c *gin.Context) {
-	var params models.UserListParams
+	var params model.UserListParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid query parameters: %v", err))
 		return
@@ -150,7 +150,7 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
 		RespondWithError(c, http.StatusInternalServerError, "User claims not found in context")
 		return
 	}
-	claims, ok := claimsValue.(*models.Claims)
+	claims, ok := claimsValue.(*model.Claims)
 	if !ok {
 		RespondWithError(c, http.StatusInternalServerError, "Invalid claims format in context")
 		return
@@ -189,7 +189,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		RespondWithError(c, http.StatusInternalServerError, "User claims not found in context")
 		return
 	}
-	claims, ok := claimsValue.(*models.Claims)
+	claims, ok := claimsValue.(*model.Claims)
 	if !ok {
 		RespondWithError(c, http.StatusInternalServerError, "Invalid claims format in context")
 		return
@@ -241,7 +241,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		RespondWithError(c, http.StatusInternalServerError, "User claims not found in context")
 		return
 	}
-	claims, ok := claimsValue.(*models.Claims)
+	claims, ok := claimsValue.(*model.Claims)
 	if !ok {
 		RespondWithError(c, http.StatusInternalServerError, "Invalid claims format in context")
 		return
@@ -272,8 +272,8 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 }
 
 // hasAdminRole (placeholder - needs proper implementation based on how roles are stored/checked)
-// This function should ideally be in a common utility or auth-related package if used across handlers.
-func hasAdminRole(claims *models.Claims) bool {
+// This function should ideally be in a common utility or auth-related package if used across handler.
+func hasAdminRole(claims *model.Claims) bool {
 	// This is a placeholder. In a real application, you would check
 	// if claims.Roles (or similar field) contains an admin role.
 	// For example:
@@ -335,7 +335,7 @@ func (h *UserHandler) AssignRolesToUser(c *gin.Context) {
 		return
 	}
 
-	var req models.AssignRemoveRolesRequest
+	var req model.AssignRemoveRolesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
 		return
@@ -372,7 +372,7 @@ func (h *UserHandler) RemoveRolesFromUser(c *gin.Context) {
 		return
 	}
 
-	var req models.AssignRemoveRolesRequest
+	var req model.AssignRemoveRolesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		RespondWithError(c, http.StatusBadRequest, fmt.Sprintf("Invalid request payload: %v", err))
 		return

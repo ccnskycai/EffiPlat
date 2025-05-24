@@ -21,7 +21,7 @@ import (
 	// Import gorm logger with alias
 	// Internal Packages
 	"EffiPlat/backend/internal/handler"
-	"EffiPlat/backend/internal/models" // May need config for defaults if used by handlers/services
+	"EffiPlat/backend/internal/model" // May need config for defaults if used by handlers/services
 	"EffiPlat/backend/internal/router" // Added import for router.SetupTestApp
 	// Import for DB logger integration if needed, though using simpler logger here
 	// "EffiPlat/backend/internal/pkg/logger" // REMOVED: Not used
@@ -69,7 +69,7 @@ func TestLoginRoute(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 2. Test Successful Login
-	loginPayload := models.LoginRequest{Email: testUserEmail, Password: testUserPassword}
+	loginPayload := model.LoginRequest{Email: testUserEmail, Password: testUserPassword}
 	payloadBytes, _ := json.Marshal(loginPayload)
 	reqSuccess, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(payloadBytes))
 	reqSuccess.Header.Set("Content-Type", "application/json")
@@ -83,7 +83,7 @@ func TestLoginRoute(t *testing.T) {
 	var structuredLoginResp struct {
 		Code    int                  `json:"code"`
 		Message string               `json:"message"`
-		Data    models.LoginResponse `json:"data"` // Data now holds the LoginResponse structure
+		Data    model.LoginResponse `json:"data"` // Data now holds the LoginResponse structure
 	}
 	err = json.Unmarshal(wSuccess.Body.Bytes(), &structuredLoginResp)
 	assert.NoError(t, err, "Failed to unmarshal structured login response")
@@ -95,7 +95,7 @@ func TestLoginRoute(t *testing.T) {
 	assert.Equal(t, testUserEmail, structuredLoginResp.Data.User.Email)
 
 	// 3. Test Login with Incorrect Password
-	loginPayloadWrongPass := models.LoginRequest{Email: testUserEmail, Password: "wrongpassword"}
+	loginPayloadWrongPass := model.LoginRequest{Email: testUserEmail, Password: "wrongpassword"}
 	payloadBytesWrongPass, _ := json.Marshal(loginPayloadWrongPass)
 	reqWrongPass, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(payloadBytesWrongPass))
 	reqWrongPass.Header.Set("Content-Type", "application/json")
@@ -107,7 +107,7 @@ func TestLoginRoute(t *testing.T) {
 	assert.Contains(t, wWrongPass.Body.String(), "Invalid email or password")
 
 	// 4. Test Login with Non-existent User
-	loginPayloadNotFound := models.LoginRequest{Email: "notfound@example.com", Password: "password"}
+	loginPayloadNotFound := model.LoginRequest{Email: "notfound@example.com", Password: "password"}
 	payloadBytesNotFound, _ := json.Marshal(loginPayloadNotFound)
 	reqNotFound, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(payloadBytesNotFound))
 	reqNotFound.Header.Set("Content-Type", "application/json")
@@ -133,7 +133,7 @@ func TestGetMeRoute(t *testing.T) {
 	assert.NotNil(t, user, "Created user should not be nil for GetMe")
 
 	// Login with the unique user
-	loginPayload := models.LoginRequest{Email: uniqueEmailForGetMe, Password: "password123GetMe"}
+	loginPayload := model.LoginRequest{Email: uniqueEmailForGetMe, Password: "password123GetMe"}
 	loginBody, _ := json.Marshal(loginPayload)
 	loginReq, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
@@ -145,7 +145,7 @@ func TestGetMeRoute(t *testing.T) {
 	var structuredLoginRespForGetMe struct {
 		Code    int                  `json:"code"`
 		Message string               `json:"message"`
-		Data    models.LoginResponse `json:"data"`
+		Data    model.LoginResponse `json:"data"`
 	}
 	err = json.Unmarshal(w.Body.Bytes(), &structuredLoginRespForGetMe)
 	assert.NoError(t, err, "Unmarshal structured login response failed for GetMe")
@@ -212,7 +212,7 @@ func TestLogoutRoute(t *testing.T) {
 	assert.NoError(t, err, "createTestUser should not fail for Logout")
 
 	// Login to get a token
-	loginPayload := models.LoginRequest{Email: uniqueEmailForLogout, Password: "password123Logout"}
+	loginPayload := model.LoginRequest{Email: uniqueEmailForLogout, Password: "password123Logout"}
 	loginBody, _ := json.Marshal(loginPayload)
 	loginReq, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(loginBody))
 	loginReq.Header.Set("Content-Type", "application/json")
@@ -224,7 +224,7 @@ func TestLogoutRoute(t *testing.T) {
 	var structuredLoginRespForLogout struct {
 		Code    int                  `json:"code"`
 		Message string               `json:"message"`
-		Data    models.LoginResponse `json:"data"`
+		Data    model.LoginResponse `json:"data"`
 	}
 	err = json.Unmarshal(w.Body.Bytes(), &structuredLoginRespForLogout)
 	assert.NoError(t, err, "Unmarshal structured login response failed for Logout")
@@ -288,7 +288,7 @@ func TestUserManagementRoutes(t *testing.T) {
 		var respBody struct {
 			Code    int         `json:"code"`
 			Message string      `json:"message"`
-			Data    models.User `json:"data"`
+			Data    model.User `json:"data"`
 		}
 		err := json.Unmarshal(w.Body.Bytes(), &respBody)
 		assert.NoError(t, err)
@@ -312,7 +312,7 @@ func TestUserManagementRoutes(t *testing.T) {
 			Code    int    `json:"code"`
 			Message string `json:"message"`
 			Data    struct {
-				Items    []models.User `json:"items"`
+				Items    []model.User `json:"items"`
 				Total    int           `json:"total"`
 				Page     int           `json:"page"`
 				PageSize int           `json:"pageSize"`
@@ -349,7 +349,7 @@ func TestUserManagementRoutes(t *testing.T) {
 		var respBody struct {
 			Code    int         `json:"code"`
 			Message string      `json:"message"`
-			Data    models.User `json:"data"`
+			Data    model.User `json:"data"`
 		}
 		err := json.Unmarshal(w.Body.Bytes(), &respBody)
 		assert.NoError(t, err)
@@ -406,7 +406,7 @@ func TestUserManagementRoutes(t *testing.T) {
 		var respBody struct {
 			Code    int         `json:"code"`
 			Message string      `json:"message"`
-			Data    models.User `json:"data"`
+			Data    model.User `json:"data"`
 		}
 		err := json.Unmarshal(w.Body.Bytes(), &respBody)
 		assert.NoError(t, err, "Failed to unmarshal update user response")

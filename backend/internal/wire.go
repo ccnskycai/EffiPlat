@@ -137,9 +137,75 @@ func InitializeResponsibilityGroupHandler(db *gorm.DB, logger *zap.Logger) (*han
 	return nil, nil // Wire will replace this
 }
 
-// ProviderSet for Service, ServiceType, Environment, Asset components
-// These seem to be handled by a different handler package structure (envhandlers)
-// For now, we will assume their repositories are provided to the new injector if needed.
+// ProviderSet for Environment components
+var EnvironmentSet = wire.NewSet(
+	repository.NewGormEnvironmentRepository,
+	service.NewEnvironmentService,
+	handler.NewEnvironmentHandler,
+)
+
+// InitializeEnvironmentHandler is the injector for EnvironmentHandler and its dependencies.
+func InitializeEnvironmentHandler(db *gorm.DB, logger *zap.Logger) (*handler.EnvironmentHandler, error) {
+	wire.Build(
+		EnvironmentSet,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// InitializeEnvironmentRepository is the injector for EnvironmentRepository.
+func InitializeEnvironmentRepository(db *gorm.DB, logger *zap.Logger) (repository.EnvironmentRepository, error) {
+	wire.Build(
+		repository.NewGormEnvironmentRepository,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// ProviderSet for Asset components
+var AssetSet = wire.NewSet(
+	repository.NewGormAssetRepository,
+	service.NewAssetService,
+	handler.NewAssetHandler,
+)
+
+// InitializeAssetHandler is the injector for AssetHandler and its dependencies.
+func InitializeAssetHandler(db *gorm.DB, logger *zap.Logger, envRepo repository.EnvironmentRepository) (*handler.AssetHandler, error) {
+	wire.Build(
+		AssetSet,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// ProviderSet for Service components
+var ServiceSet = wire.NewSet(
+	repository.NewGormServiceRepository,
+	repository.NewGormServiceTypeRepository,
+	service.NewServiceService,
+	handler.NewServiceHandler,
+)
+
+// InitializeServiceHandler is the injector for ServiceHandler and its dependencies.
+func InitializeServiceHandler(db *gorm.DB, logger *zap.Logger) (*handler.ServiceHandler, error) {
+	wire.Build(
+		ServiceSet,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// InitializeServiceRepository is the injector for ServiceRepository.
+func InitializeServiceRepository(db *gorm.DB) (repository.ServiceRepository, error) {
+	wire.Build(
+		repository.NewGormServiceRepository,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// InitializeServiceTypeRepository is the injector for ServiceTypeRepository.
+func InitializeServiceTypeRepository(db *gorm.DB) (repository.ServiceTypeRepository, error) {
+	wire.Build(
+		repository.NewGormServiceTypeRepository,
+	)
+	return nil, nil // Wire will replace this
+}
 
 // ProviderSet for service instance components
 var ServiceInstanceSet = wire.NewSet(
@@ -163,6 +229,38 @@ func InitializeServiceInstanceHandler(
 		// wire.Value(serviceRepo), // This is incorrect for interfaces; they should be parameters or bound.
 		// wire.Value(envRepo),
 		// db and logger are already parameters to the injector func, so Wire can use them.
+	)
+	return nil, nil // Wire will replace this
+}
+
+// 环境组件的Provider Set和Initialize函数已在上方定义
+
+// ProviderSet for business components
+var BusinessSet = wire.NewSet(
+	repository.NewBusinessRepository,
+	service.NewBusinessService,
+	handler.NewBusinessHandler,
+)
+
+// InitializeBusinessHandler is the injector for BusinessHandler and its dependencies.
+func InitializeBusinessHandler(db *gorm.DB, logger *zap.Logger) (*handler.BusinessHandler, error) {
+	wire.Build(
+		BusinessSet,
+	)
+	return nil, nil // Wire will replace this
+}
+
+// ProviderSet for bug management components
+var BugSet = wire.NewSet(
+	repository.NewBugRepository,
+	service.NewBugService,
+	handler.NewBugHandler,
+)
+
+// InitializeBugHandler is the injector for BugHandler and its dependencies.
+func InitializeBugHandler(db *gorm.DB, logger *zap.Logger) (*handler.BugHandler, error) {
+	wire.Build(
+		BugSet,
 	)
 	return nil, nil // Wire will replace this
 }

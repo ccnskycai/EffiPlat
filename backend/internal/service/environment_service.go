@@ -1,7 +1,7 @@
 package service
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository"
 	apputils "EffiPlat/backend/internal/utils"
 	"context"
@@ -15,11 +15,11 @@ import (
 
 // EnvironmentService defines the interface for environment-related business logic.
 type EnvironmentService interface {
-	CreateEnvironment(ctx context.Context, req models.CreateEnvironmentRequest) (*models.EnvironmentResponse, error)
-	GetEnvironments(ctx context.Context, params models.EnvironmentListParams) ([]models.EnvironmentResponse, int64, error)
-	GetEnvironmentByID(ctx context.Context, id uint) (*models.EnvironmentResponse, error)
-	GetEnvironmentBySlug(ctx context.Context, slug string) (*models.EnvironmentResponse, error)
-	UpdateEnvironment(ctx context.Context, id uint, req models.UpdateEnvironmentRequest) (*models.EnvironmentResponse, error)
+	CreateEnvironment(ctx context.Context, req model.CreateEnvironmentRequest) (*model.EnvironmentResponse, error)
+	GetEnvironments(ctx context.Context, params model.EnvironmentListParams) ([]model.EnvironmentResponse, int64, error)
+	GetEnvironmentByID(ctx context.Context, id uint) (*model.EnvironmentResponse, error)
+	GetEnvironmentBySlug(ctx context.Context, slug string) (*model.EnvironmentResponse, error)
+	UpdateEnvironment(ctx context.Context, id uint, req model.UpdateEnvironmentRequest) (*model.EnvironmentResponse, error)
 	DeleteEnvironment(ctx context.Context, id uint) error
 }
 
@@ -45,7 +45,7 @@ func NewEnvironmentService(repo repository.EnvironmentRepository, logger *zap.Lo
 	}
 }
 
-func (s *environmentServiceImpl) CreateEnvironment(ctx context.Context, req models.CreateEnvironmentRequest) (*models.EnvironmentResponse, error) {
+func (s *environmentServiceImpl) CreateEnvironment(ctx context.Context, req model.CreateEnvironmentRequest) (*model.EnvironmentResponse, error) {
 	s.logger.Info("Service: Creating new environment", zap.String("name", req.Name), zap.String("slug", req.Slug))
 
 	// Validate the incoming request DTO first
@@ -67,7 +67,7 @@ func (s *environmentServiceImpl) CreateEnvironment(ctx context.Context, req mode
 	// Optional: Check for existing name if it should be unique across environments not just DB level.
 	// For now, relying on DB unique constraint for name if set, or GetByName if implemented.
 
-	env := &models.Environment{
+	env := &model.Environment{
 		Name:        req.Name,
 		Description: req.Description,
 		Slug:        req.Slug,
@@ -84,7 +84,7 @@ func (s *environmentServiceImpl) CreateEnvironment(ctx context.Context, req mode
 	return &resp, nil
 }
 
-func (s *environmentServiceImpl) GetEnvironments(ctx context.Context, params models.EnvironmentListParams) ([]models.EnvironmentResponse, int64, error) {
+func (s *environmentServiceImpl) GetEnvironments(ctx context.Context, params model.EnvironmentListParams) ([]model.EnvironmentResponse, int64, error) {
 	s.logger.Info("Service: Fetching environments", zap.Any("params", params))
 	envs, total, err := s.repo.List(ctx, params)
 	if err != nil {
@@ -92,7 +92,7 @@ func (s *environmentServiceImpl) GetEnvironments(ctx context.Context, params mod
 		return nil, 0, err
 	}
 
-	responses := make([]models.EnvironmentResponse, len(envs))
+	responses := make([]model.EnvironmentResponse, len(envs))
 	for i, env := range envs {
 		responses[i] = env.ToEnvironmentResponse()
 	}
@@ -100,7 +100,7 @@ func (s *environmentServiceImpl) GetEnvironments(ctx context.Context, params mod
 	return responses, total, nil
 }
 
-func (s *environmentServiceImpl) GetEnvironmentByID(ctx context.Context, id uint) (*models.EnvironmentResponse, error) {
+func (s *environmentServiceImpl) GetEnvironmentByID(ctx context.Context, id uint) (*model.EnvironmentResponse, error) {
 	s.logger.Info("Service: Fetching environment by ID", zap.Uint("id", id))
 	env, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -115,7 +115,7 @@ func (s *environmentServiceImpl) GetEnvironmentByID(ctx context.Context, id uint
 	return &resp, nil
 }
 
-func (s *environmentServiceImpl) GetEnvironmentBySlug(ctx context.Context, slug string) (*models.EnvironmentResponse, error) {
+func (s *environmentServiceImpl) GetEnvironmentBySlug(ctx context.Context, slug string) (*model.EnvironmentResponse, error) {
 	s.logger.Info("Service: Fetching environment by Slug", zap.String("slug", slug))
 	env, err := s.repo.GetBySlug(ctx, slug)
 	if err != nil {
@@ -130,7 +130,7 @@ func (s *environmentServiceImpl) GetEnvironmentBySlug(ctx context.Context, slug 
 	return &resp, nil
 }
 
-func (s *environmentServiceImpl) UpdateEnvironment(ctx context.Context, id uint, req models.UpdateEnvironmentRequest) (*models.EnvironmentResponse, error) {
+func (s *environmentServiceImpl) UpdateEnvironment(ctx context.Context, id uint, req model.UpdateEnvironmentRequest) (*model.EnvironmentResponse, error) {
 	s.logger.Info("Service: Updating environment", zap.Uint("id", id), zap.Any("request", req))
 
 	// Validate the incoming request DTO first

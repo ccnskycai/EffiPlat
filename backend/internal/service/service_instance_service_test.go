@@ -7,8 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"EffiPlat/backend/internal/model"
-	"EffiPlat/backend/internal/models" // For CreateEnvironmentRequest if used by chance, or other shared models
+	"EffiPlat/backend/internal/model" // For all model related structs
 	mock_repository "EffiPlat/backend/internal/repository/mocks"
 	"EffiPlat/backend/internal/utils" // Renamed from apputils
 
@@ -46,8 +45,8 @@ func TestServiceInstanceServiceImpl_CreateServiceInstance(t *testing.T) {
 			Status:        string(model.ServiceInstanceStatusDeploying),
 			Config:        datatypes.JSONMap{"key": "value"},
 		}
-		expectedService := &models.Service{ID: inputDTO.ServiceID}
-		expectedEnv := &models.Environment{ID: inputDTO.EnvironmentID}
+		expectedService := &model.Service{ID: inputDTO.ServiceID}
+		expectedEnv := &model.Environment{ID: inputDTO.EnvironmentID}
 
 		// Mock dependencies
 		mockServiceRepo.EXPECT().GetByID(ctx, inputDTO.ServiceID).Return(expectedService, nil)
@@ -108,7 +107,7 @@ func TestServiceInstanceServiceImpl_CreateServiceInstance(t *testing.T) {
 		svc, _, mockServiceRepo, mockEnvRepo := newTestServiceInstanceServiceWithMocks(t, ctrl)
 		ctx := context.Background()
 		inputDTO := &ServiceInstanceInputDTO{ServiceID: 1, EnvironmentID: 99}
-		expectedService := &models.Service{ID: inputDTO.ServiceID}
+		expectedService := &model.Service{ID: inputDTO.ServiceID}
 
 		mockServiceRepo.EXPECT().GetByID(ctx, inputDTO.ServiceID).Return(expectedService, nil)
 		mockEnvRepo.EXPECT().GetByID(ctx, inputDTO.EnvironmentID).Return(nil, gorm.ErrRecordNotFound)
@@ -127,8 +126,8 @@ func TestServiceInstanceServiceImpl_CreateServiceInstance(t *testing.T) {
 		svc, mockInstanceRepo, mockServiceRepo, mockEnvRepo := newTestServiceInstanceServiceWithMocks(t, ctrl)
 		ctx := context.Background()
 		inputDTO := &ServiceInstanceInputDTO{ServiceID: 1, EnvironmentID: 1, Version: "1.0.0"}
-		expectedService := &models.Service{ID: inputDTO.ServiceID}
-		expectedEnv := &models.Environment{ID: inputDTO.EnvironmentID}
+		expectedService := &model.Service{ID: inputDTO.ServiceID}
+		expectedEnv := &model.Environment{ID: inputDTO.EnvironmentID}
 
 		mockServiceRepo.EXPECT().GetByID(ctx, inputDTO.ServiceID).Return(expectedService, nil)
 		mockEnvRepo.EXPECT().GetByID(ctx, inputDTO.EnvironmentID).Return(expectedEnv, nil)
@@ -148,8 +147,8 @@ func TestServiceInstanceServiceImpl_CreateServiceInstance(t *testing.T) {
 		ctx := context.Background()
 		dbError := errors.New("db check error")
 		inputDTO := &ServiceInstanceInputDTO{ServiceID: 1, EnvironmentID: 1, Version: "1.0.0"}
-		expectedService := &models.Service{ID: inputDTO.ServiceID}
-		expectedEnv := &models.Environment{ID: inputDTO.EnvironmentID}
+		expectedService := &model.Service{ID: inputDTO.ServiceID}
+		expectedEnv := &model.Environment{ID: inputDTO.EnvironmentID}
 
 		mockServiceRepo.EXPECT().GetByID(ctx, inputDTO.ServiceID).Return(expectedService, nil)
 		mockEnvRepo.EXPECT().GetByID(ctx, inputDTO.EnvironmentID).Return(expectedEnv, nil)
@@ -170,8 +169,8 @@ func TestServiceInstanceServiceImpl_CreateServiceInstance(t *testing.T) {
 		ctx := context.Background()
 		dbError := errors.New("db create error")
 		inputDTO := &ServiceInstanceInputDTO{ServiceID: 1, EnvironmentID: 1, Version: "1.0.0"}
-		expectedService := &models.Service{ID: inputDTO.ServiceID}
-		expectedEnv := &models.Environment{ID: inputDTO.EnvironmentID}
+		expectedService := &model.Service{ID: inputDTO.ServiceID}
+		expectedEnv := &model.Environment{ID: inputDTO.EnvironmentID}
 
 		mockServiceRepo.EXPECT().GetByID(ctx, inputDTO.ServiceID).Return(expectedService, nil)
 		mockEnvRepo.EXPECT().GetByID(ctx, inputDTO.EnvironmentID).Return(expectedEnv, nil)

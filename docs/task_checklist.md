@@ -42,7 +42,7 @@
 - [x] 实现服务管理 API (`/services`)
 - [x] 实现服务实例管理基础 API (`/service-instances`)
 - [x] 实现业务管理 API (`/businesses`)
-- [ ] 实现 Bug 管理 API (`/bugs`)
+- [x] 实现 Bug 管理 API (`/bugs`)
 - [ ] 实现基础操作审计日志记录
 
 ### 前端 UI

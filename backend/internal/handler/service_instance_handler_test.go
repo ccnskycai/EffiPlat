@@ -13,7 +13,6 @@ import (
 
 	"EffiPlat/backend/internal/handler"
 	"EffiPlat/backend/internal/model"
-	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/service"
 	mock_service "EffiPlat/backend/internal/service/mocks"
 	apputils "EffiPlat/backend/internal/utils"
@@ -112,7 +111,7 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		var errorResponse models.ErrorResponse
+		var errorResponse model.ErrorResponse
 		err := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
 		assert.Contains(t, errorResponse.Message, "Invalid request payload")
@@ -138,7 +137,7 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		var errorResponse models.ErrorResponse
+		var errorResponse model.ErrorResponse
 		err := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
 		assert.Equal(t, serviceError.Error(), errorResponse.Message)
@@ -164,7 +163,7 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusConflict, rr.Code)
-		var errorResponse models.ErrorResponse
+		var errorResponse model.ErrorResponse
 		err := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
 		assert.Equal(t, serviceError.Error(), errorResponse.Message)
@@ -190,7 +189,7 @@ func TestServiceInstanceHandler_CreateServiceInstance(t *testing.T) {
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-		var errorResponse models.ErrorResponse
+		var errorResponse model.ErrorResponse
 		err := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
 		assert.Equal(t, "Failed to create service instance", errorResponse.Message)
@@ -257,7 +256,7 @@ func TestServiceInstanceHandler_GetServiceInstance(t *testing.T) {
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusBadRequest, rr.Code)
-		var errorResponse models.ErrorResponse
+		var errorResponse model.ErrorResponse
 		err := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
 		assert.Equal(t, "Invalid instance ID format", errorResponse.Message)
@@ -280,7 +279,7 @@ func TestServiceInstanceHandler_GetServiceInstance(t *testing.T) {
 		router.ServeHTTP(rr, req)
 
 		assert.Equal(t, http.StatusNotFound, rr.Code)
-		var errorResponse models.ErrorResponse
+		var errorResponse model.ErrorResponse
 		err := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
 		assert.Equal(t, "Service instance not found", errorResponse.Message)
@@ -304,7 +303,7 @@ func TestServiceInstanceHandler_GetServiceInstance(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, rr.Code)
 		assert.Equal(t, "application/json; charset=utf-8", rr.Header().Get("Content-Type"))
-		var errorResponse models.ErrorResponse
+		var errorResponse model.ErrorResponse
 		err := json.Unmarshal(rr.Body.Bytes(), &errorResponse)
 		assert.NoError(t, err)
 		assert.Equal(t, http.StatusInternalServerError, errorResponse.Code)

@@ -1,7 +1,7 @@
 package service
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository"
 	"context"
 	"fmt"
@@ -12,10 +12,10 @@ import (
 
 // AssetService defines the interface for asset related business logic.
 type AssetService interface {
-	CreateAsset(ctx context.Context, req models.CreateAssetRequest) (*models.Asset, error)
-	GetAssetByID(ctx context.Context, id uint) (*models.Asset, error)
-	ListAssets(ctx context.Context, params models.AssetListParams) ([]models.Asset, int64, error)
-	UpdateAsset(ctx context.Context, id uint, req models.UpdateAssetRequest) (*models.Asset, error)
+	CreateAsset(ctx context.Context, req model.CreateAssetRequest) (*model.Asset, error)
+	GetAssetByID(ctx context.Context, id uint) (*model.Asset, error)
+	ListAssets(ctx context.Context, params model.AssetListParams) ([]model.Asset, int64, error)
+	UpdateAsset(ctx context.Context, id uint, req model.UpdateAssetRequest) (*model.Asset, error)
 	DeleteAsset(ctx context.Context, id uint) error
 }
 
@@ -30,7 +30,7 @@ func NewAssetService(repo repository.AssetRepository, envRepo repository.Environ
 	return &assetServiceImpl{repo: repo, envRepo: envRepo, logger: logger}
 }
 
-func (s *assetServiceImpl) CreateAsset(ctx context.Context, req models.CreateAssetRequest) (*models.Asset, error) {
+func (s *assetServiceImpl) CreateAsset(ctx context.Context, req model.CreateAssetRequest) (*model.Asset, error) {
 	s.logger.Info("Attempting to create asset", zap.String("hostname", req.Hostname), zap.String("ipAddress", req.IPAddress))
 
 	// Validate EnvironmentID exists
@@ -56,11 +56,11 @@ func (s *assetServiceImpl) CreateAsset(ctx context.Context, req models.CreateAss
 	// 	 return nil, fmt.Errorf("IP address '%s' already exists", req.IPAddress) // Consider specific error type
 	// }
 
-	asset := &models.Asset{
+	asset := &model.Asset{
 		Hostname:      req.Hostname,
 		IPAddress:     req.IPAddress,
 		AssetType:     req.AssetType,
-		Status:        models.AssetStatusUnknown, // Default status, can be set from req if allowed
+		Status:        model.AssetStatusUnknown, // Default status, can be set from req if allowed
 		Description:   req.Description,
 		EnvironmentID: req.EnvironmentID,
 	}
@@ -78,12 +78,12 @@ func (s *assetServiceImpl) CreateAsset(ctx context.Context, req models.CreateAss
 	return asset, nil
 }
 
-func (s *assetServiceImpl) GetAssetByID(ctx context.Context, id uint) (*models.Asset, error) {
+func (s *assetServiceImpl) GetAssetByID(ctx context.Context, id uint) (*model.Asset, error) {
 	asset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			s.logger.Warn("Asset not found by ID in service", zap.Uint("id", id))
-			return nil, err // Or a custom error like models.ErrAssetNotFound
+			return nil, err // Or a custom error like model.ErrAssetNotFound
 		}
 		s.logger.Error("Failed to get asset by ID from repository", zap.Error(err), zap.Uint("id", id))
 		return nil, fmt.Errorf("getting asset by ID %d: %w", id, err)
@@ -91,7 +91,7 @@ func (s *assetServiceImpl) GetAssetByID(ctx context.Context, id uint) (*models.A
 	return asset, nil
 }
 
-func (s *assetServiceImpl) ListAssets(ctx context.Context, params models.AssetListParams) ([]models.Asset, int64, error) {
+func (s *assetServiceImpl) ListAssets(ctx context.Context, params model.AssetListParams) ([]model.Asset, int64, error) {
 	assets, totalCount, err := s.repo.List(ctx, params)
 	if err != nil {
 		s.logger.Error("Failed to list assets from repository", zap.Error(err), zap.Any("params", params))
@@ -100,14 +100,14 @@ func (s *assetServiceImpl) ListAssets(ctx context.Context, params models.AssetLi
 	return assets, totalCount, nil
 }
 
-func (s *assetServiceImpl) UpdateAsset(ctx context.Context, id uint, req models.UpdateAssetRequest) (*models.Asset, error) {
+func (s *assetServiceImpl) UpdateAsset(ctx context.Context, id uint, req model.UpdateAssetRequest) (*model.Asset, error) {
 	s.logger.Info("Attempting to update asset", zap.Uint("id", id), zap.Any("request", req))
 
 	existingAsset, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			s.logger.Warn("Asset not found for update", zap.Uint("id", id))
-			return nil, err // Or models.ErrAssetNotFound
+			return nil, err // Or model.ErrAssetNotFound
 		}
 		s.logger.Error("Failed to get asset for update", zap.Error(err), zap.Uint("id", id))
 		return nil, fmt.Errorf("getting asset for update: %w", err)
@@ -179,7 +179,7 @@ func (s *assetServiceImpl) DeleteAsset(ctx context.Context, id uint) error {
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			s.logger.Warn("Asset not found for deletion", zap.Uint("id", id))
-			return err // Or models.ErrAssetNotFound
+			return err // Or model.ErrAssetNotFound
 		}
 		s.logger.Error("Failed to get asset for deletion check", zap.Error(err), zap.Uint("id", id))
 		return fmt.Errorf("checking asset for deletion: %w", err)

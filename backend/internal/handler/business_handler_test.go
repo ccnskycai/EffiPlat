@@ -2,7 +2,6 @@ package handler_test
 
 import (
 	"EffiPlat/backend/internal/model"
-	"EffiPlat/backend/internal/models"
 	"EffiPlat/backend/internal/router"
 	"EffiPlat/backend/internal/service"
 	"bytes"
@@ -257,7 +256,7 @@ func TestBusinessHandler_ListBusinesses(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 0, responseBody.Code)
 
-		var paginatedData models.PaginatedData
+		var paginatedData model.PaginatedData
 		err = json.Unmarshal(responseBody.Data, &paginatedData)
 		require.NoError(t, err)
 
@@ -288,7 +287,7 @@ func TestBusinessHandler_ListBusinesses(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 		require.NoError(t, err)
 
-		var paginatedData models.PaginatedData
+		var paginatedData model.PaginatedData
 		err = json.Unmarshal(responseBody.Data, &paginatedData)
 		require.NoError(t, err)
 
@@ -335,7 +334,7 @@ func TestBusinessHandler_ListBusinesses(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 		require.NoError(t, err)
 
-		var paginatedData models.PaginatedData
+		var paginatedData model.PaginatedData
 		err = json.Unmarshal(responseBody.Data, &paginatedData)
 		require.NoError(t, err)
 
@@ -364,7 +363,7 @@ func TestBusinessHandler_ListBusinesses(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 		require.NoError(t, err)
 
-		var paginatedData models.PaginatedData
+		var paginatedData model.PaginatedData
 		err = json.Unmarshal(responseBody.Data, &paginatedData)
 		require.NoError(t, err)
 
@@ -394,7 +393,7 @@ func TestBusinessHandler_ListBusinesses(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &responseBody)
 		require.NoError(t, err)
 
-		var paginatedData models.PaginatedData
+		var paginatedData model.PaginatedData
 		err = json.Unmarshal(responseBody.Data, &paginatedData)
 		require.NoError(t, err)
 
@@ -527,7 +526,7 @@ func TestBusinessHandler_UpdateBusiness(t *testing.T) {
 		components.Router.ServeHTTP(wNonExistentID, reqNonExistentID)
 		assert.Equal(t, http.StatusNotFound, wNonExistentID.Code)
 
-		var errorRsp models.ErrorResponse
+		var errorRsp model.ErrorResponse
 		err = json.Unmarshal(wNonExistentID.Body.Bytes(), &errorRsp)
 		require.NoError(t, err) // It's okay if unmarshal fails for non-JSON error, but good to check if it's structured
 		assert.Contains(t, errorRsp.Message, "not found")

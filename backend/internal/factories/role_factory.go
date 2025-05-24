@@ -1,7 +1,7 @@
 package factories
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"fmt"
 
 	"gorm.io/gorm"
@@ -12,7 +12,7 @@ import (
 type RoleFactory struct {
 	Name        string
 	Description string
-	Permissions []models.Permission // Optional: for creating roles with predefined permissions
+	Permissions []model.Permission // Optional: for creating roles with predefined permissions
 }
 
 // NewRoleFactory creates a RoleFactory with default values.
@@ -20,7 +20,7 @@ func NewRoleFactory() *RoleFactory {
 	return &RoleFactory{
 		Name:        "Test Role",
 		Description: "A role for testing purposes",
-		Permissions: []models.Permission{},
+		Permissions: []model.Permission{},
 	}
 }
 
@@ -37,14 +37,14 @@ func (f *RoleFactory) WithDescription(desc string) *RoleFactory {
 }
 
 // WithPermissions sets permissions for the role.
-func (f *RoleFactory) WithPermissions(permissions []models.Permission) *RoleFactory {
+func (f *RoleFactory) WithPermissions(permissions []model.Permission) *RoleFactory {
 	f.Permissions = permissions
 	return f
 }
 
 // Create builds and saves the Role model to the database.
-func (f *RoleFactory) Create(db *gorm.DB) (*models.Role, error) {
-	role := &models.Role{
+func (f *RoleFactory) Create(db *gorm.DB) (*model.Role, error) {
+	role := &model.Role{
 		Name:        f.Name,
 		Description: f.Description,
 		// CreatedAt and UpdatedAt are handled by default values or GORM hooks
@@ -71,7 +71,7 @@ func (f *RoleFactory) Create(db *gorm.DB) (*models.Role, error) {
 // CreateRole is a helper function to quickly create and save a role.
 // It takes role details (Name is required, Description is optional).
 // Permissions in roleDetails.Permissions will be associated.
-func CreateRole(db *gorm.DB, roleDetails *models.Role) (*models.Role, error) {
+func CreateRole(db *gorm.DB, roleDetails *model.Role) (*model.Role, error) {
 	if roleDetails.Name == "" {
 		return nil, fmt.Errorf("role name cannot be empty")
 	}

@@ -1,10 +1,9 @@
 package handler
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/service"
-	"EffiPlat/backend/internal/utils" // Import apputils
-	"EffiPlat/backend/pkg/response"   // Assuming you have a response package
+	"EffiPlat/backend/internal/utils" // 使用internal/utils代替pkg/response
 	"errors"                          // Import errors
 	"net/http"
 	"strconv"
@@ -46,11 +45,11 @@ func (h *ResponsibilityGroupHandler) CreateResponsibilityGroup(c *gin.Context) {
 	var req CreateResponsibilityGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("Failed to bind JSON for CreateResponsibilityGroup", zap.Error(err))
-		response.BadRequest(c, "Invalid request payload: "+err.Error())
+		utils.BadRequest(c, "Invalid request payload: "+err.Error())
 		return
 	}
 
-	group := &models.ResponsibilityGroup{
+	group := &model.ResponsibilityGroup{
 		Name:        req.Name,
 		Description: req.Description,
 	}
@@ -59,18 +58,18 @@ func (h *ResponsibilityGroupHandler) CreateResponsibilityGroup(c *gin.Context) {
 	if err != nil {
 		h.logger.Error("Failed to create responsibility group", zap.Error(err))
 		// TODO: Map service errors (e.g., ErrAlreadyExists, validation errors for IDs)
-		response.InternalServerError(c, "Failed to create responsibility group: "+err.Error())
+		utils.InternalServerError(c, "Failed to create responsibility group: "+err.Error())
 		return
 	}
-	response.Created(c, createdGroup)
+	utils.Created(c, createdGroup)
 }
 
 // GetResponsibilityGroups handles listing responsibility groups.
 func (h *ResponsibilityGroupHandler) GetResponsibilityGroups(c *gin.Context) {
-	var params models.ResponsibilityGroupListParams
+	var params model.ResponsibilityGroupListParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		h.logger.Error("Failed to bind query for GetResponsibilityGroups", zap.Error(err))
-		response.BadRequest(c, "Invalid query parameters: "+err.Error())
+		utils.BadRequest(c, "Invalid query parameters: "+err.Error())
 		return
 	}
 
@@ -84,10 +83,10 @@ func (h *ResponsibilityGroupHandler) GetResponsibilityGroups(c *gin.Context) {
 	groups, total, err := h.service.GetResponsibilityGroups(c.Request.Context(), params)
 	if err != nil {
 		h.logger.Error("Failed to get responsibility groups", zap.Error(err))
-		response.InternalServerError(c, "Failed to retrieve responsibility groups: "+err.Error())
+		utils.InternalServerError(c, "Failed to retrieve responsibility groups: "+err.Error())
 		return
 	}
-	response.Paginated(c, groups, total, params.Page, params.PageSize)
+	utils.Paginated(c, groups, total, params.Page, params.PageSize)
 }
 
 // GetResponsibilityGroupByID handles retrieving a single responsibility group by its ID.
@@ -96,7 +95,7 @@ func (h *ResponsibilityGroupHandler) GetResponsibilityGroupByID(c *gin.Context) 
 	groupID, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		h.logger.Error("Invalid group ID format", zap.String("groupId", idStr), zap.Error(err))
-		response.BadRequest(c, "Invalid group ID format")
+		utils.BadRequest(c, "Invalid group ID format")
 		return
 	}
 
@@ -104,14 +103,14 @@ func (h *ResponsibilityGroupHandler) GetResponsibilityGroupByID(c *gin.Context) 
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility group not found", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			response.NotFound(c, "Responsibility group not found")
+			utils.NotFound(c, "Responsibility group not found")
 		} else {
 			h.logger.Error("Failed to get responsibility group by ID", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			response.InternalServerError(c, "Failed to retrieve responsibility group: "+err.Error())
+			utils.InternalServerError(c, "Failed to retrieve responsibility group: "+err.Error())
 		}
 		return
 	}
-	response.OK(c, group)
+	utils.OK(c, group)
 }
 
 // UpdateResponsibilityGroup handles updating an existing responsibility group.
@@ -120,18 +119,18 @@ func (h *ResponsibilityGroupHandler) UpdateResponsibilityGroup(c *gin.Context) {
 	groupID, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		h.logger.Error("Invalid group ID format for update", zap.String("groupId", idStr), zap.Error(err))
-		response.BadRequest(c, "Invalid group ID format")
+		utils.BadRequest(c, "Invalid group ID format")
 		return
 	}
 
 	var req UpdateResponsibilityGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.logger.Error("Failed to bind JSON for UpdateResponsibilityGroup", zap.Error(err))
-		response.BadRequest(c, "Invalid request payload: "+err.Error())
+		utils.BadRequest(c, "Invalid request payload: "+err.Error())
 		return
 	}
 
-	groupUpdate := &models.ResponsibilityGroup{
+	groupUpdate := &model.ResponsibilityGroup{
 		Name:        req.Name,
 		Description: req.Description,
 	}
@@ -140,14 +139,14 @@ func (h *ResponsibilityGroupHandler) UpdateResponsibilityGroup(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility group or associated responsibility not found for update", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			response.NotFound(c, "Responsibility group or an associated responsibility not found")
+			utils.NotFound(c, "Responsibility group or an associated responsibility not found")
 		} else {
 			h.logger.Error("Failed to update responsibility group", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			response.InternalServerError(c, "Failed to update responsibility group: "+err.Error())
+			utils.InternalServerError(c, "Failed to update responsibility group: "+err.Error())
 		}
 		return
 	}
-	response.OK(c, updatedGroup)
+	utils.OK(c, updatedGroup)
 }
 
 // DeleteResponsibilityGroup handles deleting a responsibility group.
@@ -156,7 +155,7 @@ func (h *ResponsibilityGroupHandler) DeleteResponsibilityGroup(c *gin.Context) {
 	groupID, err := strconv.ParseUint(idStr, 10, 32)
 	if err != nil {
 		h.logger.Error("Invalid group ID format for delete", zap.String("groupId", idStr), zap.Error(err))
-		response.BadRequest(c, "Invalid group ID format")
+		utils.BadRequest(c, "Invalid group ID format")
 		return
 	}
 
@@ -164,14 +163,14 @@ func (h *ResponsibilityGroupHandler) DeleteResponsibilityGroup(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			h.logger.Warn("Responsibility group not found for delete", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			response.NotFound(c, "Responsibility group not found")
+			utils.NotFound(c, "Responsibility group not found")
 		} else {
 			h.logger.Error("Failed to delete responsibility group", zap.Uint("groupId", uint(groupID)), zap.Error(err))
-			response.InternalServerError(c, "Failed to delete responsibility group: "+err.Error())
+			utils.InternalServerError(c, "Failed to delete responsibility group: "+err.Error())
 		}
 		return
 	}
-	response.Status(c, http.StatusNoContent)
+	utils.Status(c, http.StatusNoContent)
 }
 
 // AddResponsibilityToGroup handles adding a responsibility to a group.
@@ -180,7 +179,7 @@ func (h *ResponsibilityGroupHandler) AddResponsibilityToGroup(c *gin.Context) {
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 32)
 	if err != nil {
 		h.logger.Error("Invalid group ID format for adding responsibility", zap.String("groupId", groupIDStr), zap.Error(err))
-		response.BadRequest(c, "Invalid group ID format")
+		utils.BadRequest(c, "Invalid group ID format")
 		return
 	}
 
@@ -188,7 +187,7 @@ func (h *ResponsibilityGroupHandler) AddResponsibilityToGroup(c *gin.Context) {
 	respID, err := strconv.ParseUint(respIDStr, 10, 32)
 	if err != nil {
 		h.logger.Error("Invalid responsibility ID format for adding to group", zap.String("responsibilityId", respIDStr), zap.Error(err))
-		response.BadRequest(c, "Invalid responsibility ID format")
+		utils.BadRequest(c, "Invalid responsibility ID format")
 		return
 	}
 
@@ -198,14 +197,14 @@ func (h *ResponsibilityGroupHandler) AddResponsibilityToGroup(c *gin.Context) {
 			// Here, ErrNotFound could mean group or responsibility was not found.
 			// The service layer's error message (e.g., "responsibility group with id X not found") will be more specific.
 			h.logger.Warn("Failed to add responsibility to group: group or responsibility not found", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
-			response.NotFound(c, err.Error()) // Use the specific error from service layer
+			utils.NotFound(c, err.Error()) // Use the specific error from service layer
 		} else {
 			h.logger.Error("Failed to add responsibility to group", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
-			response.InternalServerError(c, "Failed to add responsibility to group: "+err.Error())
+			utils.InternalServerError(c, "Failed to add responsibility to group: "+err.Error())
 		}
 		return
 	}
-	response.Status(c, http.StatusNoContent)
+	utils.Status(c, http.StatusNoContent)
 }
 
 // RemoveResponsibilityFromGroup handles removing a responsibility from a group.
@@ -214,7 +213,7 @@ func (h *ResponsibilityGroupHandler) RemoveResponsibilityFromGroup(c *gin.Contex
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 32)
 	if err != nil {
 		h.logger.Error("Invalid group ID format for removing responsibility", zap.String("groupId", groupIDStr), zap.Error(err))
-		response.BadRequest(c, "Invalid group ID format")
+		utils.BadRequest(c, "Invalid group ID format")
 		return
 	}
 
@@ -222,7 +221,7 @@ func (h *ResponsibilityGroupHandler) RemoveResponsibilityFromGroup(c *gin.Contex
 	respID, err := strconv.ParseUint(respIDStr, 10, 32)
 	if err != nil {
 		h.logger.Error("Invalid responsibility ID format for removing from group", zap.String("responsibilityId", respIDStr), zap.Error(err))
-		response.BadRequest(c, "Invalid responsibility ID format")
+		utils.BadRequest(c, "Invalid responsibility ID format")
 		return
 	}
 
@@ -231,12 +230,12 @@ func (h *ResponsibilityGroupHandler) RemoveResponsibilityFromGroup(c *gin.Contex
 		if errors.Is(err, utils.ErrNotFound) { // Use errors.Is with apputils.ErrNotFound
 			// ErrNotFound could mean group, responsibility, or the association itself was not found.
 			h.logger.Warn("Failed to remove responsibility from group: entity or association not found", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
-			response.NotFound(c, err.Error()) // Use the specific error from service layer
+			utils.NotFound(c, err.Error()) // Use the specific error from service layer
 		} else {
 			h.logger.Error("Failed to remove responsibility from group", zap.Uint("groupID", uint(groupID)), zap.Uint("respID", uint(respID)), zap.Error(err))
-			response.InternalServerError(c, "Failed to remove responsibility from group: "+err.Error())
+			utils.InternalServerError(c, "Failed to remove responsibility from group: "+err.Error())
 		}
 		return
 	}
-	response.Status(c, http.StatusNoContent)
+	utils.Status(c, http.StatusNoContent)
 }

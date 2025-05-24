@@ -10,7 +10,7 @@
 package mocks
 
 import (
-	models "EffiPlat/backend/internal/models"
+	model "EffiPlat/backend/internal/model"
 	context "context"
 	reflect "reflect"
 
@@ -42,10 +42,10 @@ func (m *MockEnvironmentRepository) EXPECT() *MockEnvironmentRepositoryMockRecor
 }
 
 // Create mocks base method.
-func (m *MockEnvironmentRepository) Create(ctx context.Context, environment *models.Environment) (*models.Environment, error) {
+func (m *MockEnvironmentRepository) Create(ctx context.Context, environment *model.Environment) (*model.Environment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Create", ctx, environment)
-	ret0, _ := ret[0].(*models.Environment)
+	ret0, _ := ret[0].(*model.Environment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -71,10 +71,10 @@ func (mr *MockEnvironmentRepositoryMockRecorder) Delete(ctx, id any) *gomock.Cal
 }
 
 // GetByID mocks base method.
-func (m *MockEnvironmentRepository) GetByID(ctx context.Context, id uint) (*models.Environment, error) {
+func (m *MockEnvironmentRepository) GetByID(ctx context.Context, id uint) (*model.Environment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetByID", ctx, id)
-	ret0, _ := ret[0].(*models.Environment)
+	ret0, _ := ret[0].(*model.Environment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -86,10 +86,10 @@ func (mr *MockEnvironmentRepositoryMockRecorder) GetByID(ctx, id any) *gomock.Ca
 }
 
 // GetBySlug mocks base method.
-func (m *MockEnvironmentRepository) GetBySlug(ctx context.Context, slug string) (*models.Environment, error) {
+func (m *MockEnvironmentRepository) GetBySlug(ctx context.Context, slug string) (*model.Environment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBySlug", ctx, slug)
-	ret0, _ := ret[0].(*models.Environment)
+	ret0, _ := ret[0].(*model.Environment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -101,10 +101,10 @@ func (mr *MockEnvironmentRepositoryMockRecorder) GetBySlug(ctx, slug any) *gomoc
 }
 
 // List mocks base method.
-func (m *MockEnvironmentRepository) List(ctx context.Context, params models.EnvironmentListParams) ([]models.Environment, int64, error) {
+func (m *MockEnvironmentRepository) List(ctx context.Context, params model.EnvironmentListParams) ([]model.Environment, int64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "List", ctx, params)
-	ret0, _ := ret[0].([]models.Environment)
+	ret0, _ := ret[0].([]model.Environment)
 	ret1, _ := ret[1].(int64)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -117,10 +117,10 @@ func (mr *MockEnvironmentRepositoryMockRecorder) List(ctx, params any) *gomock.C
 }
 
 // Update mocks base method.
-func (m *MockEnvironmentRepository) Update(ctx context.Context, environment *models.Environment) (*models.Environment, error) {
+func (m *MockEnvironmentRepository) Update(ctx context.Context, environment *model.Environment) (*model.Environment, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Update", ctx, environment)
-	ret0, _ := ret[0].(*models.Environment)
+	ret0, _ := ret[0].(*model.Environment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

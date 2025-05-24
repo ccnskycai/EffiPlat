@@ -2,10 +2,8 @@ package router
 
 import (
 	"EffiPlat/backend/internal/handler"
-	envhandlers "EffiPlat/backend/internal/handlers" // Added for EnvironmentHandler
 	"EffiPlat/backend/internal/model"
-	"EffiPlat/backend/internal/models"
-	pkgmodels "EffiPlat/backend/internal/models"
+	pkgmodel "EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/pkg/config"
 	pkgdb "EffiPlat/backend/internal/pkg/database"
 	"EffiPlat/backend/internal/pkg/logger"
@@ -44,11 +42,12 @@ type TestAppComponents struct {
 	PermissionHandler          *handler.PermissionHandler
 	ResponsibilityHandler      *handler.ResponsibilityHandler
 	ResponsibilityGroupHandler *handler.ResponsibilityGroupHandler
-	EnvironmentHandler         *envhandlers.EnvironmentHandler
-	AssetHandler               *envhandlers.AssetHandler
-	ServiceHandler             *envhandlers.ServiceHandler
+	EnvironmentHandler         *handler.EnvironmentHandler
+	AssetHandler               *handler.AssetHandler
+	ServiceHandler             *handler.ServiceHandler
 	ServiceInstanceHandler     *handler.ServiceInstanceHandler
 	BusinessHandler            *handler.BusinessHandler
+	BugHandler                 *handler.BugHandler
 	JWTKey                     []byte
 }
 
@@ -71,15 +70,15 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	// err = pkgdb.AutoMigrate(db, appLogger) // Ensure all tables including new ones are migrated
 	// Directly migrate all necessary models for tests, including new ones
 	err = db.AutoMigrate(
-		&pkgmodels.User{},
-		&pkgmodels.Role{},
-		&pkgmodels.Permission{},
-		&pkgmodels.Responsibility{},
-		&pkgmodels.ResponsibilityGroup{},
-		&pkgmodels.Environment{},
-		&pkgmodels.Asset{},
-		&pkgmodels.ServiceType{}, // Added ServiceType model for migration
-		&pkgmodels.Service{},     // Added Service model for migration
+		&pkgmodel.User{},
+		&pkgmodel.Role{},
+		&pkgmodel.Permission{},
+		&pkgmodel.Responsibility{},
+		&pkgmodel.ResponsibilityGroup{},
+		&pkgmodel.Environment{},
+		&pkgmodel.Asset{},
+		&pkgmodel.ServiceType{}, // Added ServiceType model for migration
+		&pkgmodel.Service{},     // Added Service model for migration
 		&model.ServiceInstance{}, // Changed to model.ServiceInstance
 		&model.Business{},        // Changed to model.Business
 	)
@@ -96,6 +95,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	serviceRepo := repository.NewGormServiceRepository(db)                        // Updated ServiceRepository
 	serviceTypeRepo := repository.NewGormServiceTypeRepository(db)                // Added ServiceTypeRepository
 	serviceInstanceRepo := repository.NewServiceInstanceRepository(db, appLogger) // Added
+	bugRepo := repository.NewBugRepository(db, appLogger) // Added BugRepository
 	businessRepo := repository.NewBusinessRepository(db, appLogger)               // Added
 
 	// Initialize services
@@ -114,6 +114,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	serviceService := service.NewServiceService(serviceRepo, serviceTypeRepo, appLogger)                                      // Renamed serviceSvc to serviceService and added logger
 	serviceInstanceService := service.NewServiceInstanceService(serviceInstanceRepo, serviceRepo, environmentRepo, appLogger) // Added
 	businessService := service.NewBusinessService(businessRepo, appLogger)                                                    // Added
+	bugService := service.NewBugService(bugRepo) // Added BugService
 
 	// Initialize handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -122,11 +123,12 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 	permissionHandler := handler.NewPermissionHandler(permissionService, appLogger)
 	responsibilityHandler := handler.NewResponsibilityHandler(responsibilityService, appLogger)
 	responsibilityGroupHandler := handler.NewResponsibilityGroupHandler(responsibilityGroupService, appLogger)
-	environmentHandler := envhandlers.NewEnvironmentHandler(environmentService, appLogger)
-	assetHandler := envhandlers.NewAssetHandler(assetService, appLogger)
-	serviceHandler := envhandlers.NewServiceHandler(serviceService, appLogger)                     // Corrected: Use envhandlers.NewServiceHandler
+	environmentHandler := handler.NewEnvironmentHandler(environmentService, appLogger)
+	assetHandler := handler.NewAssetHandler(assetService, appLogger)
+	serviceHandler := handler.NewServiceHandler(serviceService, appLogger)                     // Use handler.NewServiceHandler
 	serviceInstanceHandler := handler.NewServiceInstanceHandler(serviceInstanceService, appLogger) // Added
 	businessHandler := handler.NewBusinessHandler(businessService, appLogger)                      // Added
+	bugHandler := handler.NewBugHandler(bugService) // Added BugHandler
 
 	routerInstance := SetupRouter(
 		authHandler,
@@ -140,6 +142,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		serviceHandler,
 		serviceInstanceHandler, // Pass the new handler
 		businessHandler,        // Pass the new handler
+		bugHandler,             // Pass the new handler
 		jwtKey,
 	)
 
@@ -158,6 +161,7 @@ func SetupTestApp(t *testing.T) TestAppComponents {
 		ServiceHandler:             serviceHandler,
 		ServiceInstanceHandler:     serviceInstanceHandler, // Added
 		BusinessHandler:            businessHandler,        // Added
+		BugHandler:                 bugHandler,             // Added
 		JWTKey:                     jwtKey,
 	}
 }
@@ -169,11 +173,11 @@ func GetAuthTokenForTest(t *testing.T, r *gin.Engine, db *gorm.DB) string {
 	const testUserPassword = "password123"
 
 	// Check if user exists, if not create
-	var user models.User
+	var user model.User
 	err := db.Where("email = ?", testUserEmail).First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(testUserPassword), bcrypt.DefaultCost)
-		user = models.User{
+		user = model.User{
 			Name:     "Test User",
 			Email:    testUserEmail,
 			Password: string(hashedPassword),
@@ -200,7 +204,7 @@ func GetAuthTokenForTest(t *testing.T, r *gin.Engine, db *gorm.DB) string {
 		Message string `json:"message"`
 		Data    struct {
 			Token string       `json:"token"`
-			User  *models.User `json:"user"`
+			User  *model.User `json:"user"`
 		} `json:"data"`
 	}
 	err = json.Unmarshal(w.Body.Bytes(), &structuredLoginResp)
@@ -213,12 +217,12 @@ func GetAuthTokenForTest(t *testing.T, r *gin.Engine, db *gorm.DB) string {
 
 // Helper to create a test user directly in the DB
 // Moved from router_test.go
-func CreateTestUser(db *gorm.DB, email, password string) (*models.User, error) {
+func CreateTestUser(db *gorm.DB, email, password string) (*model.User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
-	user := &models.User{
+	user := &model.User{
 		Name:     "Test User", // Name can be generic for this helper
 		Email:    email,       // Use the provided email directly
 		Password: string(hashedPassword),
@@ -236,7 +240,7 @@ func GetAdminToken(t *testing.T, components TestAppComponents) string {
 	adminPasswordForToken := "AdminPassSecure123!"
 
 	// Attempt to find the admin user first
-	var existingAdmin models.User
+	var existingAdmin model.User
 	err := components.DB.Where("email = ?", adminEmailForToken).First(&existingAdmin).Error
 
 	if errors.Is(err, gorm.ErrRecordNotFound) { // User does not exist, create it
@@ -249,7 +253,7 @@ func GetAdminToken(t *testing.T, components TestAppComponents) string {
 	}
 	// If user was found or successfully created, proceed to login
 
-	loginPayload := models.LoginRequest{Email: adminEmailForToken, Password: adminPasswordForToken}
+	loginPayload := model.LoginRequest{Email: adminEmailForToken, Password: adminPasswordForToken}
 	payloadBytes, _ := json.Marshal(loginPayload)
 	loginReq, _ := http.NewRequest("POST", "/api/v1/auth/login", bytes.NewBuffer(payloadBytes))
 	loginReq.Header.Set("Content-Type", "application/json")
@@ -262,7 +266,7 @@ func GetAdminToken(t *testing.T, components TestAppComponents) string {
 		Message string `json:"message"`
 		Data    struct {
 			Token string       `json:"token"`
-			User  *models.User `json:"user"`
+			User  *model.User `json:"user"`
 		} `json:"data"`
 	}
 	err = json.Unmarshal(loginW.Body.Bytes(), &adminLoginResp)
@@ -274,17 +278,17 @@ func GetAdminToken(t *testing.T, components TestAppComponents) string {
 
 // TODO: Define mock repositories if not using actual GORM implementations yet
 // type mockResponsibilityRepository struct{}
-// func (m *mockResponsibilityRepository) Create(ctx context.Context, r *models.Responsibility) (*models.Responsibility, error) { return nil, errors.New("mock: not implemented")}
-// func (m *mockResponsibilityRepository) List(ctx context.Context, p models.ResponsibilityListParams) ([]models.Responsibility, int64, error) { return nil, 0, errors.New("mock: not implemented")}
-// func (m *mockResponsibilityRepository) GetByID(ctx context.Context, id uint) (*models.Responsibility, error) { return nil, errors.New("mock: not implemented")}
-// func (m *mockResponsibilityRepository) Update(ctx context.Context, r *models.Responsibility) (*models.Responsibility, error) { return nil, errors.New("mock: not implemented")}
+// func (m *mockResponsibilityRepository) Create(ctx context.Context, r *model.Responsibility) (*model.Responsibility, error) { return nil, errors.New("mock: not implemented")}
+// func (m *mockResponsibilityRepository) List(ctx context.Context, p model.ResponsibilityListParams) ([]model.Responsibility, int64, error) { return nil, 0, errors.New("mock: not implemented")}
+// func (m *mockResponsibilityRepository) GetByID(ctx context.Context, id uint) (*model.Responsibility, error) { return nil, errors.New("mock: not implemented")}
+// func (m *mockResponsibilityRepository) Update(ctx context.Context, r *model.Responsibility) (*model.Responsibility, error) { return nil, errors.New("mock: not implemented")}
 // func (m *mockResponsibilityRepository) Delete(ctx context.Context, id uint) error { return errors.New("mock: not implemented")}
 
 // type mockResponsibilityGroupRepository struct{}
 // ... (similar mock implementations for group repo)
 
 // 测试辅助函数：创建责任并带调试日志
-func CreateTestResponsibility(t *testing.T, router http.Handler, token string, respModel *models.Responsibility) models.Responsibility {
+func CreateTestResponsibility(t *testing.T, router http.Handler, token string, respModel *model.Responsibility) model.Responsibility {
 	jsonData, err := json.Marshal(respModel)
 	assert.NoError(t, err)
 
@@ -299,7 +303,7 @@ func CreateTestResponsibility(t *testing.T, router http.Handler, token string, r
 	assert.Equal(t, http.StatusCreated, w.Code)
 
 	var createdResp struct {
-		Data models.Responsibility `json:"data"`
+		Data model.Responsibility `json:"data"`
 	}
 	err = json.Unmarshal(w.Body.Bytes(), &createdResp)
 	assert.NoError(t, err)

@@ -1,7 +1,7 @@
 package service
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/utils"
 	"context"
@@ -24,7 +24,7 @@ func NewAuthService(userRepo repository.UserRepository, jwtKey []byte, logger *z
 	return &AuthService{userRepo: userRepo, jwtKey: jwtKey, logger: logger}
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string) (*models.LoginResponse, error) {
+func (s *AuthService) Login(ctx context.Context, email, password string) (*model.LoginResponse, error) {
 	s.logger.Info("Login attempt", zap.String("email", email))
 
 	user, err := s.userRepo.FindByEmail(ctx, email)
@@ -50,7 +50,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 
 	s.logger.Info("Password comparison successful", zap.Uint("userID", user.ID), zap.String("email", email))
 
-	claims := models.Claims{
+	claims := model.Claims{
 		UserID: user.ID,
 		Email:  user.Email,
 		Name:   user.Name,
@@ -67,7 +67,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (*model
 
 	s.logger.Info("Login successful, token generated", zap.Uint("userID", user.ID), zap.String("email", email))
 
-	return &models.LoginResponse{
+	return &model.LoginResponse{
 		Token: tokenString,
 		User:  user,
 	}, nil

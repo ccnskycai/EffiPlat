@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"context"
 	"fmt"
 
@@ -11,16 +11,16 @@ import (
 
 // RoleRepository defines the interface for database operations on roles.
 type RoleRepository interface {
-	CreateRole(ctx context.Context, role *models.Role) (*models.Role, error)
-	ListRoles(ctx context.Context, params models.RoleListParams) ([]models.Role, int64, error)
-	GetRoleByID(ctx context.Context, id uint) (*models.Role, error)
-	UpdateRole(ctx context.Context, id uint, role *models.Role) (*models.Role, error)
+	CreateRole(ctx context.Context, role *model.Role) (*model.Role, error)
+	ListRoles(ctx context.Context, params model.RoleListParams) ([]model.Role, int64, error)
+	GetRoleByID(ctx context.Context, id uint) (*model.Role, error)
+	UpdateRole(ctx context.Context, id uint, role *model.Role) (*model.Role, error)
 	DeleteRole(ctx context.Context, id uint) error
 
 	// Role-Permission Association Methods
-	AddPermissionsToRole(ctx context.Context, role *models.Role, permissions []models.Permission) error
-	RemovePermissionsFromRole(ctx context.Context, role *models.Role, permissions []models.Permission) error
-	GetRoleWithPermissions(ctx context.Context, roleID uint) (*models.Role, error)
+	AddPermissionsToRole(ctx context.Context, role *model.Role, permissions []model.Permission) error
+	RemovePermissionsFromRole(ctx context.Context, role *model.Role, permissions []model.Permission) error
+	GetRoleWithPermissions(ctx context.Context, roleID uint) (*model.Role, error)
 }
 
 type RoleRepositoryImpl struct {
@@ -38,7 +38,7 @@ func NewRoleRepository(db *gorm.DB, logger *zap.Logger) *RoleRepositoryImpl {
 
 // Implement RoleRepository methods below
 
-func (r *RoleRepositoryImpl) CreateRole(ctx context.Context, role *models.Role) (*models.Role, error) {
+func (r *RoleRepositoryImpl) CreateRole(ctx context.Context, role *model.Role) (*model.Role, error) {
 	r.logger.Info("RoleRepository: Creating role", zap.String("name", role.Name))
 	if err := r.db.WithContext(ctx).Create(role).Error; err != nil {
 		return nil, err
@@ -49,11 +49,11 @@ func (r *RoleRepositoryImpl) CreateRole(ctx context.Context, role *models.Role) 
 	return role, nil
 }
 
-func (r *RoleRepositoryImpl) ListRoles(ctx context.Context, params models.RoleListParams) ([]models.Role, int64, error) {
+func (r *RoleRepositoryImpl) ListRoles(ctx context.Context, params model.RoleListParams) ([]model.Role, int64, error) {
 	r.logger.Info("RoleRepository: Listing roles", zap.Any("params", params))
-	var roles []models.Role
+	var roles []model.Role
 	var total int64
-	db := r.db.WithContext(ctx).Model(&models.Role{})
+	db := r.db.WithContext(ctx).Model(&model.Role{})
 	if params.Name != "" {
 		db = db.Where("name LIKE ?", "%"+params.Name+"%")
 	}
@@ -65,18 +65,18 @@ func (r *RoleRepositoryImpl) ListRoles(ctx context.Context, params models.RoleLi
 	return roles, total, nil
 }
 
-func (r *RoleRepositoryImpl) GetRoleByID(ctx context.Context, id uint) (*models.Role, error) {
+func (r *RoleRepositoryImpl) GetRoleByID(ctx context.Context, id uint) (*model.Role, error) {
 	r.logger.Info("RoleRepository: GetRoleByID", zap.Uint("id", id))
-	var role models.Role
+	var role model.Role
 	if err := r.db.WithContext(ctx).First(&role, id).Error; err != nil {
 		return nil, err
 	}
 	return &role, nil
 }
 
-func (r *RoleRepositoryImpl) UpdateRole(ctx context.Context, id uint, role *models.Role) (*models.Role, error) {
+func (r *RoleRepositoryImpl) UpdateRole(ctx context.Context, id uint, role *model.Role) (*model.Role, error) {
 	r.logger.Info("RoleRepository: UpdateRole", zap.Uint("id", id))
-	var existing models.Role
+	var existing model.Role
 	if err := r.db.WithContext(ctx).First(&existing, id).Error; err != nil {
 		return nil, err
 	}
@@ -90,11 +90,11 @@ func (r *RoleRepositoryImpl) UpdateRole(ctx context.Context, id uint, role *mode
 
 func (r *RoleRepositoryImpl) DeleteRole(ctx context.Context, id uint) error {
 	r.logger.Info("RoleRepository: DeleteRole", zap.Uint("id", id))
-	return r.db.WithContext(ctx).Delete(&models.Role{}, id).Error
+	return r.db.WithContext(ctx).Delete(&model.Role{}, id).Error
 }
 
 // AddPermissionsToRole adds a list of permissions to a role.
-func (r *RoleRepositoryImpl) AddPermissionsToRole(ctx context.Context, role *models.Role, permissions []models.Permission) error {
+func (r *RoleRepositoryImpl) AddPermissionsToRole(ctx context.Context, role *model.Role, permissions []model.Permission) error {
 	r.logger.Info("RoleRepository: Adding permissions to role", zap.Uint("roleID", role.ID), zap.Int("permissionCount", len(permissions)))
 	// Use Append to only add new associations, ignoring existing ones
 	if err := r.db.WithContext(ctx).Model(role).Association("Permissions").Append(permissions); err != nil {
@@ -104,7 +104,7 @@ func (r *RoleRepositoryImpl) AddPermissionsToRole(ctx context.Context, role *mod
 }
 
 // RemovePermissionsFromRole removes a list of permissions from a role.
-func (r *RoleRepositoryImpl) RemovePermissionsFromRole(ctx context.Context, role *models.Role, permissions []models.Permission) error {
+func (r *RoleRepositoryImpl) RemovePermissionsFromRole(ctx context.Context, role *model.Role, permissions []model.Permission) error {
 	r.logger.Info("RoleRepository: Removing permissions from role", zap.Uint("roleID", role.ID), zap.Int("permissionCount", len(permissions)))
 	// Use Delete to remove the associations
 	if err := r.db.WithContext(ctx).Model(role).Association("Permissions").Delete(permissions); err != nil {
@@ -114,9 +114,9 @@ func (r *RoleRepositoryImpl) RemovePermissionsFromRole(ctx context.Context, role
 }
 
 // GetRoleWithPermissions gets a role by ID and preloads its associated permissions.
-func (r *RoleRepositoryImpl) GetRoleWithPermissions(ctx context.Context, roleID uint) (*models.Role, error) {
+func (r *RoleRepositoryImpl) GetRoleWithPermissions(ctx context.Context, roleID uint) (*model.Role, error) {
 	r.logger.Info("RoleRepository: GetRoleWithPermissions", zap.Uint("roleID", roleID))
-	var role models.Role
+	var role model.Role
 	// Preload the Permissions association
 	if err := r.db.WithContext(ctx).Preload("Permissions").First(&role, roleID).Error; err != nil {
 		return nil, err

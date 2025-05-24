@@ -1,7 +1,7 @@
 package service
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/repository"
 	"EffiPlat/backend/internal/utils"
 	"context"
@@ -14,10 +14,10 @@ import (
 
 // RoleService defines the interface for role management operations.
 type RoleService interface {
-	CreateRole(ctx context.Context, roleData *models.Role, permissionIDs []uint) (*models.Role, error)
-	GetRoles(ctx context.Context, params models.RoleListParams) ([]models.Role, int64, error)
-	GetRoleByID(ctx context.Context, id uint) (*models.RoleDetails, error)
-	UpdateRole(ctx context.Context, id uint, roleData *models.Role, permissionIDs []uint) (*models.Role, error)
+	CreateRole(ctx context.Context, roleData *model.Role, permissionIDs []uint) (*model.Role, error)
+	GetRoles(ctx context.Context, params model.RoleListParams) ([]model.Role, int64, error)
+	GetRoleByID(ctx context.Context, id uint) (*model.RoleDetails, error)
+	UpdateRole(ctx context.Context, id uint, roleData *model.Role, permissionIDs []uint) (*model.Role, error)
 	DeleteRole(ctx context.Context, id uint) error
 	// TODO: Add methods for permission management on roles if needed
 }
@@ -36,10 +36,10 @@ func NewRoleService(rr repository.RoleRepository, logger *zap.Logger) *RoleServi
 
 // --- Implement RoleService methods ---
 
-func (s *RoleServiceImpl) CreateRole(ctx context.Context, roleData *models.Role, permissionIDs []uint) (*models.Role, error) {
+func (s *RoleServiceImpl) CreateRole(ctx context.Context, roleData *model.Role, permissionIDs []uint) (*model.Role, error) {
 	s.logger.Info("RoleService: CreateRole called", zap.String("name", roleData.Name))
 	// 检查重名
-	roles, _, err := s.roleRepo.ListRoles(ctx, models.RoleListParams{Name: roleData.Name, Page: 1, PageSize: 1})
+	roles, _, err := s.roleRepo.ListRoles(ctx, model.RoleListParams{Name: roleData.Name, Page: 1, PageSize: 1})
 	if err == nil && len(roles) > 0 {
 		return nil, fmt.Errorf("role name '%s' already exists: %w", roleData.Name, utils.ErrAlreadyExists)
 	}
@@ -52,12 +52,12 @@ func (s *RoleServiceImpl) CreateRole(ctx context.Context, roleData *models.Role,
 	return role, nil
 }
 
-func (s *RoleServiceImpl) GetRoles(ctx context.Context, params models.RoleListParams) ([]models.Role, int64, error) {
+func (s *RoleServiceImpl) GetRoles(ctx context.Context, params model.RoleListParams) ([]model.Role, int64, error) {
 	s.logger.Info("RoleService: GetRoles called", zap.Any("params", params))
 	return s.roleRepo.ListRoles(ctx, params)
 }
 
-func (s *RoleServiceImpl) GetRoleByID(ctx context.Context, id uint) (*models.RoleDetails, error) {
+func (s *RoleServiceImpl) GetRoleByID(ctx context.Context, id uint) (*model.RoleDetails, error) {
 	s.logger.Info("RoleService: GetRoleByID called", zap.Uint("id", id))
 	role, err := s.roleRepo.GetRoleByID(ctx, id)
 	if err != nil {
@@ -67,7 +67,7 @@ func (s *RoleServiceImpl) GetRoleByID(ctx context.Context, id uint) (*models.Rol
 		return nil, err
 	}
 	// TODO: 查询 userCount 和 permissions
-	return &models.RoleDetails{
+	return &model.RoleDetails{
 		ID:          role.ID,
 		Name:        role.Name,
 		Description: role.Description,
@@ -78,10 +78,10 @@ func (s *RoleServiceImpl) GetRoleByID(ctx context.Context, id uint) (*models.Rol
 	}, nil
 }
 
-func (s *RoleServiceImpl) UpdateRole(ctx context.Context, id uint, roleData *models.Role, permissionIDs []uint) (*models.Role, error) {
+func (s *RoleServiceImpl) UpdateRole(ctx context.Context, id uint, roleData *model.Role, permissionIDs []uint) (*model.Role, error) {
 	s.logger.Info("RoleService: UpdateRole called", zap.Uint("id", id), zap.String("newName", roleData.Name))
 	// 检查重名
-	roles, _, err := s.roleRepo.ListRoles(ctx, models.RoleListParams{Name: roleData.Name, Page: 1, PageSize: 1})
+	roles, _, err := s.roleRepo.ListRoles(ctx, model.RoleListParams{Name: roleData.Name, Page: 1, PageSize: 1})
 	if err == nil && len(roles) > 0 && roles[0].ID != id {
 		return nil, fmt.Errorf("role name '%s' already exists: %w", roleData.Name, utils.ErrAlreadyExists)
 	}
@@ -110,13 +110,13 @@ func (s *RoleServiceImpl) DeleteRole(ctx context.Context, id uint) error {
 	return nil
 }
 
-// func (s *roleService) Create(ctx context.Context, role *models.Role) (*models.Role, error) {
+// func (s *roleService) Create(ctx context.Context, role *model.Role) (*model.Role, error) {
 // 	s.logger.Info("RoleService: Create role", zap.String("name", role.Name))
 // 	// return s.roleRepo.Create(ctx, role)
 // 	return nil, errors.New("Create role not implemented")
 // }
 
-// func (s *roleService) GetAll(ctx context.Context) ([]models.Role, error) {
+// func (s *roleService) GetAll(ctx context.Context) ([]model.Role, error) {
 // 	s.logger.Info("RoleService: GetAll roles")
 // 	// return s.roleRepo.GetAll(ctx)
 // 	return nil, errors.New("GetAll roles not implemented")

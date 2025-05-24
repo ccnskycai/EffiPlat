@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/utils"
 	"context"
 	"errors"
@@ -13,11 +13,11 @@ import (
 
 // PermissionRepository defines the interface for database operations on permissions.
 type PermissionRepository interface {
-	CreatePermission(ctx context.Context, permission *models.Permission) (*models.Permission, error)
-	ListPermissions(ctx context.Context, params models.PermissionListParams) ([]models.Permission, int64, error)
-	GetPermissionByID(ctx context.Context, id uint) (*models.Permission, error)
-	GetPermissionsByIDs(ctx context.Context, ids []uint) ([]models.Permission, error)
-	UpdatePermission(ctx context.Context, id uint, permission *models.Permission) (*models.Permission, error)
+	CreatePermission(ctx context.Context, permission *model.Permission) (*model.Permission, error)
+	ListPermissions(ctx context.Context, params model.PermissionListParams) ([]model.Permission, int64, error)
+	GetPermissionByID(ctx context.Context, id uint) (*model.Permission, error)
+	GetPermissionsByIDs(ctx context.Context, ids []uint) ([]model.Permission, error)
+	UpdatePermission(ctx context.Context, id uint, permission *model.Permission) (*model.Permission, error)
 	DeletePermission(ctx context.Context, id uint) error
 	// TODO: Add methods for associating/disassociating permissions with roles if needed at repository level
 }
@@ -37,7 +37,7 @@ func NewPermissionRepository(db *gorm.DB, logger *zap.Logger) *PermissionReposit
 
 // --- Implement PermissionRepository methods below ---
 
-func (r *PermissionRepositoryImpl) CreatePermission(ctx context.Context, permission *models.Permission) (*models.Permission, error) {
+func (r *PermissionRepositoryImpl) CreatePermission(ctx context.Context, permission *model.Permission) (*model.Permission, error) {
 	r.logger.Info("PermissionRepository: Creating permission", zap.String("name", permission.Name))
 	if err := r.db.WithContext(ctx).Create(permission).Error; err != nil {
 		// TODO: Differentiate unique constraint error
@@ -46,11 +46,11 @@ func (r *PermissionRepositoryImpl) CreatePermission(ctx context.Context, permiss
 	return permission, nil
 }
 
-func (r *PermissionRepositoryImpl) ListPermissions(ctx context.Context, params models.PermissionListParams) ([]models.Permission, int64, error) {
+func (r *PermissionRepositoryImpl) ListPermissions(ctx context.Context, params model.PermissionListParams) ([]model.Permission, int64, error) {
 	r.logger.Info("PermissionRepository: Listing permissions", zap.Any("params", params))
-	var permissions []models.Permission
+	var permissions []model.Permission
 	var total int64
-	db := r.db.WithContext(ctx).Model(&models.Permission{})
+	db := r.db.WithContext(ctx).Model(&model.Permission{})
 
 	if params.Name != "" {
 		db = db.Where("name LIKE ?", "%"+params.Name+"%")
@@ -72,9 +72,9 @@ func (r *PermissionRepositoryImpl) ListPermissions(ctx context.Context, params m
 	return permissions, total, nil
 }
 
-func (r *PermissionRepositoryImpl) GetPermissionByID(ctx context.Context, id uint) (*models.Permission, error) {
+func (r *PermissionRepositoryImpl) GetPermissionByID(ctx context.Context, id uint) (*model.Permission, error) {
 	r.logger.Info("PermissionRepository: GetPermissionByID", zap.Uint("id", id))
-	var permission models.Permission
+	var permission model.Permission
 	if err := r.db.WithContext(ctx).First(&permission, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, utils.ErrNotFound
@@ -84,9 +84,9 @@ func (r *PermissionRepositoryImpl) GetPermissionByID(ctx context.Context, id uin
 	return &permission, nil
 }
 
-func (r *PermissionRepositoryImpl) GetPermissionsByIDs(ctx context.Context, ids []uint) ([]models.Permission, error) {
+func (r *PermissionRepositoryImpl) GetPermissionsByIDs(ctx context.Context, ids []uint) ([]model.Permission, error) {
 	r.logger.Info("PermissionRepository: GetPermissionsByIDs", zap.Any("ids", ids))
-	var permissions []models.Permission
+	var permissions []model.Permission
 	if len(ids) == 0 {
 		return permissions, nil // Return empty slice for empty input
 	}
@@ -96,9 +96,9 @@ func (r *PermissionRepositoryImpl) GetPermissionsByIDs(ctx context.Context, ids 
 	return permissions, nil
 }
 
-func (r *PermissionRepositoryImpl) UpdatePermission(ctx context.Context, id uint, permission *models.Permission) (*models.Permission, error) {
+func (r *PermissionRepositoryImpl) UpdatePermission(ctx context.Context, id uint, permission *model.Permission) (*model.Permission, error) {
 	r.logger.Info("PermissionRepository: UpdatePermission", zap.Uint("id", id), zap.String("newName", permission.Name))
-	var existing models.Permission
+	var existing model.Permission
 	if err := r.db.WithContext(ctx).First(&existing, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, utils.ErrNotFound
@@ -132,7 +132,7 @@ func (r *PermissionRepositoryImpl) DeletePermission(ctx context.Context, id uint
 	r.logger.Info("PermissionRepository: DeletePermission", zap.Uint("id", id))
 	// TODO: Implement logic to prevent deletion if permission is associated with roles
 
-	result := r.db.WithContext(ctx).Delete(&models.Permission{}, id)
+	result := r.db.WithContext(ctx).Delete(&model.Permission{}, id)
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete permission: %w", result.Error)
 	}

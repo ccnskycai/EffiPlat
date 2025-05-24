@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"EffiPlat/backend/internal/service"
 	"net/http"
 
@@ -17,7 +17,7 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req models.LoginRequest
+	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		RespondWithError(c, http.StatusBadRequest, "Invalid request payload")
 		return
@@ -39,7 +39,7 @@ func (h *AuthHandler) GetMe(c *gin.Context) {
 		return
 	}
 
-	claims, ok := claimsValue.(*models.Claims)
+	claims, ok := claimsValue.(*model.Claims)
 	if !ok {
 		RespondWithError(c, http.StatusInternalServerError, "Invalid claims format in context")
 		return

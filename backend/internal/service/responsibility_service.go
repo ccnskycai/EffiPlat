@@ -1,7 +1,7 @@
 package service
 
 import (
-	"EffiPlat/backend/internal/models"     // Assuming models.Responsibility and models.ResponsibilityListParams exist or will be created
+	"EffiPlat/backend/internal/model"     // Assuming model.Responsibility and model.ResponsibilityListParams exist or will be created
 	"EffiPlat/backend/internal/repository" // Assuming repository.ResponsibilityRepository will exist
 	"EffiPlat/backend/internal/utils"      // Import apputils
 	"context"
@@ -15,10 +15,10 @@ import (
 // ResponsibilityService defines the interface for responsibility-related operations.
 // It's good practice to define an interface for the service layer to allow for easier testing and DI.
 type ResponsibilityService interface {
-	CreateResponsibility(ctx context.Context, responsibility *models.Responsibility) (*models.Responsibility, error)
-	GetResponsibilities(ctx context.Context, params models.ResponsibilityListParams) ([]models.Responsibility, int64, error) // Returns items, total count, error
-	GetResponsibilityByID(ctx context.Context, id uint) (*models.Responsibility, error)
-	UpdateResponsibility(ctx context.Context, id uint, responsibilityUpdate *models.Responsibility) (*models.Responsibility, error)
+	CreateResponsibility(ctx context.Context, responsibility *model.Responsibility) (*model.Responsibility, error)
+	GetResponsibilities(ctx context.Context, params model.ResponsibilityListParams) ([]model.Responsibility, int64, error) // Returns items, total count, error
+	GetResponsibilityByID(ctx context.Context, id uint) (*model.Responsibility, error)
+	UpdateResponsibility(ctx context.Context, id uint, responsibilityUpdate *model.Responsibility) (*model.Responsibility, error)
 	DeleteResponsibility(ctx context.Context, id uint) error
 }
 
@@ -35,18 +35,18 @@ func NewResponsibilityService(repo repository.ResponsibilityRepository, logger *
 	}
 }
 
-func (s *responsibilityServiceImpl) CreateResponsibility(ctx context.Context, r *models.Responsibility) (*models.Responsibility, error) {
+func (s *responsibilityServiceImpl) CreateResponsibility(ctx context.Context, r *model.Responsibility) (*model.Responsibility, error) {
 	s.logger.Info("Service: Creating new responsibility", zap.String("name", r.Name))
 	// TODO: Add validation - e.g., check for existing name if it should be unique beyond DB constraint
 	return s.repo.Create(ctx, r)
 }
 
-func (s *responsibilityServiceImpl) GetResponsibilities(ctx context.Context, params models.ResponsibilityListParams) ([]models.Responsibility, int64, error) {
+func (s *responsibilityServiceImpl) GetResponsibilities(ctx context.Context, params model.ResponsibilityListParams) ([]model.Responsibility, int64, error) {
 	s.logger.Info("Service: Fetching responsibilities", zap.Any("params", params))
 	return s.repo.List(ctx, params)
 }
 
-func (s *responsibilityServiceImpl) GetResponsibilityByID(ctx context.Context, id uint) (*models.Responsibility, error) {
+func (s *responsibilityServiceImpl) GetResponsibilityByID(ctx context.Context, id uint) (*model.Responsibility, error) {
 	s.logger.Info("Service: Fetching responsibility by ID", zap.Uint("id", id))
 	resp, err := s.repo.GetByID(ctx, id)
 	if err != nil {
@@ -60,7 +60,7 @@ func (s *responsibilityServiceImpl) GetResponsibilityByID(ctx context.Context, i
 	return resp, nil
 }
 
-func (s *responsibilityServiceImpl) UpdateResponsibility(ctx context.Context, id uint, responsibilityUpdate *models.Responsibility) (*models.Responsibility, error) {
+func (s *responsibilityServiceImpl) UpdateResponsibility(ctx context.Context, id uint, responsibilityUpdate *model.Responsibility) (*model.Responsibility, error) {
 	s.logger.Info("Service: Updating responsibility", zap.Uint("id", id), zap.String("newName", responsibilityUpdate.Name))
 
 	// First, check if the responsibility exists

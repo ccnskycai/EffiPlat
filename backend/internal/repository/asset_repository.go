@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"EffiPlat/backend/internal/models"
+	"EffiPlat/backend/internal/model"
 	"context"
 	"fmt"
 
@@ -11,12 +11,12 @@ import (
 
 // AssetRepository defines the interface for asset data operations.
 type AssetRepository interface {
-	Create(ctx context.Context, asset *models.Asset) error
-	GetByID(ctx context.Context, id uint) (*models.Asset, error)
-	GetByHostname(ctx context.Context, hostname string) (*models.Asset, error)
-	GetByIPAddress(ctx context.Context, ipAddress string) (*models.Asset, error)
-	List(ctx context.Context, params models.AssetListParams) ([]models.Asset, int64, error)
-	Update(ctx context.Context, asset *models.Asset) error
+	Create(ctx context.Context, asset *model.Asset) error
+	GetByID(ctx context.Context, id uint) (*model.Asset, error)
+	GetByHostname(ctx context.Context, hostname string) (*model.Asset, error)
+	GetByIPAddress(ctx context.Context, ipAddress string) (*model.Asset, error)
+	List(ctx context.Context, params model.AssetListParams) ([]model.Asset, int64, error)
+	Update(ctx context.Context, asset *model.Asset) error
 	Delete(ctx context.Context, id uint) error
 	// Add other specific query methods if needed, e.g., ListByEnvironmentID
 }
@@ -31,7 +31,7 @@ func NewGormAssetRepository(db *gorm.DB, logger *zap.Logger) AssetRepository {
 	return &gormAssetRepository{db: db, logger: logger}
 }
 
-func (r *gormAssetRepository) Create(ctx context.Context, asset *models.Asset) error {
+func (r *gormAssetRepository) Create(ctx context.Context, asset *model.Asset) error {
 	if err := r.db.WithContext(ctx).Create(asset).Error; err != nil {
 		r.logger.Error("Failed to create asset", zap.Error(err), zap.String("hostname", asset.Hostname))
 		return fmt.Errorf("creating asset: %w", err)
@@ -40,8 +40,8 @@ func (r *gormAssetRepository) Create(ctx context.Context, asset *models.Asset) e
 	return nil
 }
 
-func (r *gormAssetRepository) GetByID(ctx context.Context, id uint) (*models.Asset, error) {
-	var asset models.Asset
+func (r *gormAssetRepository) GetByID(ctx context.Context, id uint) (*model.Asset, error) {
+	var asset model.Asset
 	if err := r.db.WithContext(ctx).Preload("Environment").First(&asset, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			r.logger.Warn("Asset not found by ID", zap.Uint("id", id))
@@ -53,8 +53,8 @@ func (r *gormAssetRepository) GetByID(ctx context.Context, id uint) (*models.Ass
 	return &asset, nil
 }
 
-func (r *gormAssetRepository) GetByHostname(ctx context.Context, hostname string) (*models.Asset, error) {
-	var asset models.Asset
+func (r *gormAssetRepository) GetByHostname(ctx context.Context, hostname string) (*model.Asset, error) {
+	var asset model.Asset
 	if err := r.db.WithContext(ctx).Preload("Environment").Where("hostname = ?", hostname).First(&asset).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			r.logger.Warn("Asset not found by hostname", zap.String("hostname", hostname))
@@ -66,8 +66,8 @@ func (r *gormAssetRepository) GetByHostname(ctx context.Context, hostname string
 	return &asset, nil
 }
 
-func (r *gormAssetRepository) GetByIPAddress(ctx context.Context, ipAddress string) (*models.Asset, error) {
-	var asset models.Asset
+func (r *gormAssetRepository) GetByIPAddress(ctx context.Context, ipAddress string) (*model.Asset, error) {
+	var asset model.Asset
 	if err := r.db.WithContext(ctx).Preload("Environment").Where("ip_address = ?", ipAddress).First(&asset).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			r.logger.Warn("Asset not found by IP address", zap.String("ipAddress", ipAddress))
@@ -79,11 +79,11 @@ func (r *gormAssetRepository) GetByIPAddress(ctx context.Context, ipAddress stri
 	return &asset, nil
 }
 
-func (r *gormAssetRepository) List(ctx context.Context, params models.AssetListParams) ([]models.Asset, int64, error) {
-	var assets []models.Asset
+func (r *gormAssetRepository) List(ctx context.Context, params model.AssetListParams) ([]model.Asset, int64, error) {
+	var assets []model.Asset
 	var totalCount int64
 
-	query := r.db.WithContext(ctx).Model(&models.Asset{}).Preload("Environment")
+	query := r.db.WithContext(ctx).Model(&model.Asset{}).Preload("Environment")
 
 	// Apply filters from params
 	if params.Hostname != "" {
@@ -118,13 +118,13 @@ func (r *gormAssetRepository) List(ctx context.Context, params models.AssetListP
 	return assets, totalCount, nil
 }
 
-func (r *gormAssetRepository) Update(ctx context.Context, asset *models.Asset) error {
+func (r *gormAssetRepository) Update(ctx context.Context, asset *model.Asset) error {
 	// Ensure ID is set for update
 	if asset.ID == 0 {
 		r.logger.Error("Attempted to update asset with zero ID")
 		return fmt.Errorf("cannot update asset with zero ID")
 	}
-	// Use .Model(&models.Asset{}).Where("id = ?", asset.ID).Updates(asset) to ensure hooks are run and only non-zero fields are updated if that's the desired behavior for partial updates.
+	// Use .Model(&model.Asset{}).Where("id = ?", asset.ID).Updates(asset) to ensure hooks are run and only non-zero fields are updated if that's the desired behavior for partial updates.
 	// For a full replacement (excluding zero values of primitive types by default in .Save), .Save is okay.
 	if err := r.db.WithContext(ctx).Save(asset).Error; err != nil {
 		r.logger.Error("Failed to update asset", zap.Error(err), zap.Uint("id", asset.ID))
@@ -135,7 +135,7 @@ func (r *gormAssetRepository) Update(ctx context.Context, asset *models.Asset) e
 }
 
 func (r *gormAssetRepository) Delete(ctx context.Context, id uint) error {
-	if err := r.db.WithContext(ctx).Delete(&models.Asset{}, id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Delete(&model.Asset{}, id).Error; err != nil {
 		r.logger.Error("Failed to delete asset", zap.Error(err), zap.Uint("id", id))
 		return fmt.Errorf("deleting asset ID %d: %w", id, err)
 	}
