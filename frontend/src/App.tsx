@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, Outlet } from 'rea
 import { useAuthStore } from './store/authStore';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import UsersPage from './pages/UsersPage';
 import MainLayout from './layouts/MainLayout';
 import { Spin } from 'antd'; // For loading indicator
 
@@ -86,7 +87,7 @@ function App() {
           <Route path="dashboard" element={<DashboardPage />} />
           
           {/* Added placeholder components for menu items to prevent navigation loops */}
-          <Route path="users" element={<div>User Management Page (Coming Soon)</div>} />
+          <Route path="users" element={<UsersPage />} />
           <Route path="environments" element={<div>Environment Management Page (Coming Soon)</div>} />
           <Route path="assets" element={<div>Asset Management Page (Coming Soon)</div>} />
           <Route path="services" element={<div>Service Management Page (Coming Soon)</div>} />

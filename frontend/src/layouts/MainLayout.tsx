@@ -203,9 +203,15 @@ const MainLayout: React.FC = () => {
                 <Text
                   type="secondary"
                   style={{ fontSize: 12, lineHeight: '1' }}
-                  ellipsis={{ tooltip: user?.roles?.[0] || 'User' }}
+                  ellipsis={{ tooltip: typeof user?.roles?.[0] === 'object' ? 
+                    (user?.roles?.[0]?.name || user?.roles?.[0]?.id || 'User') : 
+                    (user?.roles?.[0] || 'User') 
+                  }}
                 >
-                  {user?.roles?.[0] || 'User'}                  
+                  {typeof user?.roles?.[0] === 'object' ? 
+                    (user?.roles?.[0]?.name || user?.roles?.[0]?.id || 'User') : 
+                    (user?.roles?.[0] || 'User')
+                  }                  
                 </Text>
               </div>
             </div>

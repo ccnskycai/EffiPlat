@@ -27,6 +27,10 @@
 - [x] 设置日志实例的依赖注入机制
 - [x] 实现用户认证 API (`/auth`) - 登录、获取用户、登出 完成
 - [x] 实现用户管理 API (`/users`) - 后端已完成
+    - [x] 实现用户创建功能
+    - [x] 实现用户编辑功能
+    - [x] 实现用户删除功能
+    - [ ] 实现用户批量删除功能 (存在问题)
 - [x] 实现角色与权限管理基础 API (`/roles`, `/permissions`, 角色权限关联) - 后端已完成 (基本路由测试已覆盖)
 - [x] 实现职责与职责组管理 API (`/responsibilities`, `/responsibility-groups`) - 后端已完成 (基本路由测试已覆盖)
 - [x] 实现环境管理 API (`/environments`) - 基本完成
@@ -42,7 +46,7 @@
 - [x] 实现服务管理 API (`/services`)
 - [x] 实现服务实例管理基础 API (`/service-instances`)
 - [x] 实现业务管理 API (`/businesses`)
-- [x] 实现 Bug 管理 API (`/bugs`)
+- [ ] 实现 Bug 管理 API (`/bugs`)
 - [ ] 实现基础操作审计日志记录
 
 ### 前端 UI

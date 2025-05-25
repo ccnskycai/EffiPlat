@@ -2,11 +2,11 @@
 // Using vanilla React state management patterns to avoid getSnapshot errors
 
 import { create } from 'zustand';
+import { setAuthToken } from '../services/apiClient';
 import {
   getCurrentUser as apiGetCurrentUser,
   login as apiLogin,
   logout as apiLogout,
-  setAuthToken,
 } from '../services/authService';
 
 // Define User interface
